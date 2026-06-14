@@ -25,6 +25,7 @@ import {
   AppStore,
   Weather,
   AboutSystem,
+  AppBuilder,
   SandboxedApp,
 } from '@/components/apps';
 import { useAppRegistryStore } from '@/stores/app-registry-store';
@@ -40,6 +41,7 @@ const APP_COMPONENT_MAP: Record<string, React.ComponentType> = {
   'app-store': AppStore,
   weather: Weather,
   'about-system': AboutSystem,
+  'app-builder': AppBuilder,
 };
 
 export function Desktop() {
@@ -353,7 +355,12 @@ export function Desktop() {
           if (userApp) {
             return (
               <Window key={win.id} window={win} isActive={activeWindowId === win.id}>
-                <SandboxedApp htmlContent={userApp.htmlContent} />
+                <SandboxedApp
+                  htmlContent={userApp.htmlContent}
+                  sourceFiles={userApp.sourceFiles ?? undefined}
+                  compiledHtml={userApp.compiledHtml ?? undefined}
+                  windowId={win.id}
+                />
               </Window>
             );
           }

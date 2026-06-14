@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Store, Search, Check, ExternalLink, Box } from 'lucide-react';
+import { Store, Search, Check, ExternalLink, Box, Code2, FileType } from 'lucide-react';
 import { APP_REGISTRY, type AppCategory, type UserAppDefinition } from '@/types/os';
 import { useWindowStore } from '@/stores/window-store';
 import { useAppRegistryStore } from '@/stores/app-registry-store';
@@ -124,11 +124,11 @@ export default function AppStore() {
           </div>
         )}
 
-        {/* Installed Apps */}
+        {/* Built-in Apps */}
         {filteredInstalledApps.length > 0 && (
           <div className="mb-4">
             <h2 className="text-xs uppercase tracking-wider text-white/40 font-medium mb-2 mt-2">
-              Installed Apps
+              Built-in Apps
             </h2>
             <div className="space-y-1">
               {filteredInstalledApps.map((app) => (
@@ -153,6 +153,28 @@ export default function AppStore() {
           </div>
         )}
 
+        {/* Create Your Own */}
+        <div className="mb-4">
+          <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 rounded-xl p-4 mt-2">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center">
+                <Code2 className="w-5 h-5 text-purple-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium">App Builder</div>
+                <div className="text-xs text-white/50 truncate">Create your own apps with React + TypeScript</div>
+              </div>
+              <button
+                className="px-3 py-1 rounded-full text-xs bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors shrink-0"
+                onClick={() => openWindow('app-builder')}
+              >
+                <Code2 className="w-3 h-3 inline-block mr-0.5 -mt-0.5" />
+                Open
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Community Apps (approved user-created) */}
         {filteredUserApps.length > 0 && (
           <div className="mb-4">
@@ -169,7 +191,21 @@ export default function AppStore() {
                     {app.icon || '📦'}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium">{app.name}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{app.name}</span>
+                      {app.appType === 'react' && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] bg-purple-500/20 text-purple-400 flex items-center gap-0.5">
+                          <Code2 className="w-2.5 h-2.5" />
+                          React
+                        </span>
+                      )}
+                      {(!app.appType || app.appType === 'html') && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-400 flex items-center gap-0.5">
+                          <FileType className="w-2.5 h-2.5" />
+                          HTML
+                        </span>
+                      )}
+                    </div>
                     <div className="text-xs text-white/40 truncate">{app.description}</div>
                   </div>
                   <button

@@ -23,6 +23,9 @@ function toUserAppDef(row: UserAppRow): UserAppDefinition {
     minWindowSize: row.min_window_size || { width: 400, height: 300 },
     singleton: row.singleton || false,
     htmlContent: row.html_content,
+    sourceFiles: row.source_files ?? null,
+    compiledHtml: row.compiled_html ?? null,
+    appType: row.app_type ?? 'html',
   };
 }
 

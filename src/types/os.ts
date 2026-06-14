@@ -73,10 +73,13 @@ export interface UserAppRow {
   icon: string;
   category: string;
   html_content: string;
+  source_files?: Record<string, string> | null;
+  compiled_html?: string | null;
+  app_type?: string;
   default_window_size: WindowSize;
   min_window_size: WindowSize;
   singleton: boolean;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "rejected" | "draft";
   submitted_at: string;
   reviewed_at: string | null;
   created_at: string;
@@ -93,6 +96,9 @@ export interface UserAppDefinition {
   minWindowSize: WindowSize;
   singleton: boolean;
   htmlContent: string;
+  sourceFiles?: Record<string, string> | null;
+  compiledHtml?: string | null;
+  appType?: string;
 }
 
 export interface Notification {
@@ -206,5 +212,14 @@ export const APP_REGISTRY: Record<string, Omit<AppDefinition, "component">> = {
     defaultWindowSize: { width: 450, height: 400 },
     minWindowSize: { width: 350, height: 350 },
     singleton: true,
+  },
+  "app-builder": {
+    id: "app-builder",
+    name: "App Builder",
+    icon: "Code2",
+    description: "Build React + TypeScript apps",
+    category: "development",
+    defaultWindowSize: { width: 1200, height: 700 },
+    minWindowSize: { width: 800, height: 500 },
   },
 };
