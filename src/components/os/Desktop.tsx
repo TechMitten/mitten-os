@@ -51,6 +51,7 @@ export function Desktop() {
   const setStartMenuOpen = useDesktopStore((s) => s.setStartMenuOpen);
   const loadSettings = useDesktopStore((s) => s.loadSettings);
   const welcomeDismissed = useDesktopStore((s) => s.welcomeDismissed);
+  const persistWindows = useDesktopStore((s) => s.persistWindows);
   const setWelcomeDismissed = useDesktopStore((s) => s.setWelcomeDismissed);
   const updateIconPosition = useDesktopStore((s) => s.updateIconPosition);
   const loadIconPositions = useDesktopStore((s) => s.loadIconPositions);
@@ -108,8 +109,8 @@ export function Desktop() {
       ]);
       if (cancelled) return;
 
-      // Restore window states
-      const savedWindows = await loadWindowStates(user.id);
+      // Restore window states (if enabled)
+      const savedWindows = persistWindows ? await loadWindowStates(user.id) : [];
       if (cancelled) return;
 
       // Restore icon positions
@@ -155,7 +156,9 @@ export function Desktop() {
   useEffect(() => {
     if (!user?.id || !dataLoaded) return;
     const interval = setInterval(() => {
-      saveWindowStates(user.id, windowsRef.current);
+      if (useDesktopStore.getState().persistWindows) {
+        saveWindowStates(user.id, windowsRef.current);
+      }
       saveIconPositions(user.id, iconsRef.current);
     }, 10000);
     return () => clearInterval(interval);

@@ -135,7 +135,7 @@ export function StartMenu() {
             <div className="grid grid-cols-3 gap-2">
               {filteredApps.map((app) => {
                 const isUser = isUserApp(app);
-                const IconComp = !isUser ? ICON_MAP[app.icon] || FileText : null;
+                const IconComp = ICON_MAP[app.icon] || FileText;
                 return (
                   <button
                     key={app.id}
@@ -169,7 +169,7 @@ export function StartMenu() {
               onClick={async () => {
                 setStartMenuOpen(false);
                 const userId = useAuthStore.getState().user?.id;
-                if (userId) {
+                if (userId && useDesktopStore.getState().persistWindows) {
                   await saveWindowStates(userId, useWindowStore.getState().windows);
                 }
                 useFileSystemStore.getState().reset();

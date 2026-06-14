@@ -13,11 +13,13 @@ import {
   Cpu,
   Layers,
   Box,
+  LayoutPanelTop,
 } from 'lucide-react';
 
-type Section = 'appearance' | 'wallpaper' | 'display' | 'about';
+type Section = 'appearance' | 'wallpaper' | 'display' | 'general' | 'about';
 
 const SIDEBAR_ITEMS: { id: Section; label: string; icon: React.ReactNode }[] = [
+  { id: 'general', label: 'General', icon: <LayoutPanelTop className="w-4 h-4" /> },
   { id: 'appearance', label: 'Appearance', icon: <Palette className="w-4 h-4" /> },
   { id: 'wallpaper', label: 'Wallpaper', icon: <ImageIcon className="w-4 h-4" /> },
   { id: 'display', label: 'Display', icon: <Monitor className="w-4 h-4" /> },
@@ -79,7 +81,7 @@ const ACCENT_COLORS = [
 ];
 
 export default function SettingsApp() {
-  const [activeSection, setActiveSection] = useState<Section>('appearance');
+  const [activeSection, setActiveSection] = useState<Section>('general');
   const [selectedAccent, setSelectedAccent] = useState('Amber');
   const [iconSize, setIconSize] = useState<'small' | 'medium' | 'large'>('medium');
 
@@ -87,6 +89,8 @@ export default function SettingsApp() {
   const toggleTheme = useDesktopStore((s) => s.toggleTheme);
   const wallpaper = useDesktopStore((s) => s.wallpaper);
   const setWallpaper = useDesktopStore((s) => s.setWallpaper);
+  const persistWindows = useDesktopStore((s) => s.persistWindows);
+  const setPersistWindows = useDesktopStore((s) => s.setPersistWindows);
 
   const isDark = theme === 'dark';
 
@@ -131,6 +135,12 @@ export default function SettingsApp() {
         )}
         {activeSection === 'display' && (
           <DisplaySection iconSize={iconSize} setIconSize={setIconSize} />
+        )}
+        {activeSection === 'general' && (
+          <GeneralSection
+            persistWindows={persistWindows}
+            setPersistWindows={setPersistWindows}
+          />
         )}
         {activeSection === 'about' && <AboutSection />}
       </div>
@@ -196,7 +206,6 @@ function AppearanceSection({
               }`}
               style={{
                 backgroundColor: color.value,
-                ringColor: selectedAccent === color.name ? color.value : undefined,
                 boxShadow:
                   selectedAccent === color.name
                     ? `0 0 0 2px #18181b, 0 0 0 4px ${color.value}`
@@ -367,6 +376,36 @@ function DisplaySection({
             ? `${window.screen.width} × ${window.screen.height}`
             : '—'}
         </span>
+      </div>
+    </div>
+  );
+}
+
+/* ─── General Section ─────────────────────────────────────── */
+
+function GeneralSection({
+  persistWindows,
+  setPersistWindows,
+}: {
+  persistWindows: boolean;
+  setPersistWindows: (v: boolean) => void;
+}) {
+  return (
+    <div>
+      <h3 className="text-lg font-medium mb-4">General</h3>
+
+      {/* Restore windows toggle */}
+      <div className="flex items-center justify-between py-3 border-b border-white/5">
+        <div className="flex items-center gap-3">
+          <LayoutPanelTop className="w-4 h-4 text-white/60" />
+          <div>
+            <p className="text-sm text-white/80">Restore open windows</p>
+            <p className="text-xs text-white/40">
+              Remember open apps and their positions across sessions
+            </p>
+          </div>
+        </div>
+        <Switch checked={persistWindows} onCheckedChange={setPersistWindows} />
       </div>
     </div>
   );

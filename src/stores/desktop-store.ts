@@ -13,6 +13,7 @@ interface DesktopStore {
   loaded: boolean;
   userId: string | null;
   welcomeDismissed: boolean;
+  persistWindows: boolean;
 
   loadSettings: (userId: string) => Promise<void>;
   setWallpaper: (url: string) => void;
@@ -26,6 +27,7 @@ interface DesktopStore {
   clearNotifications: () => void;
   setSearchQuery: (query: string) => void;
   setWelcomeDismissed: (dismissed: boolean) => void;
+  setPersistWindows: (persist: boolean) => void;
   updateIconPosition: (id: string, position: WindowPosition) => void;
   loadIconPositions: (positions: Record<string, WindowPosition>) => void;
   reset: () => void;
@@ -74,6 +76,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   loaded: false,
   userId: null,
   welcomeDismissed: false,
+  persistWindows: true,
 
   loadSettings: async (userId: string) => {
     const supabase = createClient();
@@ -101,6 +104,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
       theme: data.theme || "dark",
       wallpaper: data.wallpaper || "linear-gradient(135deg, #0f0c29, #302b63, #24243e)",
       welcomeDismissed: data.settings_json?.welcomeDismissed ?? false,
+      persistWindows: data.settings_json?.persistWindows ?? true,
       userId,
       loaded: true,
     });
@@ -193,14 +197,28 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
 
   setWelcomeDismissed: (dismissed: boolean) => {
     set({ welcomeDismissed: dismissed });
-    const { userId } = get();
+    const { userId, persistWindows } = get();
     if (!userId) return;
     const supabase = createClient();
     supabase
       .from("user_settings")
       .upsert({
         user_id: userId,
-        settings_json: { welcomeDismissed: dismissed },
+        settings_json: { welcomeDismissed: dismissed, persistWindows },
+        updated_at: new Date().toISOString(),
+      });
+  },
+
+  setPersistWindows: (persist: boolean) => {
+    set({ persistWindows: persist });
+    const { userId, welcomeDismissed } = get();
+    if (!userId) return;
+    const supabase = createClient();
+    supabase
+      .from("user_settings")
+      .upsert({
+        user_id: userId,
+        settings_json: { welcomeDismissed, persistWindows: persist },
         updated_at: new Date().toISOString(),
       });
   },
@@ -217,6 +235,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
       loaded: false,
       userId: null,
       welcomeDismissed: false,
+      persistWindows: true,
     });
   },
 }));
