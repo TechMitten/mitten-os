@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import { useAuthStore } from '@/stores/auth-store'
+import { useDesktopStore } from '@/stores/desktop-store'
 import { Cpu, Mail, Lock, Loader2, Eye, EyeOff, ArrowLeft, CheckCircle, Send } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -9,6 +10,7 @@ type Step = 'email' | 'signin' | 'signup' | 'confirm-email'
 
 export default function LoginScreen() {
   const [step, setStep] = useState<Step>('email')
+  const theme = useDesktopStore((s) => s.theme);
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -129,7 +131,10 @@ export default function LoginScreen() {
     <div
       className="fixed inset-0 z-[10000] flex items-center justify-center select-none"
       style={{
-        background: 'linear-gradient(135deg, #0f0c29, #302b63, #24243e)',
+        background:
+          theme === 'dark'
+            ? 'linear-gradient(135deg, #0f0c29, #302b63, #24243e)'
+            : 'linear-gradient(135deg, #c9d6ff, #e2e2e2, #f5f7fa)',
       }}
     >
       {/* Animated background particles */}
@@ -158,9 +163,13 @@ export default function LoginScreen() {
       >
         {/* Card */}
         <div
-          className="rounded-2xl shadow-2xl border border-white/[0.08] overflow-hidden relative"
+          className="rounded-2xl shadow-2xl overflow-hidden relative"
           style={{
-            background: 'rgba(28, 28, 38, 0.92)',
+            border: theme === 'dark' ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.06)',
+            background:
+              theme === 'dark'
+                ? 'rgba(28, 28, 38, 0.92)'
+                : 'rgba(255, 255, 255, 0.88)',
             backdropFilter: 'blur(40px) saturate(1.5)',
             WebkitBackdropFilter: 'blur(40px) saturate(1.5)',
           }}
@@ -170,7 +179,7 @@ export default function LoginScreen() {
             <button
               type="button"
               onClick={backToEmail}
-              className="absolute top-3 left-3 flex items-center gap-1.5 text-xs text-white/30 hover:text-white/50 transition-colors cursor-pointer z-10"
+              className="absolute top-3 left-3 flex items-center gap-1.5 text-xs text-muted-foreground dark:text-white/30 hover:text-foreground/50 dark:hover:text-white/50 transition-colors cursor-pointer z-10"
               disabled={busy}
             >
               <ArrowLeft className="w-3 h-3" />
@@ -183,7 +192,7 @@ export default function LoginScreen() {
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mb-3 shadow-lg shadow-amber-500/20">
               <Cpu className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-xl font-semibold text-white">
+            <h1 className="text-xl font-semibold text-foreground dark:text-white">
               {step === 'confirm-email'
                 ? 'Check your email'
                 : step === 'email'
@@ -192,7 +201,7 @@ export default function LoginScreen() {
                     ? 'Welcome back'
                     : 'Welcome to MittenOS!'}
             </h1>
-            <p className="text-sm text-white/50 mt-1 text-center leading-relaxed max-w-[280px]">
+            <p className="text-sm text-muted-foreground dark:text-white/50 mt-1 text-center leading-relaxed max-w-[280px]">
               {step === 'confirm-email'
                 ? 'We sent a confirmation link. Click it to activate your account, then sign in.'
                 : step === 'email'
@@ -216,15 +225,15 @@ export default function LoginScreen() {
                 className="px-6 pb-6 space-y-4"
               >
                 <div>
-                  <label className="block text-xs text-white/40 mb-1.5 ml-1">Email address</label>
+                  <label className="block text-xs text-muted-foreground dark:text-white/40 mb-1.5 ml-1">Email address</label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/30 dark:text-white/20" />
                     <input
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="you@example.com"
-                      className="w-full pl-10 pr-3 py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.08] text-sm text-white/80 placeholder:text-white/20 outline-none focus:border-amber-500/50 focus:bg-white/[0.07] transition-colors"
+                      className="w-full pl-10 pr-3 py-2.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.05] border border-black/[0.06] dark:border-white/[0.08] text-sm text-foreground/80 dark:text-white/80 placeholder:text-muted-foreground/30 dark:text-white/20 outline-none focus:border-amber-500/50 focus:bg-black/[0.05] dark:focus:bg-white/[0.07] transition-colors"
                       autoComplete="email"
                       autoFocus
                       disabled={busy}
@@ -266,29 +275,29 @@ export default function LoginScreen() {
               >
                 {/* Email (read-only) */}
                 <div>
-                  <label className="block text-xs text-white/40 mb-1.5 ml-1">Email</label>
+                  <label className="block text-xs text-muted-foreground dark:text-white/40 mb-1.5 ml-1">Email</label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/30 dark:text-white/20" />
                     <input
                       type="email"
                       value={email}
                       readOnly
-                      className="w-full pl-10 pr-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.05] text-sm text-white/40 outline-none"
+                      className="w-full pl-10 pr-3 py-2.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.03] border border-black/[0.04] dark:border-white/[0.05] text-sm text-muted-foreground dark:text-white/40 outline-none"
                     />
                   </div>
                 </div>
 
                 {/* Password */}
                 <div>
-                  <label className="block text-xs text-white/40 mb-1.5 ml-1">Password</label>
+                  <label className="block text-xs text-muted-foreground dark:text-white/40 mb-1.5 ml-1">Password</label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/30 dark:text-white/20" />
                     <input
                       type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Enter your password"
-                      className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.08] text-sm text-white/80 placeholder:text-white/20 outline-none focus:border-amber-500/50 focus:bg-white/[0.07] transition-colors"
+                      className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.05] border border-black/[0.06] dark:border-white/[0.08] text-sm text-foreground/80 dark:text-white/80 placeholder:text-muted-foreground/30 dark:text-white/20 outline-none focus:border-amber-500/50 focus:bg-black/[0.05] dark:focus:bg-white/[0.07] transition-colors"
                       autoComplete="current-password"
                       autoFocus
                       disabled={busy}
@@ -296,7 +305,7 @@ export default function LoginScreen() {
                     <button
                       type="button"
                       onClick={() => setShowPassword((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/50 transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-white/30 hover:text-foreground/50 dark:hover:text-white/50 transition-colors"
                       tabIndex={-1}
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -338,29 +347,29 @@ export default function LoginScreen() {
               >
                 {/* Email (read-only) */}
                 <div>
-                  <label className="block text-xs text-white/40 mb-1.5 ml-1">Email</label>
+                  <label className="block text-xs text-muted-foreground dark:text-white/40 mb-1.5 ml-1">Email</label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/30 dark:text-white/20" />
                     <input
                       type="email"
                       value={email}
                       readOnly
-                      className="w-full pl-10 pr-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.05] text-sm text-white/40 outline-none"
+                      className="w-full pl-10 pr-3 py-2.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.03] border border-black/[0.04] dark:border-white/[0.05] text-sm text-muted-foreground dark:text-white/40 outline-none"
                     />
                   </div>
                 </div>
 
                 {/* Create password */}
                 <div>
-                  <label className="block text-xs text-white/40 mb-1.5 ml-1">Create password</label>
+                  <label className="block text-xs text-muted-foreground dark:text-white/40 mb-1.5 ml-1">Create password</label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/30 dark:text-white/20" />
                     <input
                       type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="At least 6 characters"
-                      className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.08] text-sm text-white/80 placeholder:text-white/20 outline-none focus:border-amber-500/50 focus:bg-white/[0.07] transition-colors"
+                      className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.05] border border-black/[0.06] dark:border-white/[0.08] text-sm text-foreground/80 dark:text-white/80 placeholder:text-muted-foreground/30 dark:text-white/20 outline-none focus:border-amber-500/50 focus:bg-black/[0.05] dark:focus:bg-white/[0.07] transition-colors"
                       autoComplete="new-password"
                       autoFocus
                       disabled={busy}
@@ -368,7 +377,7 @@ export default function LoginScreen() {
                     <button
                       type="button"
                       onClick={() => setShowPassword((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/50 transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-white/30 hover:text-foreground/50 dark:hover:text-white/50 transition-colors"
                       tabIndex={-1}
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -378,15 +387,15 @@ export default function LoginScreen() {
 
                 {/* Confirm password */}
                 <div>
-                  <label className="block text-xs text-white/40 mb-1.5 ml-1">Confirm password</label>
+                  <label className="block text-xs text-muted-foreground dark:text-white/40 mb-1.5 ml-1">Confirm password</label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/30 dark:text-white/20" />
                     <input
                       type={showPassword ? 'text' : 'password'}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="Type your password again"
-                      className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.08] text-sm text-white/80 placeholder:text-white/20 outline-none focus:border-amber-500/50 focus:bg-white/[0.07] transition-colors"
+                      className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.05] border border-black/[0.06] dark:border-white/[0.08] text-sm text-foreground/80 dark:text-white/80 placeholder:text-muted-foreground/30 dark:text-white/20 outline-none focus:border-amber-500/50 focus:bg-black/[0.05] dark:focus:bg-white/[0.07] transition-colors"
                       autoComplete="new-password"
                       disabled={busy}
                     />
@@ -430,7 +439,7 @@ export default function LoginScreen() {
 
                 <div className="space-y-2">
                   <h3 className="text-sm font-medium text-white">Check your email</h3>
-                  <p className="text-xs text-white/40 leading-relaxed">
+                  <p className="text-xs text-muted-foreground dark:text-white/40 leading-relaxed">
                     We sent a confirmation link to{' '}
                     <span className="text-white/60 font-medium break-all">{email}</span>
                   </p>
@@ -464,7 +473,7 @@ export default function LoginScreen() {
                     type="button"
                     onClick={handleResend}
                     disabled={busy}
-                    className="w-full py-2.5 rounded-xl bg-white/[0.06] border border-white/[0.08] text-white/60 hover:bg-white/[0.10] hover:text-white/80 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-sm flex items-center justify-center gap-2"
+                    className="w-full py-2.5 rounded-xl bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] text-white/60 hover:bg-white/[0.10] hover:text-foreground/80 dark:text-white/80 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-sm flex items-center justify-center gap-2"
                   >
                     {busy ? (
                       <Loader2 className="w-4 h-4 animate-spin" />

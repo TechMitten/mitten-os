@@ -180,7 +180,7 @@ export default function Weather() {
 
       {/* Hourly forecast */}
       <div className="px-4 pb-3">
-        <div className="bg-white/10 rounded-xl p-3">
+        <div className="bg-black/10 dark:bg-white/10 rounded-xl p-3">
           <div className="flex gap-4 overflow-x-auto py-1 px-1 scrollbar-thin">
             {data.hourly.map((hour, i) => (
               <div key={i} className="flex flex-col items-center gap-1 min-w-[60px]">
@@ -195,7 +195,7 @@ export default function Weather() {
 
       {/* 5-day forecast */}
       <div className="px-4 pb-3">
-        <div className="bg-white/10 rounded-xl p-3">
+        <div className="bg-black/10 dark:bg-white/10 rounded-xl p-3">
           <div className="text-[10px] uppercase tracking-wider opacity-50 mb-2">5-Day Forecast</div>
           <div className="space-y-2">
             {data.daily.map((day, i) => (
@@ -215,28 +215,28 @@ export default function Weather() {
       {/* Weather details */}
       <div className="px-4 pb-4">
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white/10 rounded-xl p-3">
+          <div className="bg-black/10 dark:bg-white/10 rounded-xl p-3">
             <div className="flex items-center gap-1.5 mb-1">
               <Droplets className="w-3.5 h-3.5 opacity-50" />
               <span className="text-[10px] uppercase tracking-wider opacity-50">Humidity</span>
             </div>
             <div className="text-lg font-medium">{data.humidity}%</div>
           </div>
-          <div className="bg-white/10 rounded-xl p-3">
+          <div className="bg-black/10 dark:bg-white/10 rounded-xl p-3">
             <div className="flex items-center gap-1.5 mb-1">
               <Wind className="w-3.5 h-3.5 opacity-50" />
               <span className="text-[10px] uppercase tracking-wider opacity-50">Wind</span>
             </div>
             <div className="text-lg font-medium">{data.windSpeed} km/h</div>
           </div>
-          <div className="bg-white/10 rounded-xl p-3">
+          <div className="bg-black/10 dark:bg-white/10 rounded-xl p-3">
             <div className="flex items-center gap-1.5 mb-1">
               <Thermometer className="w-3.5 h-3.5 opacity-50" />
               <span className="text-[10px] uppercase tracking-wider opacity-50">UV Index</span>
             </div>
             <div className="text-lg font-medium">{data.uvIndex}</div>
           </div>
-          <div className="bg-white/10 rounded-xl p-3">
+          <div className="bg-black/10 dark:bg-white/10 rounded-xl p-3">
             <div className="flex items-center gap-1.5 mb-1">
               <Eye className="w-3.5 h-3.5 opacity-50" />
               <span className="text-[10px] uppercase tracking-wider opacity-50">Visibility</span>

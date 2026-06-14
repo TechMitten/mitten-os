@@ -220,13 +220,13 @@ export function Calculator() {
   }, [inputDigit, inputDecimal, performOperation, calculate, backspace, clear, clearEntry, percent]);
 
   return (
-    <div className="flex flex-col h-full bg-zinc-900 p-3 select-none">
+    <div className="flex flex-col h-full bg-card dark:bg-zinc-900 p-3 select-none">
       {/* Display */}
-      <div className="bg-zinc-800/50 rounded-xl p-4 mb-3 min-h-[88px] flex flex-col justify-end">
-        <div className="text-xs text-white/40 text-right truncate mb-1 min-h-[18px]">
+      <div className="bg-muted dark:bg-zinc-800/50 rounded-xl p-4 mb-3 min-h-[88px] flex flex-col justify-end">
+        <div className="text-xs text-muted-foreground text-right truncate mb-1 min-h-[18px]">
           {expression}
         </div>
-        <div className="text-3xl font-light text-white text-right truncate">
+        <div className="text-3xl font-light text-foreground text-right truncate">
           {display === 'Error' ? 'Error' : formatDisplay(display)}
         </div>
       </div>
@@ -236,25 +236,25 @@ export function Calculator() {
         {/* Row 1: C, CE, %, ÷ */}
         <button
           onClick={clear}
-          className="bg-zinc-600/30 hover:bg-zinc-500/30 text-white/70 text-sm rounded-xl h-14 transition-colors active:scale-95"
+          className="bg-secondary dark:bg-zinc-600/30 hover:bg-muted dark:hover:bg-zinc-500/30 text-muted-foreground dark:text-white/70 text-sm rounded-xl h-14 transition-colors active:scale-95"
         >
           C
         </button>
         <button
           onClick={clearEntry}
-          className="bg-zinc-600/30 hover:bg-zinc-500/30 text-white/70 text-sm rounded-xl h-14 transition-colors active:scale-95"
+          className="bg-secondary dark:bg-zinc-600/30 hover:bg-muted dark:hover:bg-zinc-500/30 text-muted-foreground dark:text-white/70 text-sm rounded-xl h-14 transition-colors active:scale-95"
         >
           CE
         </button>
         <button
           onClick={percent}
-          className="bg-zinc-600/30 hover:bg-zinc-500/30 text-white/70 text-sm rounded-xl h-14 transition-colors active:scale-95"
+          className="bg-secondary dark:bg-zinc-600/30 hover:bg-muted dark:hover:bg-zinc-500/30 text-muted-foreground dark:text-white/70 text-sm rounded-xl h-14 transition-colors active:scale-95"
         >
           %
         </button>
         <button
           onClick={() => performOperation('/')}
-          className="bg-amber-600/30 hover:bg-amber-600/50 text-amber-400 text-lg rounded-xl h-14 transition-colors active:scale-95"
+          className="bg-amber-500/15 dark:bg-amber-600/30 hover:bg-amber-500/25 dark:hover:bg-amber-600/50 text-amber-600 dark:text-amber-400 text-lg rounded-xl h-14 transition-colors active:scale-95"
         >
           ÷
         </button>
@@ -262,25 +262,25 @@ export function Calculator() {
         {/* Row 2: 7, 8, 9, × */}
         <button
           onClick={() => inputDigit('7')}
-          className="bg-zinc-700/50 hover:bg-zinc-600/50 text-white text-lg rounded-xl h-14 transition-colors active:scale-95"
+          className="bg-muted dark:bg-zinc-700/50 hover:bg-accent dark:hover:bg-zinc-600/50 text-foreground text-lg rounded-xl h-14 transition-colors active:scale-95"
         >
           7
         </button>
         <button
           onClick={() => inputDigit('8')}
-          className="bg-zinc-700/50 hover:bg-zinc-600/50 text-white text-lg rounded-xl h-14 transition-colors active:scale-95"
+          className="bg-muted dark:bg-zinc-700/50 hover:bg-accent dark:hover:bg-zinc-600/50 text-foreground text-lg rounded-xl h-14 transition-colors active:scale-95"
         >
           8
         </button>
         <button
           onClick={() => inputDigit('9')}
-          className="bg-zinc-700/50 hover:bg-zinc-600/50 text-white text-lg rounded-xl h-14 transition-colors active:scale-95"
+          className="bg-muted dark:bg-zinc-700/50 hover:bg-accent dark:hover:bg-zinc-600/50 text-foreground text-lg rounded-xl h-14 transition-colors active:scale-95"
         >
           9
         </button>
         <button
           onClick={() => performOperation('*')}
-          className="bg-amber-600/30 hover:bg-amber-600/50 text-amber-400 text-lg rounded-xl h-14 transition-colors active:scale-95"
+          className="bg-amber-500/15 dark:bg-amber-600/30 hover:bg-amber-500/25 dark:hover:bg-amber-600/50 text-amber-600 dark:text-amber-400 text-lg rounded-xl h-14 transition-colors active:scale-95"
         >
           ×
         </button>
@@ -288,25 +288,25 @@ export function Calculator() {
         {/* Row 3: 4, 5, 6, - */}
         <button
           onClick={() => inputDigit('4')}
-          className="bg-zinc-700/50 hover:bg-zinc-600/50 text-white text-lg rounded-xl h-14 transition-colors active:scale-95"
+          className="bg-muted dark:bg-zinc-700/50 hover:bg-accent dark:hover:bg-zinc-600/50 text-foreground text-lg rounded-xl h-14 transition-colors active:scale-95"
         >
           4
         </button>
         <button
           onClick={() => inputDigit('5')}
-          className="bg-zinc-700/50 hover:bg-zinc-600/50 text-white text-lg rounded-xl h-14 transition-colors active:scale-95"
+          className="bg-muted dark:bg-zinc-700/50 hover:bg-accent dark:hover:bg-zinc-600/50 text-foreground text-lg rounded-xl h-14 transition-colors active:scale-95"
         >
           5
         </button>
         <button
           onClick={() => inputDigit('6')}
-          className="bg-zinc-700/50 hover:bg-zinc-600/50 text-white text-lg rounded-xl h-14 transition-colors active:scale-95"
+          className="bg-muted dark:bg-zinc-700/50 hover:bg-accent dark:hover:bg-zinc-600/50 text-foreground text-lg rounded-xl h-14 transition-colors active:scale-95"
         >
           6
         </button>
         <button
           onClick={() => performOperation('-')}
-          className="bg-amber-600/30 hover:bg-amber-600/50 text-amber-400 text-lg rounded-xl h-14 transition-colors active:scale-95"
+          className="bg-amber-500/15 dark:bg-amber-600/30 hover:bg-amber-500/25 dark:hover:bg-amber-600/50 text-amber-600 dark:text-amber-400 text-lg rounded-xl h-14 transition-colors active:scale-95"
         >
           −
         </button>
@@ -314,25 +314,25 @@ export function Calculator() {
         {/* Row 4: 1, 2, 3, + */}
         <button
           onClick={() => inputDigit('1')}
-          className="bg-zinc-700/50 hover:bg-zinc-600/50 text-white text-lg rounded-xl h-14 transition-colors active:scale-95"
+          className="bg-muted dark:bg-zinc-700/50 hover:bg-accent dark:hover:bg-zinc-600/50 text-foreground text-lg rounded-xl h-14 transition-colors active:scale-95"
         >
           1
         </button>
         <button
           onClick={() => inputDigit('2')}
-          className="bg-zinc-700/50 hover:bg-zinc-600/50 text-white text-lg rounded-xl h-14 transition-colors active:scale-95"
+          className="bg-muted dark:bg-zinc-700/50 hover:bg-accent dark:hover:bg-zinc-600/50 text-foreground text-lg rounded-xl h-14 transition-colors active:scale-95"
         >
           2
         </button>
         <button
           onClick={() => inputDigit('3')}
-          className="bg-zinc-700/50 hover:bg-zinc-600/50 text-white text-lg rounded-xl h-14 transition-colors active:scale-95"
+          className="bg-muted dark:bg-zinc-700/50 hover:bg-accent dark:hover:bg-zinc-600/50 text-foreground text-lg rounded-xl h-14 transition-colors active:scale-95"
         >
           3
         </button>
         <button
           onClick={() => performOperation('+')}
-          className="bg-amber-600/30 hover:bg-amber-600/50 text-amber-400 text-lg rounded-xl h-14 transition-colors active:scale-95"
+          className="bg-amber-500/15 dark:bg-amber-600/30 hover:bg-amber-500/25 dark:hover:bg-amber-600/50 text-amber-600 dark:text-amber-400 text-lg rounded-xl h-14 transition-colors active:scale-95"
         >
           +
         </button>
@@ -340,19 +340,19 @@ export function Calculator() {
         {/* Row 5: ±, 0, ., = */}
         <button
           onClick={negate}
-          className="bg-zinc-600/30 hover:bg-zinc-500/30 text-white/70 text-sm rounded-xl h-14 transition-colors active:scale-95"
+          className="bg-secondary dark:bg-zinc-600/30 hover:bg-muted dark:hover:bg-zinc-500/30 text-muted-foreground dark:text-white/70 text-sm rounded-xl h-14 transition-colors active:scale-95"
         >
           ±
         </button>
         <button
           onClick={() => inputDigit('0')}
-          className="bg-zinc-700/50 hover:bg-zinc-600/50 text-white text-lg rounded-xl h-14 transition-colors active:scale-95"
+          className="bg-muted dark:bg-zinc-700/50 hover:bg-accent dark:hover:bg-zinc-600/50 text-foreground text-lg rounded-xl h-14 transition-colors active:scale-95"
         >
           0
         </button>
         <button
           onClick={inputDecimal}
-          className="bg-zinc-700/50 hover:bg-zinc-600/50 text-white text-lg rounded-xl h-14 transition-colors active:scale-95"
+          className="bg-muted dark:bg-zinc-700/50 hover:bg-accent dark:hover:bg-zinc-600/50 text-foreground text-lg rounded-xl h-14 transition-colors active:scale-95"
         >
           .
         </button>
@@ -366,7 +366,7 @@ export function Calculator() {
         {/* Backspace row - spanning full width at bottom if needed */}
         <button
           onClick={backspace}
-          className="col-span-4 bg-zinc-600/30 hover:bg-zinc-500/30 text-white/70 text-sm rounded-xl h-10 transition-colors active:scale-[0.98] flex items-center justify-center gap-2"
+          className="col-span-4 bg-secondary dark:bg-zinc-600/30 hover:bg-muted dark:hover:bg-zinc-500/30 text-muted-foreground dark:text-white/70 text-sm rounded-xl h-10 transition-colors active:scale-[0.98] flex items-center justify-center gap-2"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" />

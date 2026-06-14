@@ -124,7 +124,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   setTheme: (theme: "light" | "dark") => {
     const wallpaper =
       theme === "light"
-        ? "linear-gradient(135deg, #c9d6ff, #e2e2e2)"
+        ? "linear-gradient(135deg, #c9d6ff, #e2e2e2, #f5f7fa)"
         : "linear-gradient(135deg, #0f0c29, #302b63, #24243e)";
     set({ theme, wallpaper });
     const { userId, welcomeDismissed, persistWindows } = get();
@@ -140,7 +140,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     const next = current === "dark" ? "light" : "dark";
     const wallpaper =
       next === "light"
-        ? "linear-gradient(135deg, #c9d6ff, #e2e2e2)"
+        ? "linear-gradient(135deg, #c9d6ff, #e2e2e2, #f5f7fa)"
         : "linear-gradient(135deg, #0f0c29, #302b63, #24243e)";
     set({ theme: next, wallpaper });
     const { userId, welcomeDismissed, persistWindows } = get();
@@ -225,9 +225,10 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   },
 
   reset: () => {
+    const { theme, wallpaper } = get();
     set({
-      wallpaper: "linear-gradient(135deg, #0f0c29, #302b63, #24243e)",
-      theme: "dark",
+      wallpaper,
+      theme,
       desktopIcons: defaultIcons,
       notifications: [],
       startMenuOpen: false,

@@ -11,7 +11,7 @@ import {
   Info,
   type LucideIcon,
 } from 'lucide-react';
-import { type ContextMenuState, type ContextMenuItem } from '@/stores/desktop-store';
+import { type ContextMenuState, type ContextMenuItem, useDesktopStore } from '@/stores/desktop-store';
 
 // Map icon string names to Lucide components for context menu items
 const CONTEXT_ICON_MAP: Record<string, LucideIcon> = {
@@ -30,6 +30,7 @@ interface ContextMenuProps {
 
 export function ContextMenu({ contextMenu, onClose }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const theme = useDesktopStore((s) => s.theme);
 
   // Adjust position if menu would go off-screen
   useEffect(() => {
@@ -92,13 +93,17 @@ export function ContextMenu({ contextMenu, onClose }: ContextMenuProps) {
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.92 }}
         transition={{ duration: 0.15, ease: 'easeOut' }}
-        className="fixed z-[10000] min-w-[200px] py-1.5 rounded-xl shadow-2xl border border-white/[0.12]"
+        className="fixed z-[10000] min-w-[200px] py-1.5 rounded-xl shadow-2xl"
         style={{
           left: contextMenu.x,
           top: contextMenu.y,
-          background: 'rgba(30, 30, 40, 0.82)',
+          background:
+            theme === 'dark'
+              ? 'rgba(30, 30, 40, 0.82)'
+              : 'rgba(255, 255, 255, 0.88)',
           backdropFilter: 'blur(24px) saturate(1.4)',
           WebkitBackdropFilter: 'blur(24px) saturate(1.4)',
+          border: theme === 'dark' ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(0,0,0,0.08)',
         }}
         onContextMenu={(e) => {
           e.preventDefault();
@@ -111,7 +116,7 @@ export function ContextMenu({ contextMenu, onClose }: ContextMenuProps) {
             return (
               <div
                 key={`separator-${index}`}
-                className="my-1.5 mx-3 h-px bg-white/[0.08]"
+                className="my-1.5 mx-3 h-px bg-black/[0.06] dark:bg-white/[0.08]"
               />
             );
           }
@@ -125,22 +130,22 @@ export function ContextMenu({ contextMenu, onClose }: ContextMenuProps) {
                 w-full flex items-center gap-3 px-3 py-2 text-left
                 text-[13px] transition-colors duration-100
                 ${item.disabled
-                  ? 'text-white/30 cursor-not-allowed'
-                  : 'text-white/80 hover:bg-white/[0.08] hover:text-white cursor-pointer'
+                  ? 'text-muted-foreground/40 cursor-not-allowed'
+                  : 'text-foreground/80 hover:bg-accent dark:hover:bg-white/[0.08] hover:text-foreground cursor-pointer'
                 }
               `}
               onClick={() => handleItemClick(item)}
               disabled={item.disabled}
             >
               {IconComp && (
-                <IconComp className="w-4 h-4 shrink-0 text-white/60" strokeWidth={1.5} />
+                <IconComp className="w-4 h-4 shrink-0 text-muted-foreground/60" strokeWidth={1.5} />
               )}
               {!IconComp && item.icon && (
                 <span className="w-4 h-4 shrink-0" />
               )}
               <span className="flex-1">{item.label}</span>
               {item.shortcut && (
-                <span className="text-[11px] text-white/30 ml-4">{item.shortcut}</span>
+                <span className="text-[11px] text-muted-foreground/40 ml-4">{item.shortcut}</span>
               )}
             </button>
           );

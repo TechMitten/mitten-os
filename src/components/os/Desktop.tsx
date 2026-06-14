@@ -300,10 +300,12 @@ export function Desktop() {
   // --- Auth loading state ---
   if (loading) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0f0c29, #302b63, #24243e)' }}>
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 text-amber-400 animate-spin" />
-          <span className="text-sm text-white/40">Loading...</span>
+      <div className={theme === 'dark' ? 'dark' : ''}>
+        <div className="fixed inset-0 flex items-center justify-center" style={{ background: theme === 'dark' ? 'linear-gradient(135deg, #0f0c29, #302b63, #24243e)' : 'linear-gradient(135deg, #c9d6ff, #e2e2e2, #f5f7fa)' }}>
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="w-8 h-8 text-amber-400 animate-spin" />
+            <span className="text-sm text-muted-foreground dark:text-white/40">Loading...</span>
+          </div>
         </div>
       </div>
     );
@@ -311,16 +313,22 @@ export function Desktop() {
 
   // --- Not authenticated ---
   if (!user) {
-    return <LoginScreen />;
+    return (
+      <div className={theme === 'dark' ? 'dark' : ''}>
+        <LoginScreen />
+      </div>
+    );
   }
 
   // --- Data still loading ---
   if (!dataLoaded) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0f0c29, #302b63, #24243e)' }}>
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 text-amber-400 animate-spin" />
-          <span className="text-sm text-white/40">Loading your environment...</span>
+      <div className={theme === 'dark' ? 'dark' : ''}>
+        <div className="fixed inset-0 flex items-center justify-center" style={{ background: theme === 'dark' ? 'linear-gradient(135deg, #0f0c29, #302b63, #24243e)' : 'linear-gradient(135deg, #c9d6ff, #e2e2e2, #f5f7fa)' }}>
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="w-8 h-8 text-amber-400 animate-spin" />
+            <span className="text-sm text-muted-foreground dark:text-white/40">Loading your environment...</span>
+          </div>
         </div>
       </div>
     );
@@ -391,7 +399,7 @@ export function Desktop() {
 
           return (
             <Window key={win.id} window={win} isActive={activeWindowId === win.id}>
-              <div className="flex items-center justify-center h-full text-white/50 text-sm">
+              <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
                 Unknown app: {win.appId}
               </div>
             </Window>

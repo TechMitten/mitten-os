@@ -199,9 +199,9 @@ export default function BrowserApp() {
   );
 
   return (
-    <div className="flex flex-col h-full bg-zinc-900 select-none">
+    <div className="flex flex-col h-full bg-card dark:bg-zinc-900 select-none">
       {/* Tab bar */}
-      <div className="h-8 bg-zinc-800/30 flex items-center px-1 gap-0.5 shrink-0 overflow-x-auto">
+      <div className="h-8 bg-muted dark:bg-zinc-800/30 flex items-center px-1 gap-0.5 shrink-0 overflow-x-auto">
         {tabs.map((tab) => (
           <div
             key={tab.id}
@@ -211,8 +211,8 @@ export default function BrowserApp() {
             }}
             className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-t-lg cursor-pointer transition-colors min-w-0 max-w-[180px] group ${
               tab.id === activeTabId
-                ? 'bg-zinc-900 text-white/80'
-                : 'text-white/40 hover:text-white/60 hover:bg-white/5'
+                ? 'bg-card dark:bg-zinc-900 text-foreground/80'
+                : 'text-muted-foreground hover:text-foreground/60 dark:hover:text-white/60 hover:bg-accent dark:hover:bg-white/5'
             }`}
           >
             <Globe className="w-3 h-3 shrink-0" />
@@ -223,7 +223,7 @@ export default function BrowserApp() {
                   e.stopPropagation();
                   handleCloseTab(tab.id);
                 }}
-                className="ml-1 p-0.5 rounded hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="ml-1 p-0.5 rounded hover:bg-accent dark:hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <X className="w-2.5 h-2.5" />
               </button>
@@ -232,32 +232,32 @@ export default function BrowserApp() {
         ))}
         <button
           onClick={handleNewTab}
-          className="p-1 rounded hover:bg-white/5 text-white/30 hover:text-white/50 transition-colors"
+          className="p-1 rounded hover:bg-accent dark:hover:bg-white/5 text-muted-foreground/50 hover:text-foreground/50 dark:hover:text-white/50 transition-colors"
         >
           <Plus className="w-3.5 h-3.5" />
         </button>
       </div>
 
       {/* Toolbar */}
-      <div className="h-10 bg-zinc-800/60 border-b border-white/5 flex items-center px-2 gap-2 shrink-0">
+      <div className="h-10 bg-muted dark:bg-zinc-800/60 border-b border-border flex items-center px-2 gap-2 shrink-0">
         {/* Navigation buttons */}
         <button
           onClick={handleGoBack}
-          className="p-1.5 rounded hover:bg-white/5 text-white/50 hover:text-white/80 transition-colors"
+          className="p-1.5 rounded hover:bg-accent dark:hover:bg-white/5 text-muted-foreground dark:text-white/50 hover:text-foreground/80 dark:hover:text-white/80 transition-colors"
           title="Go Back"
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
         <button
           onClick={handleGoForward}
-          className="p-1.5 rounded hover:bg-white/5 text-white/50 hover:text-white/80 transition-colors"
+          className="p-1.5 rounded hover:bg-accent dark:hover:bg-white/5 text-muted-foreground dark:text-white/50 hover:text-foreground/80 dark:hover:text-white/80 transition-colors"
           title="Go Forward"
         >
           <ArrowRight className="w-4 h-4" />
         </button>
         <button
           onClick={handleRefresh}
-          className={`p-1.5 rounded hover:bg-white/5 text-white/50 hover:text-white/80 transition-colors ${
+          className={`p-1.5 rounded hover:bg-accent dark:hover:bg-white/5 text-muted-foreground dark:text-white/50 hover:text-foreground/80 dark:hover:text-white/80 transition-colors ${
             loading ? 'animate-spin' : ''
           }`}
           title="Refresh"
@@ -276,7 +276,7 @@ export default function BrowserApp() {
             setInputUrl('');
             setIframeError(false);
           }}
-          className="p-1.5 rounded hover:bg-white/5 text-white/50 hover:text-white/80 transition-colors"
+          className="p-1.5 rounded hover:bg-accent dark:hover:bg-white/5 text-muted-foreground dark:text-white/50 hover:text-foreground/80 dark:hover:text-white/80 transition-colors"
           title="Home"
         >
           <Home className="w-4 h-4" />
@@ -294,14 +294,14 @@ export default function BrowserApp() {
               }
             }}
             placeholder="Search or enter URL..."
-            className="flex-1 h-7 bg-zinc-700/50 rounded-md px-3 text-sm text-white/80 outline-none focus:ring-1 focus:ring-amber-500/50 placeholder:text-white/30"
+            className="flex-1 h-7 bg-muted dark:bg-zinc-700/50 rounded-md px-3 text-sm text-foreground/80 outline-none focus:ring-1 focus:ring-amber-500/50 placeholder:text-muted-foreground/50 dark:placeholder:text-white/30"
           />
         </div>
 
         {/* Go button */}
         <button
           onClick={() => navigate(inputUrl)}
-          className="p-1.5 rounded hover:bg-white/5 text-white/50 hover:text-white/80 transition-colors"
+          className="p-1.5 rounded hover:bg-accent dark:hover:bg-white/5 text-muted-foreground dark:text-white/50 hover:text-foreground/80 dark:hover:text-white/80 transition-colors"
           title="Go"
         >
           <Search className="w-4 h-4" />
@@ -310,7 +310,7 @@ export default function BrowserApp() {
 
       {/* Loading bar */}
       {loading && (
-        <div className="h-0.5 bg-zinc-800 shrink-0 overflow-hidden">
+        <div className="h-0.5 bg-muted dark:bg-zinc-800 shrink-0 overflow-hidden">
           <div className="h-full bg-amber-500 animate-pulse w-2/3" />
         </div>
       )}

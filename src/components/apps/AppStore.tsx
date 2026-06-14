@@ -65,23 +65,23 @@ export default function AppStore() {
   };
 
   return (
-    <div className="bg-zinc-900 text-white h-full flex flex-col select-none">
+    <div className="bg-card dark:bg-zinc-900 text-card-foreground h-full flex flex-col select-none">
       {/* Header */}
-      <div className="p-4 border-b border-white/5">
+      <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <Store className="w-5 h-5 text-amber-400" />
+            <Store className="w-5 h-5 text-amber-500 dark:text-amber-500 dark:text-amber-400" />
             <h1 className="text-sm font-semibold">App Store</h1>
           </div>
         </div>
-        <div className="flex items-center gap-2 bg-zinc-800/50 rounded-lg px-3 py-2">
-          <Search className="w-4 h-4 text-white/30" />
+        <div className="flex items-center gap-2 bg-muted dark:bg-zinc-800/50 rounded-lg px-3 py-2">
+          <Search className="w-4 h-4 text-muted-foreground/50" />
           <input
             type="text"
             placeholder="Search apps..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 bg-transparent text-sm text-white/80 placeholder:text-white/30 outline-none"
+            className="flex-1 bg-transparent text-sm text-foreground/80 placeholder:text-muted-foreground/50 dark:placeholder:text-white/30 outline-none"
           />
         </div>
       </div>
@@ -93,8 +93,8 @@ export default function AppStore() {
             key={cat.key}
             className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-colors ${
               activeCategory === cat.key
-                ? 'bg-amber-500/20 text-amber-400'
-                : 'bg-white/5 text-white/50 hover:bg-white/10'
+                ? 'bg-amber-500/20 text-amber-600 dark:text-amber-500 dark:text-amber-400'
+                : 'bg-accent dark:bg-accent dark:bg-white/5 text-muted-foreground hover:bg-muted dark:hover:bg-white/10'
             }`}
             onClick={() => setActiveCategory(cat.key)}
           >
@@ -109,13 +109,13 @@ export default function AppStore() {
         {activeCategory === 'all' && !searchQuery && featuredApp && (
           <div className="bg-gradient-to-r from-amber-600/20 to-orange-600/20 rounded-xl p-4 mb-4 mt-2">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center">
-                <Store className="w-5 h-5 text-amber-400" />
+              <div className="w-12 h-12 rounded-xl bg-accent dark:bg-white/5 flex items-center justify-center">
+                <Store className="w-5 h-5 text-amber-500 dark:text-amber-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-[10px] uppercase tracking-wider text-amber-400/60 mb-0.5">Featured</div>
+                <div className="text-[10px] uppercase tracking-wider text-amber-500 dark:text-amber-400/60 mb-0.5">Featured</div>
                 <div className="text-sm font-medium">{featuredApp.name}</div>
-                <div className="text-xs text-white/50 truncate">{featuredApp.description}</div>
+                <div className="text-xs text-muted-foreground dark:text-white/50 truncate">{featuredApp.description}</div>
               </div>
               <span className="px-3 py-1 rounded-full text-xs bg-green-500/20 text-green-400">
                 Installed
@@ -127,21 +127,21 @@ export default function AppStore() {
         {/* Built-in Apps */}
         {filteredInstalledApps.length > 0 && (
           <div className="mb-4">
-            <h2 className="text-xs uppercase tracking-wider text-white/40 font-medium mb-2 mt-2">
+            <h2 className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-2 mt-2">
               Built-in Apps
             </h2>
             <div className="space-y-1">
               {filteredInstalledApps.map((app) => (
                 <div
                   key={app.id}
-                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors"
+                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-accent dark:hover:bg-accent dark:bg-white/5 transition-colors"
                 >
-                  <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center shrink-0">
-                    <Store className="w-5 h-5 text-amber-400" />
+                  <div className="w-12 h-12 rounded-xl bg-accent dark:bg-white/5 flex items-center justify-center shrink-0">
+                    <Store className="w-5 h-5 text-amber-500 dark:text-amber-400" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium">{app.name}</div>
-                    <div className="text-xs text-white/40 truncate">{app.description}</div>
+                    <div className="text-xs text-muted-foreground truncate">{app.description}</div>
                   </div>
                   <span className="px-3 py-1 rounded-full text-xs bg-green-500/20 text-green-400 shrink-0">
                     <Check className="w-3 h-3 inline-block mr-0.5 -mt-0.5" />
@@ -157,12 +157,12 @@ export default function AppStore() {
         <div className="mb-4">
           <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 rounded-xl p-4 mt-2">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-xl bg-accent dark:bg-white/5 flex items-center justify-center">
                 <Code2 className="w-5 h-5 text-purple-400" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium">App Builder</div>
-                <div className="text-xs text-white/50 truncate">Create your own apps with React + TypeScript</div>
+                <div className="text-xs text-muted-foreground dark:text-white/50 truncate">Create your own apps with React + TypeScript</div>
               </div>
               <button
                 className="px-3 py-1 rounded-full text-xs bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors shrink-0"
@@ -178,16 +178,16 @@ export default function AppStore() {
         {/* Community Apps (approved user-created) */}
         {filteredUserApps.length > 0 && (
           <div className="mb-4">
-            <h2 className="text-xs uppercase tracking-wider text-white/40 font-medium mb-2">
+            <h2 className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-2">
               Community Apps
             </h2>
             <div className="space-y-1">
               {filteredUserApps.map((app) => (
                 <div
                   key={app.id}
-                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors"
+                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-accent dark:hover:bg-accent dark:bg-white/5 transition-colors"
                 >
-                  <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center shrink-0 text-xl">
+                  <div className="w-12 h-12 rounded-xl bg-accent dark:bg-white/5 flex items-center justify-center shrink-0 text-xl">
                     {app.icon || '📦'}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -206,10 +206,10 @@ export default function AppStore() {
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-white/40 truncate">{app.description}</div>
+                    <div className="text-xs text-muted-foreground truncate">{app.description}</div>
                   </div>
                   <button
-                    className="px-3 py-1 rounded-full text-xs bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 transition-colors shrink-0"
+                    className="px-3 py-1 rounded-full text-xs bg-amber-500/20 text-amber-500 dark:text-amber-400 hover:bg-amber-500/30 transition-colors shrink-0"
                     onClick={() => handleOpenUserApp(app)}
                   >
                     <ExternalLink className="w-3 h-3 inline-block mr-0.5 -mt-0.5" />

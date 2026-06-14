@@ -95,10 +95,10 @@ export default function SettingsApp() {
   const isDark = theme === 'dark';
 
   return (
-    <div className="flex h-full bg-zinc-900 text-white select-none overflow-hidden">
+    <div className="flex h-full bg-card dark:bg-zinc-900 text-card-foreground select-none overflow-hidden">
       {/* Sidebar */}
-      <div className="w-52 bg-zinc-800/40 border-r border-white/5 p-3 flex flex-col gap-1 shrink-0">
-        <h2 className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-white/30 mb-1">
+      <div className="w-52 bg-muted dark:bg-zinc-800/40 border-r border-border p-3 flex flex-col gap-1 shrink-0">
+        <h2 className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60 mb-1">
           Settings
         </h2>
         {SIDEBAR_ITEMS.map((item) => (
@@ -107,8 +107,8 @@ export default function SettingsApp() {
             onClick={() => setActiveSection(item.id)}
             className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
               activeSection === item.id
-                ? 'bg-white/10 text-white'
-                : 'text-white/60 hover:bg-white/5 hover:text-white/80'
+                ? 'bg-accent dark:bg-white/10 text-foreground'
+                : 'text-muted-foreground hover:bg-accent dark:hover:bg-white/5 hover:text-foreground/80'
             }`}
           >
             {item.icon}
@@ -166,16 +166,16 @@ function AppearanceSection({
       <h3 className="text-lg font-medium mb-4">Appearance</h3>
 
       {/* Theme toggle */}
-      <div className="flex items-center justify-between py-3 border-b border-white/5">
+      <div className="flex items-center justify-between py-3 border-b border-border">
         <div className="flex items-center gap-3">
           {isDark ? (
-            <Moon className="w-4 h-4 text-white/60" />
+            <Moon className="w-4 h-4 text-muted-foreground" />
           ) : (
-            <Sun className="w-4 h-4 text-white/60" />
+            <Sun className="w-4 h-4 text-muted-foreground" />
           )}
           <div>
-            <p className="text-sm text-white/80">Dark Mode</p>
-            <p className="text-xs text-white/40">
+            <p className="text-sm text-foreground/80">Dark Mode</p>
+            <p className="text-xs text-muted-foreground">
               Switch between light and dark theme
             </p>
           </div>
@@ -184,12 +184,12 @@ function AppearanceSection({
       </div>
 
       {/* Accent color picker */}
-      <div className="py-3 border-b border-white/5">
+      <div className="py-3 border-b border-border">
         <div className="flex items-center gap-3 mb-3">
-          <Palette className="w-4 h-4 text-white/60" />
+          <Palette className="w-4 h-4 text-muted-foreground" />
           <div>
-            <p className="text-sm text-white/80">Accent Color</p>
-            <p className="text-xs text-white/40">
+            <p className="text-sm text-foreground/80">Accent Color</p>
+            <p className="text-xs text-muted-foreground">
               Choose your system accent color
             </p>
           </div>
@@ -201,7 +201,7 @@ function AppearanceSection({
               onClick={() => setSelectedAccent(color.name)}
               className={`w-8 h-8 rounded-full transition-all ${
                 selectedAccent === color.name
-                  ? 'ring-2 ring-offset-2 ring-offset-zinc-900 scale-110'
+                  ? 'ring-2 ring-offset-2 ring-offset-card dark:ring-offset-zinc-900 scale-110'
                   : 'hover:scale-105'
               }`}
               style={{
@@ -218,8 +218,8 @@ function AppearanceSection({
       </div>
 
       {/* Preview card */}
-      <div className="mt-4 p-4 rounded-xl bg-zinc-800/60 border border-white/5">
-        <p className="text-xs text-white/30 mb-2 uppercase tracking-wider">
+      <div className="mt-4 p-4 rounded-xl bg-muted dark:bg-zinc-800/60 border border-border">
+        <p className="text-xs text-muted-foreground/60 mb-2 uppercase tracking-wider">
           Preview
         </p>
         <div className="flex gap-3">
@@ -271,7 +271,7 @@ function WallpaperSection({
   return (
     <div>
       <h3 className="text-lg font-medium mb-4">Wallpaper</h3>
-      <p className="text-sm text-white/40 mb-4">
+      <p className="text-sm text-muted-foreground mb-4">
         Choose a wallpaper for your desktop
       </p>
       <div className="grid grid-cols-3 gap-3">
@@ -292,7 +292,7 @@ function WallpaperSection({
                 <span
                   className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
                     isSelected
-                      ? 'bg-amber-500/30 text-amber-300'
+                      ? 'bg-amber-500/30 text-amber-500 dark:text-amber-300'
                       : 'bg-black/30 text-white/60'
                   }`}
                 >
@@ -321,26 +321,26 @@ function DisplaySection({
       <h3 className="text-lg font-medium mb-4">Display</h3>
 
       {/* Taskbar position */}
-      <div className="flex items-center justify-between py-3 border-b border-white/5">
+      <div className="flex items-center justify-between py-3 border-b border-border">
         <div className="flex items-center gap-3">
-          <Layers className="w-4 h-4 text-white/60" />
+          <Layers className="w-4 h-4 text-muted-foreground" />
           <div>
-            <p className="text-sm text-white/80">Taskbar Position</p>
-            <p className="text-xs text-white/40">Bottom of screen</p>
+            <p className="text-sm text-foreground/80">Taskbar Position</p>
+            <p className="text-xs text-muted-foreground">Bottom of screen</p>
           </div>
         </div>
-        <span className="text-xs text-white/30 bg-white/5 px-2 py-1 rounded">
+        <span className="text-xs text-muted-foreground/60 bg-accent dark:bg-white/5 px-2 py-1 rounded">
           Bottom
         </span>
       </div>
 
       {/* Icon size */}
-      <div className="flex items-center justify-between py-3 border-b border-white/5">
+      <div className="flex items-center justify-between py-3 border-b border-border">
         <div className="flex items-center gap-3">
-          <Box className="w-4 h-4 text-white/60" />
+          <Box className="w-4 h-4 text-muted-foreground" />
           <div>
-            <p className="text-sm text-white/80">Desktop Icon Size</p>
-            <p className="text-xs text-white/40">
+            <p className="text-sm text-foreground/80">Desktop Icon Size</p>
+            <p className="text-xs text-muted-foreground">
               Adjust the size of desktop icons
             </p>
           </div>
@@ -352,8 +352,8 @@ function DisplaySection({
               onClick={() => setIconSize(size)}
               className={`text-xs px-3 py-1 rounded-md transition-colors capitalize ${
                 iconSize === size
-                  ? 'bg-white/15 text-white'
-                  : 'text-white/40 hover:bg-white/5 hover:text-white/60'
+                  ? 'bg-accent dark:bg-white/15 text-foreground'
+                  : 'text-muted-foreground hover:bg-accent dark:hover:bg-white/5 hover:text-foreground/60'
               }`}
             >
               {size}
@@ -363,15 +363,15 @@ function DisplaySection({
       </div>
 
       {/* Resolution info */}
-      <div className="flex items-center justify-between py-3 border-b border-white/5">
+      <div className="flex items-center justify-between py-3 border-b border-border">
         <div className="flex items-center gap-3">
-          <Monitor className="w-4 h-4 text-white/60" />
+          <Monitor className="w-4 h-4 text-muted-foreground" />
           <div>
-            <p className="text-sm text-white/80">Resolution</p>
-            <p className="text-xs text-white/40">Current display resolution</p>
+            <p className="text-sm text-foreground/80">Resolution</p>
+            <p className="text-xs text-muted-foreground">Current display resolution</p>
           </div>
         </div>
-        <span className="text-xs text-white/30">
+        <span className="text-xs text-muted-foreground/60">
           {typeof window !== 'undefined'
             ? `${window.screen.width} × ${window.screen.height}`
             : '—'}
@@ -395,12 +395,12 @@ function GeneralSection({
       <h3 className="text-lg font-medium mb-4">General</h3>
 
       {/* Restore windows toggle */}
-      <div className="flex items-center justify-between py-3 border-b border-white/5">
+      <div className="flex items-center justify-between py-3 border-b border-border">
         <div className="flex items-center gap-3">
-          <LayoutPanelTop className="w-4 h-4 text-white/60" />
+          <LayoutPanelTop className="w-4 h-4 text-muted-foreground" />
           <div>
-            <p className="text-sm text-white/80">Restore open windows</p>
-            <p className="text-xs text-white/40">
+            <p className="text-sm text-foreground/80">Restore open windows</p>
+            <p className="text-xs text-muted-foreground">
               Remember open apps and their positions across sessions
             </p>
           </div>
@@ -424,29 +424,29 @@ function AboutSection() {
           <Cpu className="w-10 h-10 text-white" />
         </div>
 
-        <h4 className="text-xl font-semibold text-white mb-1">MittenOS</h4>
-        <p className="text-sm text-white/40 mb-6">Version 1.0.0</p>
+        <h4 className="text-xl font-semibold text-foreground mb-1">MittenOS</h4>
+        <p className="text-sm text-muted-foreground mb-6">Version 1.0.0</p>
 
         <div className="w-full max-w-xs space-y-3">
-          <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-zinc-800/60 border border-white/5">
-            <span className="text-xs text-white/40">System</span>
-            <span className="text-xs text-white/70">MittenOS</span>
+          <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted dark:bg-zinc-800/60 border border-border">
+            <span className="text-xs text-muted-foreground">System</span>
+            <span className="text-xs text-foreground/70">MittenOS</span>
           </div>
-          <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-zinc-800/60 border border-white/5">
-            <span className="text-xs text-white/40">Version</span>
-            <span className="text-xs text-white/70">1.0.0</span>
+          <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted dark:bg-zinc-800/60 border border-border">
+            <span className="text-xs text-muted-foreground">Version</span>
+            <span className="text-xs text-foreground/70">1.0.0</span>
           </div>
-          <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-zinc-800/60 border border-white/5">
-            <span className="text-xs text-white/40">Built with</span>
-            <span className="text-xs text-white/70">Next.js 16, React 19, TypeScript</span>
+          <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted dark:bg-zinc-800/60 border border-border">
+            <span className="text-xs text-muted-foreground">Built with</span>
+            <span className="text-xs text-foreground/70">Next.js 16, React 19, TypeScript</span>
           </div>
-          <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-zinc-800/60 border border-white/5">
-            <span className="text-xs text-white/40">Renderer</span>
-            <span className="text-xs text-white/70">WebKit / Blink</span>
+          <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted dark:bg-zinc-800/60 border border-border">
+            <span className="text-xs text-muted-foreground">Renderer</span>
+            <span className="text-xs text-foreground/70">WebKit / Blink</span>
           </div>
         </div>
 
-        <p className="text-[10px] text-white/20 mt-8 text-center">
+        <p className="text-[10px] text-muted-foreground/30 mt-8 text-center">
           © 2025 MittenOS. All rights reserved.
         </p>
       </div>

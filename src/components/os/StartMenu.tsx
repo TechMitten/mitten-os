@@ -43,6 +43,7 @@ export function StartMenu() {
   const setStartMenuOpen = useDesktopStore((s) => s.setStartMenuOpen);
   const searchQuery = useDesktopStore((s) => s.searchQuery);
   const setSearchQuery = useDesktopStore((s) => s.setSearchQuery);
+  const theme = useDesktopStore((s) => s.theme);
   const openWindow = useWindowStore((s) => s.openWindow);
   const userApps = useAppRegistryStore((s) => s.userApps);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -108,23 +109,27 @@ export function StartMenu() {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 10, scale: 0.97 }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
-          className="fixed bottom-14 left-3 w-80 max-h-[70vh] rounded-2xl shadow-2xl border border-white/[0.1] overflow-hidden flex flex-col z-[9999]"
+          className="fixed bottom-14 left-3 w-80 max-h-[70vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col z-[9999]"
           style={{
-            background: 'rgba(28, 28, 38, 0.88)',
+            background:
+              theme === 'dark'
+                ? 'rgba(28, 28, 38, 0.88)'
+                : 'rgba(255, 255, 255, 0.85)',
             backdropFilter: 'blur(30px) saturate(1.5)',
             WebkitBackdropFilter: 'blur(30px) saturate(1.5)',
+            border: theme === 'dark' ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.06)',
           }}
         >
           {/* Search */}
-          <div className="p-3 border-b border-white/[0.06]">
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.06] border border-white/[0.08]">
-              <Search className="w-4 h-4 text-white/40" />
+          <div className="p-3 border-b border-black/5 dark:border-white/[0.06]">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/[0.04] dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08]">
+              <Search className="w-4 h-4 text-muted-foreground/60" />
               <input
                 type="text"
                 placeholder="Search apps..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 bg-transparent text-sm text-white/80 placeholder:text-white/30 outline-none"
+                className="flex-1 bg-transparent text-sm text-foreground/80 placeholder:text-muted-foreground/50 outline-none"
                 autoFocus
               />
             </div>
@@ -139,17 +144,17 @@ export function StartMenu() {
                 return (
                   <button
                     key={app.id}
-                    className="flex flex-col items-center gap-1.5 p-3 rounded-xl hover:bg-white/[0.06] transition-colors duration-150 cursor-pointer group"
+                    className="flex flex-col items-center gap-1.5 p-3 rounded-xl hover:bg-black/5 dark:hover:bg-white/[0.06] transition-colors duration-150 cursor-pointer group"
                     onClick={() => handleAppClick(app)}
                   >
-                    <div className="w-10 h-10 rounded-xl bg-white/[0.06] flex items-center justify-center group-hover:bg-white/[0.1] transition-colors">
+                    <div className="w-10 h-10 rounded-xl bg-black/[0.04] dark:bg-white/[0.06] flex items-center justify-center group-hover:bg-black/[0.08] dark:group-hover:bg-white/[0.1] transition-colors">
                       {isUser ? (
                         <span className="text-lg">{app.icon || '📦'}</span>
                       ) : (
-                        <IconComp className="w-5 h-5 text-white/70" strokeWidth={1.5} />
+                        <IconComp className="w-5 h-5 text-muted-foreground dark:text-white/70" strokeWidth={1.5} />
                       )}
                     </div>
-                    <span className="text-[11px] text-white/60 group-hover:text-white/80 truncate max-w-full">
+                    <span className="text-[11px] text-muted-foreground dark:text-white/60 group-hover:text-foreground/80 dark:group-hover:text-white/80 truncate max-w-full">
                       {app.name}
                     </span>
                   </button>
@@ -157,15 +162,15 @@ export function StartMenu() {
               })}
             </div>
             {filteredApps.length === 0 && (
-              <div className="text-center text-white/30 text-sm py-8">No apps found</div>
+              <div className="text-center text-muted-foreground/50 text-sm py-8">No apps found</div>
             )}
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between p-3 border-t border-white/[0.06]">
-            <span className="text-[11px] text-white/30">MittenOS</span>
+          <div className="flex items-center justify-between p-3 border-t border-black/5 dark:border-white/[0.06]">
+            <span className="text-[11px] text-muted-foreground/50">MittenOS</span>
             <button
-              className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
               onClick={async () => {
                 setStartMenuOpen(false);
                 const userId = useAuthStore.getState().user?.id;
@@ -178,7 +183,7 @@ export function StartMenu() {
               }}
               title="Sign out"
             >
-              <LogOut className="w-4 h-4 text-white/40" />
+              <LogOut className="w-4 h-4 text-muted-foreground/60" />
             </button>
           </div>
         </motion.div>

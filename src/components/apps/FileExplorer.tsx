@@ -246,15 +246,15 @@ export function FileExplorer() {
   return (
     <div
       ref={containerRef}
-      className="flex h-full bg-zinc-900/90 text-white select-none overflow-hidden"
+      className="flex h-full bg-card dark:bg-zinc-900/90 text-card-foreground select-none overflow-hidden"
       onClick={() => {
         setSelectedItemId(null);
         setContextMenu(null);
       }}
     >
       {/* Sidebar */}
-      <div className="w-48 bg-zinc-800/50 border-r border-white/5 flex flex-col py-2 shrink-0">
-        <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/40">
+      <div className="w-48 bg-muted dark:bg-zinc-800/50 border-r border-border flex flex-col py-2 shrink-0">
+        <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           Quick Access
         </div>
         {QUICK_ACCESS.map((item) => {
@@ -262,15 +262,15 @@ export function FileExplorer() {
           return (
             <button
               key={item.id}
-              className={`flex items-center gap-2 px-3 py-1.5 text-sm w-full text-left hover:bg-white/5 transition-colors ${
-                isActive ? 'bg-white/10 text-white' : 'text-white/70'
+              className={`flex items-center gap-2 px-3 py-1.5 text-sm w-full text-left hover:bg-accent dark:hover:bg-white/5 transition-colors ${
+                isActive ? 'bg-accent dark:bg-white/10 text-foreground' : 'text-muted-foreground'
               }`}
               onClick={(e) => {
                 e.stopPropagation();
                 navigateTo(item.id);
               }}
             >
-              <span className={isActive ? 'text-white' : 'text-white/50'}>
+              <span className={isActive ? 'text-foreground' : 'text-muted-foreground/70'}>
                 {item.icon}
               </span>
               {item.name}
@@ -282,9 +282,9 @@ export function FileExplorer() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Toolbar */}
-        <div className="h-9 bg-zinc-800/30 border-b border-white/5 flex items-center px-2 gap-1 shrink-0">
+        <div className="h-9 bg-muted dark:bg-zinc-800/30 border-b border-border flex items-center px-2 gap-1 shrink-0">
           <button
-            className="p-1 rounded hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+            className="p-1 rounded hover:bg-accent dark:hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
             onClick={(e) => {
               e.stopPropagation();
               goBack();
@@ -295,7 +295,7 @@ export function FileExplorer() {
             <ChevronLeft className="w-4 h-4" />
           </button>
           <button
-            className="p-1 rounded hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+            className="p-1 rounded hover:bg-accent dark:hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
             onClick={(e) => {
               e.stopPropagation();
               goForward();
@@ -311,13 +311,13 @@ export function FileExplorer() {
             {breadcrumbs.map((crumb, idx) => (
               <React.Fragment key={crumb.id}>
                 {idx > 0 && (
-                  <ChevronRight className="w-3 h-3 text-white/30 shrink-0" />
+                  <ChevronRight className="w-3 h-3 text-muted-foreground/50 shrink-0" />
                 )}
                 <button
-                  className={`px-1.5 py-0.5 rounded hover:bg-white/10 whitespace-nowrap transition-colors ${
+                  className={`px-1.5 py-0.5 rounded hover:bg-accent dark:hover:bg-white/10 whitespace-nowrap transition-colors ${
                     idx === breadcrumbs.length - 1
-                      ? 'text-white'
-                      : 'text-white/50'
+                      ? 'text-foreground'
+                      : 'text-muted-foreground'
                   }`}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -333,7 +333,7 @@ export function FileExplorer() {
           </div>
 
           <button
-            className="p-1 rounded hover:bg-white/10 transition-colors"
+            className="p-1 rounded hover:bg-accent dark:hover:bg-white/10 transition-colors"
             onClick={(e) => {
               e.stopPropagation();
               setViewMode((v) => (v === 'list' ? 'grid' : 'list'));
@@ -346,9 +346,9 @@ export function FileExplorer() {
               <List className="w-4 h-4" />
             )}
           </button>
-          <div className="w-px h-4 bg-white/10 mx-0.5" />
+          <div className="w-px h-4 bg-border mx-0.5" />
           <button
-            className="p-1 rounded hover:bg-white/10 transition-colors"
+            className="p-1 rounded hover:bg-accent dark:hover:bg-white/10 transition-colors"
             onClick={(e) => {
               e.stopPropagation();
               setCreating('folder');
@@ -359,7 +359,7 @@ export function FileExplorer() {
             <FolderPlus className="w-4 h-4" />
           </button>
           <button
-            className="p-1 rounded hover:bg-white/10 transition-colors"
+            className="p-1 rounded hover:bg-accent dark:hover:bg-white/10 transition-colors"
             onClick={(e) => {
               e.stopPropagation();
               setCreating('file');
@@ -376,14 +376,14 @@ export function FileExplorer() {
           {viewMode === 'list' ? (
             <div className="flex flex-col">
               {/* List Header */}
-              <div className="flex items-center gap-2 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white/30 border-b border-white/5 mb-1">
+              <div className="flex items-center gap-2 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 border-b border-border mb-1">
                 <span className="w-5" />
                 <span className="flex-1">Name</span>
                 <span className="w-20 text-right">Size</span>
                 <span className="w-36 text-right">Modified</span>
               </div>
               {sortedChildren.length === 0 && !creating && (
-                <div className="flex flex-col items-center justify-center py-16 text-white/30">
+                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground/50">
                   <FolderOpen className="w-12 h-12 mb-2 opacity-30" />
                   <p className="text-sm">This folder is empty</p>
                 </div>
@@ -392,14 +392,14 @@ export function FileExplorer() {
               {creating && (
                 <div className="flex items-center gap-2 px-3 py-1.5">
                   {creating === 'folder' ? (
-                    <Folder className="w-4 h-4 text-amber-400 shrink-0" />
+                    <Folder className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0" />
                   ) : (
-                    <FileText className="w-4 h-4 text-blue-400 shrink-0" />
+                    <FileText className="w-4 h-4 text-blue-500 dark:text-blue-400 shrink-0" />
                   )}
-                  <input
-                    ref={newItemInputRef}
-                    className="bg-transparent border-b border-white/30 text-sm outline-none flex-1 px-0.5"
-                    value={newItemName}
+                    <input
+                      ref={newItemInputRef}
+                      className="bg-transparent border-b border-muted-foreground/40 dark:border-white/30 text-sm outline-none flex-1 px-0.5"
+                      value={newItemName}
                     onChange={(e) => setNewItemName(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleCreateItem();
@@ -420,8 +420,8 @@ export function FileExplorer() {
               {sortedChildren.map((node) => (
                 <div
                   key={node.id}
-                  className={`flex items-center gap-2 px-3 py-1.5 hover:bg-white/5 rounded cursor-pointer ${
-                    selectedItemId === node.id ? 'bg-white/10' : ''
+                  className={`flex items-center gap-2 px-3 py-1.5 hover:bg-accent dark:hover:bg-white/5 rounded cursor-pointer ${
+                    selectedItemId === node.id ? 'bg-accent dark:bg-white/10' : ''
                   }`}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -431,14 +431,14 @@ export function FileExplorer() {
                   onContextMenu={(e) => handleContextMenu(e, node.id)}
                 >
                   {node.type === 'folder' ? (
-                    <Folder className="w-4 h-4 text-amber-400 shrink-0" />
+                    <Folder className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0" />
                   ) : (
-                    <FileText className="w-4 h-4 text-blue-400 shrink-0" />
+                    <FileText className="w-4 h-4 text-blue-500 dark:text-blue-400 shrink-0" />
                   )}
                   {renamingId === node.id ? (
                     <input
                       ref={renameInputRef}
-                      className="bg-transparent border-b border-white/30 text-sm outline-none flex-1 px-0.5"
+                       className="bg-transparent border-b border-muted-foreground/40 dark:border-white/30 text-sm outline-none flex-1 px-0.5"
                       value={renameValue}
                       onChange={(e) => setRenameValue(e.target.value)}
                       onKeyDown={(e) => {
@@ -453,14 +453,14 @@ export function FileExplorer() {
                   ) : (
                     <span className="flex-1 text-sm truncate">{node.name}</span>
                   )}
-                  <span className="w-20 text-right text-xs text-white/40">
+                  <span className="w-20 text-right text-xs text-muted-foreground">
                     {node.type === 'file'
                       ? formatFileSize(
                           node.content ? new Blob([node.content]).size : 0
                         )
                       : '--'}
                   </span>
-                  <span className="w-36 text-right text-xs text-white/40">
+                  <span className="w-36 text-right text-xs text-muted-foreground">
                     {formatDate(node.modifiedAt)}
                   </span>
                 </div>
@@ -469,7 +469,7 @@ export function FileExplorer() {
           ) : (
             <div className="grid grid-cols-[repeat(auto-fill,minmax(90px,1fr))] gap-1">
               {sortedChildren.length === 0 && !creating && (
-                <div className="col-span-full flex flex-col items-center justify-center py-16 text-white/30">
+                <div className="col-span-full flex flex-col items-center justify-center py-16 text-muted-foreground/50">
                   <FolderOpen className="w-12 h-12 mb-2 opacity-30" />
                   <p className="text-sm">This folder is empty</p>
                 </div>
@@ -477,13 +477,13 @@ export function FileExplorer() {
               {creating && (
                 <div className="flex flex-col items-center p-3">
                   {creating === 'folder' ? (
-                    <Folder className="w-10 h-10 text-amber-400 mb-1" />
+                    <Folder className="w-10 h-10 text-amber-500 dark:text-amber-400 mb-1" />
                   ) : (
-                    <FileText className="w-10 h-10 text-blue-400 mb-1" />
+                    <FileText className="w-10 h-10 text-blue-500 dark:text-blue-400 mb-1" />
                   )}
                   <input
                     ref={newItemInputRef}
-                    className="bg-transparent border-b border-white/30 text-xs text-center outline-none w-full px-0.5 mt-1"
+                      className="bg-transparent border-b border-muted-foreground/40 dark:border-white/30 text-xs text-center outline-none w-full px-0.5 mt-1"
                     value={newItemName}
                     onChange={(e) => setNewItemName(e.target.value)}
                     onKeyDown={(e) => {
@@ -501,8 +501,8 @@ export function FileExplorer() {
               {sortedChildren.map((node) => (
                 <div
                   key={node.id}
-                  className={`flex flex-col items-center p-3 hover:bg-white/5 rounded-lg cursor-pointer ${
-                    selectedItemId === node.id ? 'bg-white/10' : ''
+                  className={`flex flex-col items-center p-3 hover:bg-accent dark:hover:bg-white/5 rounded-lg cursor-pointer ${
+                    selectedItemId === node.id ? 'bg-accent dark:bg-white/10' : ''
                   }`}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -512,14 +512,14 @@ export function FileExplorer() {
                   onContextMenu={(e) => handleContextMenu(e, node.id)}
                 >
                   {node.type === 'folder' ? (
-                    <Folder className="w-10 h-10 text-amber-400 mb-1" />
+                    <Folder className="w-10 h-10 text-amber-500 dark:text-amber-400 mb-1" />
                   ) : (
-                    <FileText className="w-10 h-10 text-blue-400 mb-1" />
+                    <FileText className="w-10 h-10 text-blue-500 dark:text-blue-400 mb-1" />
                   )}
                   {renamingId === node.id ? (
                     <input
                       ref={renameInputRef}
-                      className="bg-transparent border-b border-white/30 text-xs text-center outline-none w-full px-0.5 mt-1"
+                    className="bg-transparent border-b border-muted-foreground/40 dark:border-white/30 text-xs text-center outline-none w-full px-0.5 mt-1"
                       value={renameValue}
                       onChange={(e) => setRenameValue(e.target.value)}
                       onKeyDown={(e) => {
@@ -543,7 +543,7 @@ export function FileExplorer() {
         </div>
 
         {/* Status bar */}
-        <div className="h-6 bg-zinc-800/30 border-t border-white/5 flex items-center px-3 text-[10px] text-white/40 shrink-0">
+        <div className="h-6 bg-muted dark:bg-zinc-800/30 border-t border-border flex items-center px-3 text-[10px] text-muted-foreground shrink-0">
           {children.length} item{children.length !== 1 ? 's' : ''}
           {selectedItemId && ' — 1 selected'}
         </div>
@@ -552,7 +552,7 @@ export function FileExplorer() {
       {/* Context Menu */}
       {contextMenu && (
         <div
-          className="fixed bg-zinc-800/95 backdrop-blur-sm border border-white/10 rounded-lg shadow-xl py-1 min-w-[140px] z-[99999]"
+          className="fixed bg-card dark:bg-zinc-800/95 backdrop-blur-sm border border-border rounded-lg shadow-xl py-1 min-w-[140px] z-[99999]"
           style={{
             left: contextMenu.x,
             top: contextMenu.y,
@@ -560,13 +560,13 @@ export function FileExplorer() {
           onClick={(e) => e.stopPropagation()}
         >
           <button
-            className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-white/80 hover:bg-white/10 transition-colors"
+            className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-foreground/80 hover:bg-accent dark:hover:bg-white/10 transition-colors"
             onClick={() => startRename(contextMenu.itemId)}
           >
             Rename
           </button>
           <button
-            className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-red-400 hover:bg-white/10 transition-colors"
+            className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-destructive hover:bg-accent dark:hover:bg-white/10 transition-colors"
             onClick={() => {
               handleDelete(contextMenu.itemId);
               setContextMenu(null);

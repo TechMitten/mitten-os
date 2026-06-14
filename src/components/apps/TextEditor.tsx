@@ -208,17 +208,17 @@ export function TextEditor() {
   const charCount = activeTab.content.length;
 
   return (
-    <div className="flex flex-col h-full bg-[#1e1e2e] select-none">
+    <div className="flex flex-col h-full bg-[#1e1e2e] dark:bg-[#1e1e2e] select-none">
       {/* Menu Bar */}
       <div
-        className="h-7 bg-zinc-800/50 border-b border-white/5 flex items-center px-2 gap-4 text-xs text-white/60"
+        className="h-7 bg-muted dark:bg-zinc-800/50 border-b border-border flex items-center px-2 gap-4 text-xs text-muted-foreground"
         ref={menuRef}
       >
         {/* File Menu */}
         <div className="relative">
           <button
-            className={`px-2 py-0.5 rounded hover:bg-white/10 transition-colors ${
-              openMenu === 'file' ? 'bg-white/10 text-white/80' : ''
+            className={`px-2 py-0.5 rounded hover:bg-accent dark:hover:bg-white/10 transition-colors ${
+              openMenu === 'file' ? 'bg-accent dark:bg-white/10 text-foreground/80 dark:text-white/80' : ''
             }`}
             onClick={() => setOpenMenu(openMenu === 'file' ? null : 'file')}
             onMouseEnter={() => openMenu && setOpenMenu('file')}
@@ -226,31 +226,31 @@ export function TextEditor() {
             File
           </button>
           {openMenu === 'file' && (
-            <div className="absolute top-full left-0 mt-0.5 bg-zinc-800 border border-white/10 rounded-lg shadow-xl py-1 min-w-[160px] z-50">
+            <div className="absolute top-full left-0 mt-0.5 bg-popover dark:bg-zinc-800 border border-border rounded-lg shadow-xl py-1 min-w-[160px] z-50">
               <button
-                className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-white/70 hover:text-white/90 transition-colors flex items-center justify-between"
+                className="w-full text-left px-3 py-1.5 hover:bg-accent dark:hover:bg-white/10 text-foreground/70 hover:text-foreground/90 dark:text-white/70 dark:hover:text-white/90 transition-colors flex items-center justify-between"
                 onClick={handleNewFile}
               >
                 <span>New</span>
-                <span className="text-white/30 text-[10px]">Ctrl+N</span>
+                <span className="text-muted-foreground/50 text-[10px]">Ctrl+N</span>
               </button>
               <button
-                className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-white/70 hover:text-white/90 transition-colors flex items-center justify-between"
+                className="w-full text-left px-3 py-1.5 hover:bg-accent dark:hover:bg-white/10 text-foreground/70 hover:text-foreground/90 dark:text-white/70 dark:hover:text-white/90 transition-colors flex items-center justify-between"
                 onClick={handleOpenFile}
               >
                 <span>Open</span>
-                <span className="text-white/30 text-[10px]">Ctrl+O</span>
+                <span className="text-muted-foreground/50 text-[10px]">Ctrl+O</span>
               </button>
               <button
-                className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-white/70 hover:text-white/90 transition-colors flex items-center justify-between"
+                className="w-full text-left px-3 py-1.5 hover:bg-accent dark:hover:bg-white/10 text-foreground/70 hover:text-foreground/90 dark:text-white/70 dark:hover:text-white/90 transition-colors flex items-center justify-between"
                 onClick={handleSaveFile}
               >
                 <span>Save</span>
-                <span className="text-white/30 text-[10px]">Ctrl+S</span>
+                <span className="text-muted-foreground/50 text-[10px]">Ctrl+S</span>
               </button>
-              <div className="border-t border-white/5 my-1" />
+              <div className="border-t border-border my-1" />
               <button
-                className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-white/70 hover:text-white/90 transition-colors"
+                className="w-full text-left px-3 py-1.5 hover:bg-accent dark:hover:bg-white/10 text-foreground/70 hover:text-foreground/90 dark:text-white/70 dark:hover:text-white/90 transition-colors"
                 onClick={() => {
                   handleCloseTab(activeTabId, { stopPropagation: () => {} } as React.MouseEvent);
                   setOpenMenu(null);
@@ -265,8 +265,8 @@ export function TextEditor() {
         {/* Edit Menu */}
         <div className="relative">
           <button
-            className={`px-2 py-0.5 rounded hover:bg-white/10 transition-colors ${
-              openMenu === 'edit' ? 'bg-white/10 text-white/80' : ''
+            className={`px-2 py-0.5 rounded hover:bg-accent dark:hover:bg-white/10 transition-colors ${
+              openMenu === 'edit' ? 'bg-accent dark:bg-white/10 text-foreground/80 dark:text-white/80' : ''
             }`}
             onClick={() => setOpenMenu(openMenu === 'edit' ? null : 'edit')}
             onMouseEnter={() => openMenu && setOpenMenu('edit')}
@@ -274,48 +274,48 @@ export function TextEditor() {
             Edit
           </button>
           {openMenu === 'edit' && (
-            <div className="absolute top-full left-0 mt-0.5 bg-zinc-800 border border-white/10 rounded-lg shadow-xl py-1 min-w-[160px] z-50">
+            <div className="absolute top-full left-0 mt-0.5 bg-popover dark:bg-zinc-800 border border-border rounded-lg shadow-xl py-1 min-w-[160px] z-50">
               <button
-                className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-white/70 hover:text-white/90 transition-colors flex items-center justify-between"
+                className="w-full text-left px-3 py-1.5 hover:bg-accent dark:hover:bg-white/10 text-foreground/70 hover:text-foreground/90 dark:text-white/70 dark:hover:text-white/90 transition-colors flex items-center justify-between"
                 onClick={handleUndo}
                 disabled={(undoStack[activeTabId] || []).length === 0}
               >
                 <span>{(undoStack[activeTabId] || []).length === 0 ? 'Undo' : 'Undo'}</span>
-                <span className="text-white/30 text-[10px]">Ctrl+Z</span>
+                <span className="text-muted-foreground/50 text-[10px]">Ctrl+Z</span>
               </button>
               <button
-                className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-white/70 hover:text-white/90 transition-colors flex items-center justify-between"
+                className="w-full text-left px-3 py-1.5 hover:bg-accent dark:hover:bg-white/10 text-foreground/70 hover:text-foreground/90 dark:text-white/70 dark:hover:text-white/90 transition-colors flex items-center justify-between"
                 onClick={handleRedo}
                 disabled={(redoStack[activeTabId] || []).length === 0}
               >
                 <span>Redo</span>
-                <span className="text-white/30 text-[10px]">Ctrl+Y</span>
+                <span className="text-muted-foreground/50 text-[10px]">Ctrl+Y</span>
               </button>
-              <div className="border-t border-white/5 my-1" />
+              <div className="border-t border-border my-1" />
               <button
-                className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-white/70 hover:text-white/90 transition-colors flex items-center justify-between"
+                className="w-full text-left px-3 py-1.5 hover:bg-accent dark:hover:bg-white/10 text-foreground/70 hover:text-foreground/90 dark:text-white/70 dark:hover:text-white/90 transition-colors flex items-center justify-between"
                 onClick={handleCut}
               >
                 <span>Cut</span>
-                <span className="text-white/30 text-[10px]">Ctrl+X</span>
+                <span className="text-muted-foreground/50 text-[10px]">Ctrl+X</span>
               </button>
               <button
-                className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-white/70 hover:text-white/90 transition-colors flex items-center justify-between"
+                className="w-full text-left px-3 py-1.5 hover:bg-accent dark:hover:bg-white/10 text-foreground/70 hover:text-foreground/90 dark:text-white/70 dark:hover:text-white/90 transition-colors flex items-center justify-between"
                 onClick={handleCopy}
               >
                 <span>Copy</span>
-                <span className="text-white/30 text-[10px]">Ctrl+C</span>
+                <span className="text-muted-foreground/50 text-[10px]">Ctrl+C</span>
               </button>
               <button
-                className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-white/70 hover:text-white/90 transition-colors flex items-center justify-between"
+                className="w-full text-left px-3 py-1.5 hover:bg-accent dark:hover:bg-white/10 text-foreground/70 hover:text-foreground/90 dark:text-white/70 dark:hover:text-white/90 transition-colors flex items-center justify-between"
                 onClick={handlePaste}
               >
                 <span>Paste</span>
-                <span className="text-white/30 text-[10px]">Ctrl+V</span>
+                <span className="text-muted-foreground/50 text-[10px]">Ctrl+V</span>
               </button>
-              <div className="border-t border-white/5 my-1" />
+              <div className="border-t border-border my-1" />
               <button
-                className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-white/70 hover:text-white/90 transition-colors flex items-center justify-between"
+                className="w-full text-left px-3 py-1.5 hover:bg-accent dark:hover:bg-white/10 text-foreground/70 hover:text-foreground/90 dark:text-white/70 dark:hover:text-white/90 transition-colors flex items-center justify-between"
                 onClick={() => {
                   if (textareaRef.current) {
                     textareaRef.current.select();
@@ -324,25 +324,25 @@ export function TextEditor() {
                 }}
               >
                 <span>Select All</span>
-                <span className="text-white/30 text-[10px]">Ctrl+A</span>
+                <span className="text-muted-foreground/50 text-[10px]">Ctrl+A</span>
               </button>
             </div>
           )}
         </div>
 
         {/* View label */}
-        <span className="px-2 py-0.5 rounded hover:bg-white/10 cursor-default">View</span>
+        <span className="px-2 py-0.5 rounded hover:bg-accent dark:hover:bg-white/10 cursor-default">View</span>
       </div>
 
       {/* Tab Bar */}
-      <div className="h-8 bg-zinc-800/30 border-b border-white/5 flex items-center px-1 gap-0.5 overflow-x-auto">
+      <div className="h-8 bg-muted dark:bg-zinc-800/30 border-b border-border flex items-center px-1 gap-0.5 overflow-x-auto">
         {tabs.map((tab) => (
           <div
             key={tab.id}
             className={`group flex items-center gap-1 px-3 h-6 rounded-t text-xs cursor-pointer transition-colors min-w-0 max-w-[140px] ${
               tab.id === activeTabId
-                ? 'bg-[#1e1e2e] text-white/90 border-t-2 border-amber-500'
-                : 'bg-zinc-800/50 text-white/40 hover:text-white/60'
+                ? 'bg-card dark:bg-[#1e1e2e] text-foreground dark:text-white/90 border-t-2 border-amber-500'
+                : 'bg-muted dark:bg-zinc-800/50 text-muted-foreground hover:text-foreground/60 dark:hover:text-white/60'
             }`}
             onClick={() => setActiveTabId(tab.id)}
           >
@@ -375,7 +375,7 @@ export function TextEditor() {
         ))}
         {/* New tab button */}
         <button
-          className="w-6 h-6 flex items-center justify-center text-white/30 hover:text-white/60 hover:bg-white/10 rounded transition-colors shrink-0"
+          className="w-6 h-6 flex items-center justify-center text-muted-foreground/50 hover:text-foreground/60 dark:hover:text-white/60 hover:bg-accent dark:hover:bg-white/10 rounded transition-colors shrink-0"
           onClick={handleNewFile}
           title="New Tab"
         >
@@ -399,7 +399,7 @@ export function TextEditor() {
       {/* Editor Area */}
       <textarea
         ref={textareaRef}
-        className="flex-1 bg-[#1e1e2e] text-[#cdd6f4] font-mono text-sm p-4 resize-none outline-none leading-relaxed"
+        className="flex-1 bg-card dark:bg-[#1e1e2e] text-foreground dark:text-[#cdd6f4] font-mono text-sm p-4 resize-none outline-none leading-relaxed"
         value={activeTab.content}
         onChange={handleContentChange}
         spellCheck={false}
@@ -408,7 +408,7 @@ export function TextEditor() {
       />
 
       {/* Status Bar */}
-      <div className="h-6 bg-zinc-800/50 border-t border-white/5 text-[11px] text-white/40 flex items-center justify-between px-3">
+      <div className="h-6 bg-muted dark:bg-zinc-800/50 border-t border-border text-[11px] text-muted-foreground flex items-center justify-between px-3">
         <div className="flex items-center gap-3">
           <span>
             {activeTab.modified ? '● ' : ''}

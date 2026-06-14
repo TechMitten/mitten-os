@@ -70,11 +70,11 @@ export default function ImageViewer() {
   const currentImage = isOpen ? SAMPLE_IMAGES[selectedIndex!] : null;
 
   return (
-    <div className="bg-zinc-900 text-white h-full select-none flex flex-col">
+    <div className="bg-card dark:bg-zinc-900 text-card-foreground h-full select-none flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <span className="text-sm font-medium">Photos</span>
-        <span className="text-xs text-white/40">{SAMPLE_IMAGES.length} items</span>
+        <span className="text-xs text-muted-foreground">{SAMPLE_IMAGES.length} items</span>
       </div>
 
       {/* Gallery Grid */}
