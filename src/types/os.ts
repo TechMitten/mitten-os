@@ -2,6 +2,11 @@ import { ReactNode } from "react";
 
 export type WindowState = "normal" | "minimized" | "maximized";
 
+export const DESKTOP_GRID_CELL = 84;
+export const DESKTOP_GRID_OFFSET_X = 16;
+export const DESKTOP_GRID_OFFSET_Y = 16;
+export const DRAG_THRESHOLD = 3;
+
 export interface WindowPosition {
   x: number;
   y: number;

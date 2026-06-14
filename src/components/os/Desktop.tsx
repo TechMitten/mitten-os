@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useDesktopStore, type ContextMenuItem, saveWindowStates, loadWindowStates } from '@/stores/desktop-store';
+import { useDesktopStore, type ContextMenuItem, saveWindowStates, loadWindowStates, saveIconPositions, loadIconPositions as fetchIconPositions } from '@/stores/desktop-store';
 import { useWindowStore } from '@/stores/window-store';
 import { useFileSystemStore } from '@/stores/filesystem-store';
 import { useAuthStore } from '@/stores/auth-store';
@@ -50,6 +50,8 @@ export function Desktop() {
   const loadSettings = useDesktopStore((s) => s.loadSettings);
   const welcomeDismissed = useDesktopStore((s) => s.welcomeDismissed);
   const setWelcomeDismissed = useDesktopStore((s) => s.setWelcomeDismissed);
+  const updateIconPosition = useDesktopStore((s) => s.updateIconPosition);
+  const loadIconPositions = useDesktopStore((s) => s.loadIconPositions);
 
   const windows = useWindowStore((s) => s.windows);
   const activeWindowId = useWindowStore((s) => s.activeWindowId);
@@ -104,6 +106,13 @@ export function Desktop() {
       const savedWindows = await loadWindowStates(user.id);
       if (cancelled) return;
 
+      // Restore icon positions
+      const savedIconPositions = await fetchIconPositions(user.id);
+      if (cancelled) return;
+      if (savedIconPositions && Object.keys(savedIconPositions).length > 0) {
+        loadIconPositions(savedIconPositions);
+      }
+
       // Reopen windows that were non-minimized
       const { openWindow } = useWindowStore.getState();
       if (savedWindows.length > 0) {
@@ -128,15 +137,20 @@ export function Desktop() {
     return () => { cancelled = true; };
   }, [user?.id, dataLoaded, loadSettings, loadFromDB]);
 
-  // Save window states periodically
+  // Save window states and icon positions periodically
   const windowsRef = useRef(windows);
   useEffect(() => {
     windowsRef.current = windows;
+  });
+  const iconsRef = useRef(desktopIcons);
+  useEffect(() => {
+    iconsRef.current = desktopIcons;
   });
   useEffect(() => {
     if (!user?.id || !dataLoaded) return;
     const interval = setInterval(() => {
       saveWindowStates(user.id, windowsRef.current);
+      saveIconPositions(user.id, iconsRef.current);
     }, 10000);
     return () => clearInterval(interval);
   }, [user?.id, dataLoaded]);
@@ -235,6 +249,19 @@ export function Desktop() {
     [setContextMenu]
   );
 
+  const handleIconDragEnd = useCallback(
+    (iconId: string, position: { x: number; y: number }) => {
+      updateIconPosition(iconId, position);
+      const { userId } = useDesktopStore.getState();
+      if (userId) {
+        saveIconPositions(userId, useDesktopStore.getState().desktopIcons.map((icon) =>
+          icon.id === iconId ? { ...icon, position } : icon
+        ));
+      }
+    },
+    [updateIconPosition]
+  );
+
   // --- Auth loading state ---
   if (loading) {
     return (
@@ -285,7 +312,7 @@ export function Desktop() {
           onContextMenu={handleDesktopContextMenu}
           onMouseDown={handleDesktopMouseDown}
         >
-          <div className="absolute top-4 left-4 flex flex-col flex-wrap gap-1 h-[calc(100vh-64px)]">
+          <div className="absolute top-0 left-0 w-full h-[calc(100vh-64px)]">
             {desktopIcons.map((icon) => (
               <DesktopIcon
                 key={icon.id}
@@ -295,6 +322,9 @@ export function Desktop() {
                 onDoubleClick={() => handleIconDoubleClick(icon.appId)}
                 onClick={(e) => handleIconClick(icon.id, e)}
                 darkBg={isWallpaperDark(wallpaper)}
+                position={icon.position}
+                iconId={icon.id}
+                onDragEnd={handleIconDragEnd}
               />
             ))}
           </div>

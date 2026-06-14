@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { DesktopIcon, Notification } from "@/types/os";
+import { DesktopIcon, DESKTOP_GRID_CELL, DESKTOP_GRID_OFFSET_X, DESKTOP_GRID_OFFSET_Y, Notification, WindowPosition } from "@/types/os";
 import { createClient } from "@/lib/supabase/client";
 
 interface DesktopStore {
@@ -26,6 +26,8 @@ interface DesktopStore {
   clearNotifications: () => void;
   setSearchQuery: (query: string) => void;
   setWelcomeDismissed: (dismissed: boolean) => void;
+  updateIconPosition: (id: string, position: WindowPosition) => void;
+  loadIconPositions: (positions: Record<string, WindowPosition>) => void;
   reset: () => void;
 }
 
@@ -44,12 +46,19 @@ export interface ContextMenuItem {
   shortcut?: string;
 }
 
+function gridToPixel(col: number, row: number): WindowPosition {
+  return {
+    x: col * DESKTOP_GRID_CELL + DESKTOP_GRID_OFFSET_X,
+    y: row * DESKTOP_GRID_CELL + DESKTOP_GRID_OFFSET_Y,
+  };
+}
+
 const defaultIcons: DesktopIcon[] = [
-  { id: "icon-1", appId: "file-explorer", label: "Files", icon: "FolderOpen", position: { x: 0, y: 0 } },
-  { id: "icon-2", appId: "terminal", label: "Terminal", icon: "TerminalSquare", position: { x: 0, y: 1 } },
-  { id: "icon-3", appId: "browser", label: "Browser", icon: "Globe", position: { x: 0, y: 2 } },
-  { id: "icon-4", appId: "text-editor", label: "Notepad", icon: "FileText", position: { x: 0, y: 3 } },
-  { id: "icon-5", appId: "settings", label: "Settings", icon: "Settings", position: { x: 0, y: 4 } },
+  { id: "icon-1", appId: "file-explorer", label: "Files", icon: "FolderOpen", position: gridToPixel(0, 0) },
+  { id: "icon-2", appId: "terminal", label: "Terminal", icon: "TerminalSquare", position: gridToPixel(0, 1) },
+  { id: "icon-3", appId: "browser", label: "Browser", icon: "Globe", position: gridToPixel(0, 2) },
+  { id: "icon-4", appId: "text-editor", label: "Notepad", icon: "FileText", position: gridToPixel(0, 3) },
+  { id: "icon-5", appId: "settings", label: "Settings", icon: "Settings", position: gridToPixel(0, 4) },
 ];
 
 let notificationCounter = 0;
@@ -165,6 +174,23 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   clearNotifications: () => set({ notifications: [] }),
   setSearchQuery: (query: string) => set({ searchQuery: query }),
 
+  updateIconPosition: (id: string, position: WindowPosition) => {
+    set((state) => ({
+      desktopIcons: state.desktopIcons.map((icon) =>
+        icon.id === id ? { ...icon, position } : icon
+      ),
+    }));
+  },
+
+  loadIconPositions: (positions: Record<string, WindowPosition>) => {
+    set((state) => ({
+      desktopIcons: state.desktopIcons.map((icon) => {
+        const saved = positions[icon.id];
+        return saved ? { ...icon, position: saved } : icon;
+      }),
+    }));
+  },
+
   setWelcomeDismissed: (dismissed: boolean) => {
     set({ welcomeDismissed: dismissed });
     const { userId } = get();
@@ -230,4 +256,25 @@ export async function loadWindowStates(userId: string) {
     height: number;
     state: string;
   }>;
+}
+
+export async function saveIconPositions(userId: string, icons: DesktopIcon[]) {
+  const supabase = createClient();
+  const positions: Record<string, WindowPosition> = {};
+  for (const icon of icons) {
+    positions[icon.id] = icon.position;
+  }
+  await supabase
+    .from("user_settings")
+    .upsert({ user_id: userId, icon_positions: positions, updated_at: new Date().toISOString() });
+}
+
+export async function loadIconPositions(userId: string) {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("user_settings")
+    .select("icon_positions")
+    .eq("user_id", userId)
+    .single();
+  return (data?.icon_positions ?? {}) as Record<string, WindowPosition>;
 }
