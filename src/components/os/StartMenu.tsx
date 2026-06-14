@@ -21,8 +21,9 @@ import { useDesktopStore } from '@/stores/desktop-store';
 import { useWindowStore } from '@/stores/window-store';
 import { useFileSystemStore } from '@/stores/filesystem-store';
 import { useAuthStore } from '@/stores/auth-store';
+import { useAppRegistryStore } from '@/stores/app-registry-store';
 import { saveWindowStates } from '@/stores/desktop-store';
-import { APP_REGISTRY } from '@/types/os';
+import { APP_REGISTRY, type UserAppDefinition } from '@/types/os';
 
 const ICON_MAP: Record<string, LucideIcon> = {
   FolderOpen,
@@ -43,6 +44,7 @@ export function StartMenu() {
   const searchQuery = useDesktopStore((s) => s.searchQuery);
   const setSearchQuery = useDesktopStore((s) => s.setSearchQuery);
   const openWindow = useWindowStore((s) => s.openWindow);
+  const userApps = useAppRegistryStore((s) => s.userApps);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close on click outside
@@ -70,16 +72,29 @@ export function StartMenu() {
     };
   }, [startMenuOpen, setStartMenuOpen]);
 
-  const apps = Object.values(APP_REGISTRY);
+  const builtInApps = Object.values(APP_REGISTRY);
+  const allApps = [...builtInApps, ...userApps];
   const filteredApps = searchQuery
-    ? apps.filter((app) =>
+    ? allApps.filter((app) =>
         app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         app.description.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : apps;
+    : allApps;
 
-  const handleAppClick = (appId: string) => {
-    openWindow(appId);
+  const isUserApp = (app: typeof allApps[0]): app is UserAppDefinition => {
+    return 'htmlContent' in app;
+  };
+
+  const handleAppClick = (app: typeof allApps[0]) => {
+    if (isUserApp(app)) {
+      openWindow(app.id, app.name, {
+        defaultSize: app.defaultWindowSize,
+        minSize: app.minWindowSize,
+        singleton: app.singleton,
+      });
+    } else {
+      openWindow(app.id);
+    }
     setStartMenuOpen(false);
     setSearchQuery('');
   };
@@ -119,15 +134,20 @@ export function StartMenu() {
           <div className="flex-1 overflow-y-auto p-3">
             <div className="grid grid-cols-3 gap-2">
               {filteredApps.map((app) => {
-                const IconComp = ICON_MAP[app.icon] || FileText;
+                const isUser = isUserApp(app);
+                const IconComp = !isUser ? ICON_MAP[app.icon] || FileText : null;
                 return (
                   <button
                     key={app.id}
                     className="flex flex-col items-center gap-1.5 p-3 rounded-xl hover:bg-white/[0.06] transition-colors duration-150 cursor-pointer group"
-                    onClick={() => handleAppClick(app.id)}
+                    onClick={() => handleAppClick(app)}
                   >
                     <div className="w-10 h-10 rounded-xl bg-white/[0.06] flex items-center justify-center group-hover:bg-white/[0.1] transition-colors">
-                      <IconComp className="w-5 h-5 text-white/70" strokeWidth={1.5} />
+                      {isUser ? (
+                        <span className="text-lg">{app.icon || '📦'}</span>
+                      ) : (
+                        <IconComp className="w-5 h-5 text-white/70" strokeWidth={1.5} />
+                      )}
                     </div>
                     <span className="text-[11px] text-white/60 group-hover:text-white/80 truncate max-w-full">
                       {app.name}

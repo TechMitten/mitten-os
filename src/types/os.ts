@@ -65,6 +65,36 @@ export interface FSNode {
   mimeType?: string;
 }
 
+export interface UserAppRow {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string;
+  icon: string;
+  category: string;
+  html_content: string;
+  default_window_size: WindowSize;
+  min_window_size: WindowSize;
+  singleton: boolean;
+  status: "pending" | "approved" | "rejected";
+  submitted_at: string;
+  reviewed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserAppDefinition {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  category: AppCategory;
+  defaultWindowSize: WindowSize;
+  minWindowSize: WindowSize;
+  singleton: boolean;
+  htmlContent: string;
+}
+
 export interface Notification {
   id: string;
   title: string;

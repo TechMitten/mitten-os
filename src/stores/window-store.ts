@@ -1,12 +1,18 @@
 import { create } from "zustand";
 import { OSWindow, WindowPosition, WindowSize, APP_REGISTRY } from "@/types/os";
 
+export interface OpenWindowOverrides {
+  defaultSize?: WindowSize;
+  minSize?: WindowSize;
+  singleton?: boolean;
+}
+
 interface WindowStore {
   windows: OSWindow[];
   activeWindowId: string | null;
   nextZIndex: number;
 
-  openWindow: (appId: string, title?: string) => string;
+  openWindow: (appId: string, title?: string, overrides?: OpenWindowOverrides) => string;
   closeWindow: (windowId: string) => void;
   minimizeWindow: (windowId: string) => void;
   restoreWindow: (windowId: string) => void;
@@ -27,12 +33,17 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
   activeWindowId: null,
   nextZIndex: 1,
 
-  openWindow: (appId: string, title?: string) => {
-    const appDef = APP_REGISTRY[appId];
-    if (!appDef) return "";
+  openWindow: (appId: string, title?: string, overrides?: OpenWindowOverrides) => {
+    const appDef = overrides ? undefined : APP_REGISTRY[appId];
+    if (!appDef && !overrides) return "";
+
+    const effectiveName = appDef?.name ?? title ?? "";
+    const defaultSize = overrides?.defaultSize ?? appDef?.defaultWindowSize ?? { width: 700, height: 500 };
+    const minSize = overrides?.minSize ?? appDef?.minWindowSize ?? { width: 300, height: 200 };
+    const isSingleton = overrides?.singleton ?? appDef?.singleton ?? false;
 
     // Check singleton
-    if (appDef.singleton) {
+    if (isSingleton) {
       const existing = get().windows.find((w) => w.appId === appId);
       if (existing) {
         if (existing.state === "minimized") {
@@ -51,17 +62,17 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
     const screenWidth = typeof window !== "undefined" ? window.innerWidth : 1920;
     const screenHeight = typeof window !== "undefined" ? window.innerHeight : 1080;
     const pos: WindowPosition = {
-      x: Math.max(50, (screenWidth - appDef.defaultWindowSize.width) / 2 + offset),
-      y: Math.max(30, (screenHeight - appDef.defaultWindowSize.height) / 2 + offset - 40),
+      x: Math.max(50, (screenWidth - defaultSize.width) / 2 + offset),
+      y: Math.max(30, (screenHeight - defaultSize.height) / 2 + offset - 40),
     };
 
     const newWindow: OSWindow = {
       id,
       appId,
-      title: title || appDef.name,
+      title: title || effectiveName,
       position: pos,
-      size: { ...appDef.defaultWindowSize },
-      minSize: { ...appDef.minWindowSize },
+      size: { ...defaultSize },
+      minSize: { ...minSize },
       state: "normal",
       zIndex: get().nextZIndex,
       preMaximizePosition: null,

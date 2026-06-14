@@ -25,7 +25,9 @@ import {
   AppStore,
   Weather,
   AboutSystem,
+  SandboxedApp,
 } from '@/components/apps';
+import { useAppRegistryStore } from '@/stores/app-registry-store';
 
 const APP_COMPONENT_MAP: Record<string, React.ComponentType> = {
   'file-explorer': FileExplorer,
@@ -58,6 +60,9 @@ export function Desktop() {
   const openWindowFn = useWindowStore((s) => s.openWindow);
 
   const loadFromDB = useFileSystemStore((s) => s.loadFromDB);
+
+  const loadApprovedApps = useAppRegistryStore((s) => s.loadApprovedApps);
+  const getUserApp = useAppRegistryStore((s) => s.getUserApp);
 
   const user = useAuthStore((s) => s.user);
   const loading = useAuthStore((s) => s.loading);
@@ -99,6 +104,7 @@ export function Desktop() {
       await Promise.all([
         loadSettings(user.id),
         loadFromDB(user.id),
+        loadApprovedApps(),
       ]);
       if (cancelled) return;
 
@@ -332,13 +338,28 @@ export function Desktop() {
 
         {windows.map((win) => {
           const AppComponent = APP_COMPONENT_MAP[win.appId];
+          if (AppComponent) {
+            return (
+              <Window key={win.id} window={win} isActive={activeWindowId === win.id}>
+                <AppComponent />
+              </Window>
+            );
+          }
+
+          const userApp = getUserApp(win.appId);
+          if (userApp) {
+            return (
+              <Window key={win.id} window={win} isActive={activeWindowId === win.id}>
+                <SandboxedApp htmlContent={userApp.htmlContent} />
+              </Window>
+            );
+          }
+
           return (
             <Window key={win.id} window={win} isActive={activeWindowId === win.id}>
-              {AppComponent ? <AppComponent /> : (
-                <div className="flex items-center justify-center h-full text-white/50 text-sm">
-                  Unknown app: {win.appId}
-                </div>
-              )}
+              <div className="flex items-center justify-center h-full text-white/50 text-sm">
+                Unknown app: {win.appId}
+              </div>
             </Window>
           );
         })}
