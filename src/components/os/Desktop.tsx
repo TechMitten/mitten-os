@@ -11,8 +11,9 @@ import { DesktopIcon } from '@/components/os/DesktopIcon';
 import Window from '@/components/os/Window';
 import { StartMenu } from '@/components/os/StartMenu';
 import Taskbar from '@/components/os/Taskbar';
-import LoginScreen from '@/components/auth/LoginScreen';
+import SignInModal from '@/components/auth/SignInModal';
 import WelcomeWindow from '@/components/os/WelcomeWindow';
+import { saveGuestSettings, saveGuestWindowStates, saveGuestIconPositions } from '@/lib/guest-storage';
 import { Loader2 } from 'lucide-react';
 import { isWallpaperDark } from '@/lib/utils';
 import {
@@ -58,6 +59,9 @@ export function Desktop() {
   const setWelcomeDismissed = useDesktopStore((s) => s.setWelcomeDismissed);
   const updateIconPosition = useDesktopStore((s) => s.updateIconPosition);
   const loadIconPositions = useDesktopStore((s) => s.loadIconPositions);
+  const signInModalOpen = useDesktopStore((s) => s.signInModalOpen);
+  const signInModalMode = useDesktopStore((s) => s.signInModalMode);
+  const setSignInModal = useDesktopStore((s) => s.setSignInModal);
 
   const windows = useWindowStore((s) => s.windows);
   const activeWindowId = useWindowStore((s) => s.activeWindowId);
@@ -70,6 +74,7 @@ export function Desktop() {
 
   const user = useAuthStore((s) => s.user);
   const loading = useAuthStore((s) => s.loading);
+  const isGuest = useAuthStore((s) => s.isGuest);
   const initialize = useAuthStore((s) => s.initialize);
 
   const [selectedIconId, setSelectedIconId] = useState<string | null>(null);
@@ -86,20 +91,30 @@ export function Desktop() {
     }
   }, [initialize]);
 
-  // Show welcome window on sign-in
+  // Detect user ID changes (guest→real, real→guest, real→real) and reset data
   useEffect(() => {
-    if (!dataLoaded) return;
-
     const currentUserId = user?.id;
     const prevUserId = prevUserIdRef.current;
-    prevUserIdRef.current = currentUserId;
 
-    if (!prevUserId && currentUserId && !welcomeDismissed) {
+    if (prevUserId && currentUserId && prevUserId !== currentUserId) {
+      setDataLoaded(false);
+      setShowWelcome(false);
+    }
+    prevUserIdRef.current = currentUserId;
+  }, [user?.id]);
+
+  // Show welcome window on sign-in (only for real users)
+  useEffect(() => {
+    if (!dataLoaded) return;
+    if (isGuest) return;
+
+    const prevUserId = prevUserIdRef.current;
+    if (!prevUserId && user?.id && !welcomeDismissed) {
       setShowWelcome(true);
     }
-  }, [dataLoaded, user, welcomeDismissed]);
+  }, [dataLoaded, user?.id, welcomeDismissed, isGuest]);
 
-  // Load user data when authenticated
+  // Load user data when authenticated (real or guest)
   useEffect(() => {
     if (!user?.id || dataLoaded) return;
 
@@ -159,8 +174,12 @@ export function Desktop() {
   useEffect(() => {
     if (!user?.id || !dataLoaded) return;
     const interval = setInterval(async () => {
-      const { persistWindows, welcomeDismissed } = useDesktopStore.getState();
-      const states = persistWindows ? windowsRef.current.map((w) => ({
+      const { persistWindows: pw, welcomeDismissed: wd } = useDesktopStore.getState();
+      const isG = useAuthStore.getState().isGuest;
+      const uid = useAuthStore.getState().user?.id;
+      if (!uid) return;
+
+      const states = pw ? windowsRef.current.map((w) => ({
         appId: w.appId,
         windowId: w.id,
         title: w.title,
@@ -176,21 +195,30 @@ export function Desktop() {
         positions[icon.id] = icon.position;
       }
 
-      const supabase = createClient();
-      await supabase
-        .from('user_settings')
-        .upsert({
-          user_id: user.id,
-          ...(states ? { window_states: states } : {}),
-          icon_positions: positions,
-          settings_json: { welcomeDismissed, persistWindows },
-          updated_at: new Date().toISOString(),
+      if (isG) {
+        if (states) saveGuestWindowStates(uid, states);
+        saveGuestIconPositions(uid, positions);
+        saveGuestSettings(uid, {
+          wallpaper: useDesktopStore.getState().wallpaper,
+          theme: useDesktopStore.getState().theme,
+          welcomeDismissed: wd,
+          persistWindows: pw,
         });
+      } else {
+        const supabase = createClient();
+        await supabase
+          .from('user_settings')
+          .upsert({
+            user_id: uid,
+            ...(states ? { window_states: states } : {}),
+            icon_positions: positions,
+            settings_json: { welcomeDismissed: wd, persistWindows: pw },
+            updated_at: new Date().toISOString(),
+          });
+      }
     }, 10000);
     return () => clearInterval(interval);
   }, [user?.id, dataLoaded]);
-
-  // Save windows on close — use the interval above plus the logout handler in StartMenu
 
   const handleDesktopClick = useCallback(
     (e: React.MouseEvent) => {
@@ -311,15 +339,6 @@ export function Desktop() {
     );
   }
 
-  // --- Not authenticated ---
-  if (!user) {
-    return (
-      <div className={theme === 'dark' ? 'dark' : ''}>
-        <LoginScreen />
-      </div>
-    );
-  }
-
   // --- Data still loading ---
   if (!dataLoaded) {
     return (
@@ -334,7 +353,7 @@ export function Desktop() {
     );
   }
 
-  // --- Authenticated and loaded ---
+  // --- Desktop ---
   const wallpaperStyle: React.CSSProperties = wallpaper.startsWith('linear-gradient') ||
     wallpaper.startsWith('radial-gradient') ||
     wallpaper.startsWith('conic-gradient')
@@ -342,6 +361,10 @@ export function Desktop() {
     : wallpaper.startsWith('http') || wallpaper.startsWith('/')
       ? { backgroundImage: `url(${wallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center' }
       : { backgroundImage: wallpaper };
+
+  const wallpaperBg = theme === 'dark'
+    ? 'linear-gradient(135deg, #0f0c29, #302b63, #24243e)'
+    : 'linear-gradient(135deg, #c9d6ff, #e2e2e2, #f5f7fa)';
 
   return (
     <div className={theme === 'dark' ? 'dark' : ''}>
@@ -427,6 +450,12 @@ export function Desktop() {
 
         <Taskbar />
       </div>
+
+      <SignInModal
+        open={signInModalOpen}
+        mode={signInModalMode}
+        onClose={() => setSignInModal(false)}
+      />
     </div>
   );
 }

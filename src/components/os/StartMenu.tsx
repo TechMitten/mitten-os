@@ -15,6 +15,8 @@ import {
   Info,
   Search,
   LogOut,
+  LogIn,
+  UserPlus,
   type LucideIcon,
 } from 'lucide-react';
 import { useDesktopStore } from '@/stores/desktop-store';
@@ -46,6 +48,8 @@ export function StartMenu() {
   const theme = useDesktopStore((s) => s.theme);
   const openWindow = useWindowStore((s) => s.openWindow);
   const userApps = useAppRegistryStore((s) => s.userApps);
+  const setSignInModal = useDesktopStore((s) => s.setSignInModal);
+  const isGuest = useAuthStore((s) => s.isGuest);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close on click outside
@@ -169,22 +173,47 @@ export function StartMenu() {
           {/* Footer */}
           <div className="flex items-center justify-between p-3 border-t border-black/5 dark:border-white/[0.06]">
             <span className="text-[11px] text-muted-foreground/50">MittenOS</span>
-            <button
-              className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
-              onClick={async () => {
-                setStartMenuOpen(false);
-                const userId = useAuthStore.getState().user?.id;
-                if (userId && useDesktopStore.getState().persistWindows) {
-                  await saveWindowStates(userId, useWindowStore.getState().windows);
-                }
-                useFileSystemStore.getState().reset();
-                useDesktopStore.getState().reset();
-                await useAuthStore.getState().signOut();
-              }}
-              title="Sign out"
-            >
-              <LogOut className="w-4 h-4 text-muted-foreground/60" />
-            </button>
+            {isGuest ? (
+              <div className="flex items-center gap-1">
+                <button
+                  className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
+                  onClick={() => {
+                    setStartMenuOpen(false);
+                    setSignInModal(true, 'signin');
+                  }}
+                  title="Sign in"
+                >
+                  <LogIn className="w-4 h-4 text-muted-foreground/60" />
+                </button>
+                <button
+                  className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
+                  onClick={() => {
+                    setStartMenuOpen(false);
+                    setSignInModal(true, 'signup');
+                  }}
+                  title="Create account"
+                >
+                  <UserPlus className="w-4 h-4 text-muted-foreground/60" />
+                </button>
+              </div>
+            ) : (
+              <button
+                className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
+                onClick={async () => {
+                  setStartMenuOpen(false);
+                  const userId = useAuthStore.getState().user?.id;
+                  if (userId && useDesktopStore.getState().persistWindows) {
+                    await saveWindowStates(userId, useWindowStore.getState().windows);
+                  }
+                  useFileSystemStore.getState().reset();
+                  useDesktopStore.getState().reset();
+                  await useAuthStore.getState().signOut();
+                }}
+                title="Sign out"
+              >
+                <LogOut className="w-4 h-4 text-muted-foreground/60" />
+              </button>
+            )}
           </div>
         </motion.div>
       )}

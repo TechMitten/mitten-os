@@ -27,6 +27,7 @@ import {
 import Editor, { type OnMount } from '@monaco-editor/react';
 import { SandboxedApp } from '@/components/apps/SandboxedApp';
 import { useDesktopStore } from '@/stores/desktop-store';
+import { useAuthStore } from '@/stores/auth-store';
 import { createClient } from '@/lib/supabase/client';
 import type { ChatMessage, ToolCall, ToolResult } from '@/lib/ai/types';
 
@@ -164,6 +165,13 @@ export function AppBuilder() {
     setSaving(true);
     setCompileError(null);
     try {
+      if (useAuthStore.getState().isGuest) {
+        useDesktopStore.getState().setSignInModal(true, 'signup');
+        addNotification({ title: 'App Builder', message: 'Sign up to save and publish apps.', type: 'info' });
+        setSaving(false);
+        return;
+      }
+
       const supabase = createClient();
       const { data: auth } = await supabase.auth.getUser();
       const userId = auth.user?.id;
@@ -215,6 +223,13 @@ export function AppBuilder() {
     setPublishing(true);
     setCompileError(null);
     try {
+      if (useAuthStore.getState().isGuest) {
+        useDesktopStore.getState().setSignInModal(true, 'signup');
+        addNotification({ title: 'App Builder', message: 'Sign up to save and publish apps.', type: 'info' });
+        setPublishing(false);
+        return;
+      }
+
       const supabase = createClient();
       const { data: auth } = await supabase.auth.getUser();
       const userId = auth.user?.id;
