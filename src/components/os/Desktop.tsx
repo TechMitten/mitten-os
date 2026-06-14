@@ -11,7 +11,9 @@ import Window from '@/components/os/Window';
 import { StartMenu } from '@/components/os/StartMenu';
 import Taskbar from '@/components/os/Taskbar';
 import LoginScreen from '@/components/auth/LoginScreen';
+import WelcomeWindow from '@/components/os/WelcomeWindow';
 import { Loader2 } from 'lucide-react';
+import { isWallpaperDark } from '@/lib/utils';
 import {
   FileExplorer,
   Terminal,
@@ -46,6 +48,8 @@ export function Desktop() {
   const setContextMenu = useDesktopStore((s) => s.setContextMenu);
   const setStartMenuOpen = useDesktopStore((s) => s.setStartMenuOpen);
   const loadSettings = useDesktopStore((s) => s.loadSettings);
+  const welcomeDismissed = useDesktopStore((s) => s.welcomeDismissed);
+  const setWelcomeDismissed = useDesktopStore((s) => s.setWelcomeDismissed);
 
   const windows = useWindowStore((s) => s.windows);
   const activeWindowId = useWindowStore((s) => s.activeWindowId);
@@ -59,7 +63,9 @@ export function Desktop() {
 
   const [selectedIconId, setSelectedIconId] = useState<string | null>(null);
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
   const initializedRef = useRef(false);
+  const prevUserIdRef = useRef<string | undefined>(undefined);
 
   // Initialize auth on mount
   useEffect(() => {
@@ -68,6 +74,19 @@ export function Desktop() {
       initialize();
     }
   }, [initialize]);
+
+  // Show welcome window on sign-in
+  useEffect(() => {
+    if (!dataLoaded) return;
+
+    const currentUserId = user?.id;
+    const prevUserId = prevUserIdRef.current;
+    prevUserIdRef.current = currentUserId;
+
+    if (!prevUserId && currentUserId && !welcomeDismissed) {
+      setShowWelcome(true);
+    }
+  }, [dataLoaded, user, welcomeDismissed]);
 
   // Load user data when authenticated
   useEffect(() => {
@@ -275,6 +294,7 @@ export function Desktop() {
                 selected={selectedIconId === icon.id}
                 onDoubleClick={() => handleIconDoubleClick(icon.appId)}
                 onClick={(e) => handleIconClick(icon.id, e)}
+                darkBg={isWallpaperDark(wallpaper)}
               />
             ))}
           </div>
@@ -292,6 +312,16 @@ export function Desktop() {
             </Window>
           );
         })}
+
+        <WelcomeWindow
+          open={showWelcome}
+          onClose={(dontShowAgain) => {
+            setShowWelcome(false);
+            if (dontShowAgain) {
+              setWelcomeDismissed(true);
+            }
+          }}
+        />
 
         {contextMenu && (
           <ContextMenu

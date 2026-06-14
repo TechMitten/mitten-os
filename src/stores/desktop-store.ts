@@ -12,6 +12,7 @@ interface DesktopStore {
   searchQuery: string;
   loaded: boolean;
   userId: string | null;
+  welcomeDismissed: boolean;
 
   loadSettings: (userId: string) => Promise<void>;
   setWallpaper: (url: string) => void;
@@ -24,6 +25,7 @@ interface DesktopStore {
   markNotificationRead: (id: string) => void;
   clearNotifications: () => void;
   setSearchQuery: (query: string) => void;
+  setWelcomeDismissed: (dismissed: boolean) => void;
   reset: () => void;
 }
 
@@ -62,6 +64,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   searchQuery: "",
   loaded: false,
   userId: null,
+  welcomeDismissed: false,
 
   loadSettings: async (userId: string) => {
     const supabase = createClient();
@@ -88,6 +91,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     set({
       theme: data.theme || "dark",
       wallpaper: data.wallpaper || "linear-gradient(135deg, #0f0c29, #302b63, #24243e)",
+      welcomeDismissed: data.settings_json?.welcomeDismissed ?? false,
       userId,
       loaded: true,
     });
@@ -104,25 +108,33 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   },
 
   setTheme: (theme: "light" | "dark") => {
-    set({ theme });
+    const wallpaper =
+      theme === "light"
+        ? "linear-gradient(135deg, #c9d6ff, #e2e2e2)"
+        : "linear-gradient(135deg, #0f0c29, #302b63, #24243e)";
+    set({ theme, wallpaper });
     const { userId } = get();
     if (!userId) return;
     const supabase = createClient();
     supabase
       .from("user_settings")
-      .upsert({ user_id: userId, theme, updated_at: new Date().toISOString() });
+      .upsert({ user_id: userId, theme, wallpaper, updated_at: new Date().toISOString() });
   },
 
   toggleTheme: () => {
     const current = get().theme;
     const next = current === "dark" ? "light" : "dark";
-    set({ theme: next });
+    const wallpaper =
+      next === "light"
+        ? "linear-gradient(135deg, #c9d6ff, #e2e2e2)"
+        : "linear-gradient(135deg, #0f0c29, #302b63, #24243e)";
+    set({ theme: next, wallpaper });
     const { userId } = get();
     if (!userId) return;
     const supabase = createClient();
     supabase
       .from("user_settings")
-      .upsert({ user_id: userId, theme: next, updated_at: new Date().toISOString() });
+      .upsert({ user_id: userId, theme: next, wallpaper, updated_at: new Date().toISOString() });
   },
 
   setStartMenuOpen: (open: boolean) => set({ startMenuOpen: open }),
@@ -153,6 +165,20 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   clearNotifications: () => set({ notifications: [] }),
   setSearchQuery: (query: string) => set({ searchQuery: query }),
 
+  setWelcomeDismissed: (dismissed: boolean) => {
+    set({ welcomeDismissed: dismissed });
+    const { userId } = get();
+    if (!userId) return;
+    const supabase = createClient();
+    supabase
+      .from("user_settings")
+      .upsert({
+        user_id: userId,
+        settings_json: { welcomeDismissed: dismissed },
+        updated_at: new Date().toISOString(),
+      });
+  },
+
   reset: () => {
     set({
       wallpaper: "linear-gradient(135deg, #0f0c29, #302b63, #24243e)",
@@ -164,6 +190,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
       searchQuery: "",
       loaded: false,
       userId: null,
+      welcomeDismissed: false,
     });
   },
 }));
