@@ -46,7 +46,10 @@ The app expects these tables (no migration files in the repo):
 ```
 NEXT_PUBLIC_SUPABASE_URL=<url>
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon_key>
-DEEPSEEK_API_KEY=<optional, for AI chat>
+DEEPSEEK_API_KEY=<set to use DeepSeek>
+DEEPSEEK_MODEL=<optional, defaults to deepseek-v4-pro>
+ZAI_API_KEY=<set to use Z.ai GLM (mutually exclusive with DEEPSEEK_API_KEY)>
+ZAI_MODEL=<optional, defaults to glm-5.1>
 ```
 
 ## Gotchas

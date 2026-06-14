@@ -1,3 +1,5 @@
+export type AIProvider = 'deepseek' | 'zai';
+
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: string | null;
