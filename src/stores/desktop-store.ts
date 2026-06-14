@@ -104,7 +104,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     set({
       theme: data.theme || "dark",
       wallpaper: data.wallpaper || "linear-gradient(135deg, #0f0c29, #302b63, #24243e)",
-      welcomeDismissed: data.settings_json?.welcomeDismissed ?? false,
+      welcomeDismissed: localStorage.getItem(`mittenos:welcomeDismissed:${userId}`) === "true" || (data.settings_json?.welcomeDismissed ?? false),
       persistWindows: data.settings_json?.persistWindows ?? true,
       userId,
       loaded: true,
@@ -199,6 +199,9 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   setWelcomeDismissed: (dismissed: boolean) => {
     set({ welcomeDismissed: dismissed });
     const { userId, persistWindows } = get();
+    if (userId) {
+      localStorage.setItem(`mittenos:welcomeDismissed:${userId}`, String(dismissed));
+    }
     if (!userId) return;
     const supabase = createClient();
     supabase

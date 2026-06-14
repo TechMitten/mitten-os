@@ -151,8 +151,8 @@ export const APP_REGISTRY: Record<string, Omit<AppDefinition, "component">> = {
     icon: "Calculator",
     description: "Basic calculator",
     category: "utilities",
-    defaultWindowSize: { width: 350, height: 500 },
-    minWindowSize: { width: 300, height: 400 },
+    defaultWindowSize: { width: 350, height: 560 },
+    minWindowSize: { width: 300, height: 440 },
     singleton: true,
   },
   settings: {
