@@ -201,6 +201,7 @@ export default function Taskbar() {
                 <TooltipTrigger asChild>
                   <button
                     onClick={handleAppClick}
+                    data-taskbar-app={group.appId}
                     className={`
                       relative flex items-center justify-center w-9 h-9 rounded-lg
                       transition-colors duration-150 cursor-pointer

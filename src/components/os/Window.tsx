@@ -31,6 +31,10 @@ export function Window({ window: win, children, isActive }: WindowProps) {
   const [livePos, setLivePos] = useState({ x: 0, y: 0 });
   const [liveSize, setLiveSize] = useState({ width: 0, height: 0 });
   const [isClosing, setIsClosing] = useState(false);
+  const [isMinimizing, setIsMinimizing] = useState(false);
+  const isMinimizingRef = useRef(false);
+  const [minimizeTarget, setMinimizeTarget] = useState({ x: 0, y: 0, scale: 0.15 });
+  const windowRef = useRef<HTMLDivElement>(null);
 
   // Refs to always have the latest position/size available in mouseup
   // without reading them from setState callbacks (which run during render).
@@ -198,6 +202,31 @@ export function Window({ window: win, children, isActive }: WindowProps) {
     setTimeout(() => closeWindow(win.id), 200);
   }, [win.id, closeWindow]);
 
+  // --- MINIMIZE WITH ANIMATION ---
+  const handleMinimize = useCallback(() => {
+    const icon = document.querySelector(`[data-taskbar-app="${win.appId}"]`);
+    const winEl = windowRef.current;
+
+    if (icon && winEl) {
+      const iconRect = icon.getBoundingClientRect();
+      const winRect = winEl.getBoundingClientRect();
+
+      const winCenterX = winRect.left + winRect.width / 2;
+      const winCenterY = winRect.top + winRect.height / 2;
+      const iconCenterX = iconRect.left + iconRect.width / 2;
+      const iconCenterY = iconRect.top + iconRect.height / 2;
+
+      setMinimizeTarget({
+        x: iconCenterX - winCenterX,
+        y: iconCenterY - winCenterY,
+        scale: Math.max(iconRect.width / winRect.width, 0.08),
+      });
+    }
+
+    isMinimizingRef.current = true;
+    setIsMinimizing(true);
+  }, [win.appId]);
+
   // --- BRING TO FRONT ---
   const handleWindowMouseDown = useCallback(() => {
     if (!isActive) focusWindow(win.id);
@@ -240,10 +269,31 @@ export function Window({ window: win, children, isActive }: WindowProps) {
     <AnimatePresence>
       {!isClosing && (
         <motion.div
+          ref={windowRef}
           initial={{ opacity: 0, scale: 0.92, y: 10 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
+          animate={
+            isMinimizing
+              ? {
+                  opacity: 0,
+                  x: minimizeTarget.x,
+                  y: minimizeTarget.y,
+                  scale: minimizeTarget.scale,
+                }
+              : { opacity: 1, x: 0, y: 0, scale: 1 }
+          }
           exit={{ opacity: 0, scale: 0.92, y: 10 }}
-          transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+          transition={
+            isMinimizing
+              ? { duration: 0.3, ease: [0.4, 0, 1, 1] }
+              : { duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }
+          }
+          onAnimationComplete={() => {
+            if (isMinimizingRef.current) {
+              minimizeWindow(win.id);
+              setIsMinimizing(false);
+              isMinimizingRef.current = false;
+            }
+          }}
           style={windowStyle}
           className={`
             flex flex-col
@@ -291,36 +341,19 @@ export function Window({ window: win, children, isActive }: WindowProps) {
               className="flex items-center gap-1.5 ml-2 shrink-0"
               onMouseDown={(e) => e.stopPropagation()}
             >
-              {/* Close - Red */}
+              {/* Minimize - Orange */}
               <button
-                onClick={handleClose}
+                onClick={handleMinimize}
                 className="
                   w-3 h-3 rounded-full flex items-center justify-center
-                  bg-red-500 hover:bg-red-600
-                  transition-colors duration-150
-                  group
-                "
-                aria-label="Close window"
-              >
-                <X
-                  className="w-[7px] h-[7px] text-red-900 opacity-0 group-hover:opacity-100 transition-opacity"
-                  strokeWidth={3}
-                />
-              </button>
-
-              {/* Minimize - Yellow */}
-              <button
-                onClick={() => minimizeWindow(win.id)}
-                className="
-                  w-3 h-3 rounded-full flex items-center justify-center
-                  bg-yellow-500 hover:bg-yellow-600
+                  bg-orange-500 hover:bg-orange-600
                   transition-colors duration-150
                   group
                 "
                 aria-label="Minimize window"
               >
                 <Minus
-                  className="w-[7px] h-[7px] text-yellow-900 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="w-[7px] h-[7px] text-orange-900 opacity-0 group-hover:opacity-100 transition-opacity"
                   strokeWidth={3}
                 />
               </button>
@@ -347,6 +380,23 @@ export function Window({ window: win, children, isActive }: WindowProps) {
                     strokeWidth={2.5}
                   />
                 )}
+              </button>
+
+              {/* Close - Red */}
+              <button
+                onClick={handleClose}
+                className="
+                  w-3 h-3 rounded-full flex items-center justify-center
+                  bg-red-500 hover:bg-red-600
+                  transition-colors duration-150
+                  group
+                "
+                aria-label="Close window"
+              >
+                <X
+                  className="w-[7px] h-[7px] text-red-900 opacity-0 group-hover:opacity-100 transition-opacity"
+                  strokeWidth={3}
+                />
               </button>
             </div>
 
