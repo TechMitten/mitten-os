@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { DesktopIcon, Notification } from "@/types/os";
+import { createClient } from "@/lib/supabase/client";
 
 interface DesktopStore {
   wallpaper: string;
@@ -9,7 +10,10 @@ interface DesktopStore {
   startMenuOpen: boolean;
   contextMenu: ContextMenuState | null;
   searchQuery: string;
+  loaded: boolean;
+  userId: string | null;
 
+  loadSettings: (userId: string) => Promise<void>;
   setWallpaper: (url: string) => void;
   setTheme: (theme: "light" | "dark") => void;
   toggleTheme: () => void;
@@ -20,6 +24,7 @@ interface DesktopStore {
   markNotificationRead: (id: string) => void;
   clearNotifications: () => void;
   setSearchQuery: (query: string) => void;
+  reset: () => void;
 }
 
 export interface ContextMenuState {
@@ -55,10 +60,71 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   startMenuOpen: false,
   contextMenu: null,
   searchQuery: "",
+  loaded: false,
+  userId: null,
 
-  setWallpaper: (url: string) => set({ wallpaper: url }),
-  setTheme: (theme: "light" | "dark") => set({ theme }),
-  toggleTheme: () => set((state) => ({ theme: state.theme === "dark" ? "light" : "dark" })),
+  loadSettings: async (userId: string) => {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+      .from("user_settings")
+      .select("*")
+      .eq("user_id", userId)
+      .single();
+
+    if (error || !data) {
+      // Settings don't exist yet — use defaults and upsert
+      const state = get();
+      await supabase.from("user_settings").upsert({
+        user_id: userId,
+        theme: state.theme,
+        wallpaper: state.wallpaper,
+        updated_at: new Date().toISOString(),
+      });
+      set({ loaded: true, userId });
+      return;
+    }
+
+    set({
+      theme: data.theme || "dark",
+      wallpaper: data.wallpaper || "linear-gradient(135deg, #0f0c29, #302b63, #24243e)",
+      userId,
+      loaded: true,
+    });
+  },
+
+  setWallpaper: (url: string) => {
+    set({ wallpaper: url });
+    const { userId } = get();
+    if (!userId) return;
+    const supabase = createClient();
+    supabase
+      .from("user_settings")
+      .upsert({ user_id: userId, wallpaper: url, updated_at: new Date().toISOString() });
+  },
+
+  setTheme: (theme: "light" | "dark") => {
+    set({ theme });
+    const { userId } = get();
+    if (!userId) return;
+    const supabase = createClient();
+    supabase
+      .from("user_settings")
+      .upsert({ user_id: userId, theme, updated_at: new Date().toISOString() });
+  },
+
+  toggleTheme: () => {
+    const current = get().theme;
+    const next = current === "dark" ? "light" : "dark";
+    set({ theme: next });
+    const { userId } = get();
+    if (!userId) return;
+    const supabase = createClient();
+    supabase
+      .from("user_settings")
+      .upsert({ user_id: userId, theme: next, updated_at: new Date().toISOString() });
+  },
+
   setStartMenuOpen: (open: boolean) => set({ startMenuOpen: open }),
   toggleStartMenu: () => set((state) => ({ startMenuOpen: !state.startMenuOpen })),
   setContextMenu: (menu: ContextMenuState | null) => set({ contextMenu: menu }),
@@ -86,4 +152,55 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
 
   clearNotifications: () => set({ notifications: [] }),
   setSearchQuery: (query: string) => set({ searchQuery: query }),
+
+  reset: () => {
+    set({
+      wallpaper: "linear-gradient(135deg, #0f0c29, #302b63, #24243e)",
+      theme: "dark",
+      desktopIcons: defaultIcons,
+      notifications: [],
+      startMenuOpen: false,
+      contextMenu: null,
+      searchQuery: "",
+      loaded: false,
+      userId: null,
+    });
+  },
 }));
+
+// Standalone function for saving window states (called from Desktop)
+export async function saveWindowStates(userId: string, windows: import("@/types/os").OSWindow[]) {
+  const supabase = createClient();
+  const states = windows.map((w) => ({
+    appId: w.appId,
+    windowId: w.id,
+    title: w.title,
+    x: w.position.x,
+    y: w.position.y,
+    width: w.size.width,
+    height: w.size.height,
+    state: w.state,
+  }));
+  await supabase
+    .from("user_settings")
+    .upsert({ user_id: userId, window_states: states, updated_at: new Date().toISOString() });
+}
+
+export async function loadWindowStates(userId: string) {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("user_settings")
+    .select("window_states")
+    .eq("user_id", userId)
+    .single();
+  return (data?.window_states ?? []) as Array<{
+    appId: string;
+    windowId: string;
+    title: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    state: string;
+  }>;
+}

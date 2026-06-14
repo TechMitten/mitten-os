@@ -16,9 +16,11 @@ import {
   Store,
   CloudSun,
   Info,
+  User,
 } from 'lucide-react';
 import { useWindowStore } from '@/stores/window-store';
 import { useDesktopStore } from '@/stores/desktop-store';
+import { useAuthStore } from '@/stores/auth-store';
 import { APP_REGISTRY } from '@/types/os';
 import {
   Tooltip,
@@ -43,6 +45,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Sun,
   Moon,
   Bell,
+  User,
 };
 
 function Clock() {
@@ -99,6 +102,8 @@ export default function Taskbar() {
     toggleTheme,
     notifications,
   } = useDesktopStore();
+
+  const user = useAuthStore((s) => s.user);
 
   const unreadCount = useMemo(
     () => notifications.filter((n) => !n.read).length,
@@ -276,6 +281,21 @@ export default function Taskbar() {
               {theme === 'dark' ? 'Light mode' : 'Dark mode'}
             </TooltipContent>
           </Tooltip>
+
+          {/* User badge */}
+          {user && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-foreground/60 text-[11px]">
+                  <User className="w-3.5 h-3.5" />
+                  <span className="max-w-[80px] truncate hidden sm:block">
+                    {user.email?.split('@')[0]}
+                  </span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top">{user.email}</TooltipContent>
+            </Tooltip>
+          )}
 
           {/* Clock */}
           <Clock />

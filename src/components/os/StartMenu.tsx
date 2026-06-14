@@ -14,11 +14,14 @@ import {
   CloudSun,
   Info,
   Search,
-  Power,
+  LogOut,
   type LucideIcon,
 } from 'lucide-react';
 import { useDesktopStore } from '@/stores/desktop-store';
 import { useWindowStore } from '@/stores/window-store';
+import { useFileSystemStore } from '@/stores/filesystem-store';
+import { useAuthStore } from '@/stores/auth-store';
+import { saveWindowStates } from '@/stores/desktop-store';
 import { APP_REGISTRY } from '@/types/os';
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -141,8 +144,21 @@ export function StartMenu() {
           {/* Footer */}
           <div className="flex items-center justify-between p-3 border-t border-white/[0.06]">
             <span className="text-[11px] text-white/30">MittenOS</span>
-            <button className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors">
-              <Power className="w-4 h-4 text-white/40" />
+            <button
+              className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors cursor-pointer"
+              onClick={async () => {
+                setStartMenuOpen(false);
+                const userId = useAuthStore.getState().user?.id;
+                if (userId) {
+                  await saveWindowStates(userId, useWindowStore.getState().windows);
+                }
+                useFileSystemStore.getState().reset();
+                useDesktopStore.getState().reset();
+                await useAuthStore.getState().signOut();
+              }}
+              title="Sign out"
+            >
+              <LogOut className="w-4 h-4 text-white/40" />
             </button>
           </div>
         </motion.div>
