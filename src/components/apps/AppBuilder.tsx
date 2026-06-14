@@ -44,93 +44,6 @@ interface ConsoleEntry {
   timestamp: number;
 }
 
-const DEFAULT_SOURCE_FILES: Record<string, string> = {
-  'src/index.tsx': `import React from 'react';
-import { createRoot } from 'react-dom/client';
-import App from './App';
-
-const root = createRoot(document.getElementById('root')!);
-root.render(<App />);
-`,
-  'src/App.tsx': `import React, { useState } from 'react';
-import { mittenOS } from './mitten';
-
-export default function App() {
-  const [count, setCount] = useState(0);
-
-  return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      height: '100vh',
-      background: '#1a1a2e',
-      color: '#e0e0e0',
-      fontFamily: 'system-ui, sans-serif',
-      padding: '20px',
-      boxSizing: 'border-box',
-    }}>
-      <h1 style={{ fontSize: '32px', marginBottom: '10px' }}>
-        Hello from React + TypeScript!
-      </h1>
-      <p style={{ color: '#888', marginBottom: '30px' }}>
-        Build your app with the full power of React
-      </p>
-      <button
-        onClick={() => setCount(c => c + 1)}
-        style={{
-          padding: '12px 28px',
-          fontSize: '18px',
-          background: '#6366f1',
-          color: 'white',
-          border: 'none',
-          borderRadius: '8px',
-          cursor: 'pointer',
-          fontWeight: 600,
-          transition: 'background 0.2s',
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.background = '#4f46e5')}
-        onMouseLeave={(e) => (e.currentTarget.style.background = '#6366f1')}
-      >
-        Clicked {count} {count === 1 ? 'time' : 'times'}
-      </button>
-      <div style={{ marginTop: '20px', fontSize: '14px', color: '#666' }}>
-        <p>Import any package from esm.sh — like lodash, chart.js, or zustand!</p>
-      </div>
-    </div>
-  );
-}
-`,
-  'src/mitten.ts': `const OS = (window as any).mittenOS;
-
-export const mittenOS = OS || {
-  window: {
-    setTitle: (t: string) => document.title = t,
-    close: () => {},
-    minimize: () => {},
-  },
-  fs: {
-    readFile: async (path: string) => null,
-    writeFile: async (path: string, content: string) => {},
-    listDir: async (path: string) => [] as string[],
-  },
-  notifications: {
-    show: (t: string, m: string) => {},
-  },
-  apps: {
-    open: (id: string) => {},
-  },
-};
-`,
-  'package.json': JSON.stringify({
-    name: 'my-react-app',
-    version: '1.0.0',
-    description: 'A React app built with MittenOS',
-    author: '',
-  }, null, 2),
-};
-
 function getFileIcon(filename: string): React.ReactNode {
   if (filename.endsWith('.tsx') || filename.endsWith('.jsx')) {
     return <FileText className="w-3.5 h-3.5 text-blue-400" />;
@@ -155,9 +68,9 @@ export function AppBuilder() {
     icon: '📦',
     category: 'utilities',
   });
-  const [sourceFiles, setSourceFiles] = useState<Record<string, string>>({ ...DEFAULT_SOURCE_FILES });
-  const [openFiles, setOpenFiles] = useState<string[]>(['src/App.tsx']);
-  const [activeFile, setActiveFile] = useState('src/App.tsx');
+  const [sourceFiles, setSourceFiles] = useState<Record<string, string>>({});
+  const [openFiles, setOpenFiles] = useState<string[]>([]);
+  const [activeFile, setActiveFile] = useState('');
   const [showFiles, setShowFiles] = useState(true);
   const [rightPanel, setRightPanel] = useState<'chat' | 'preview'>('chat');
   const [showConsole, setShowConsole] = useState(false);
@@ -168,7 +81,13 @@ export function AppBuilder() {
   const [previewKey, setPreviewKey] = useState(0);
   const [editingFilename, setEditingFilename] = useState<string | null>(null);
   const [newFilenameValue, setNewFilenameValue] = useState('');
+  const [creatingNode, setCreatingNode] = useState<{ type: 'file' | 'folder'; parentPath: string } | null>(null);
+  const [creatingName, setCreatingName] = useState('');
   const [compileError, setCompileError] = useState<string | null>(null);
+  const [rightPanelWidth, setRightPanelWidth] = useState(400);
+  const [isResizing, setIsResizing] = useState(false);
+  const [fileTreeWidth, setFileTreeWidth] = useState(208);
+  const [isResizingFileTree, setIsResizingFileTree] = useState(false);
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   const addNotification = useDesktopStore((s) => s.addNotification);
   const theme = useDesktopStore((s) => s.theme);
@@ -183,10 +102,21 @@ export function AppBuilder() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const approvalResolveRef = useRef<((approved: ToolCall[]) => void) | null>(null);
   const chatContainerRef = useRef<HTMLDivElement | null>(null);
+  const creatingInputRef = useRef<HTMLInputElement | null>(null);
+  const creatingInputFocusedRef = useRef(false);
 
   useEffect(() => {
     sourceFilesRef.current = sourceFiles;
   }, [sourceFiles]);
+
+  useEffect(() => {
+    if (creatingNode && creatingInputRef.current) {
+      creatingInputFocusedRef.current = false;
+      requestAnimationFrame(() => {
+        creatingInputRef.current?.focus();
+      });
+    }
+  }, [creatingNode, showFiles]);
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -207,6 +137,16 @@ export function AppBuilder() {
         tree[dir].dirs.push(filename);
       } else {
         tree[dir].files.push(filename);
+      }
+    }
+    for (const dir of Object.keys(tree)) {
+      if (dir === '.') continue;
+      const parts = dir.split('/');
+      const parent = parts.length > 1 ? parts.slice(0, -1).join('/') : '.';
+      const dirname = parts[parts.length - 1];
+      if (!tree[parent]) tree[parent] = { files: [], dirs: [] };
+      if (!tree[parent].dirs.includes(dirname)) {
+        tree[parent].dirs.push(dirname);
       }
     }
     return tree;
@@ -326,36 +266,63 @@ export function AppBuilder() {
 
   const handleNewFile = useCallback(() => {
     let basePath = activeFile.includes('/')
-      ? activeFile.split('/').slice(0, -1).join('/') + '/'
-      : '';
-    let name = 'untitled.tsx';
-    let counter = 1;
-    while (sourceFiles[basePath + name]) {
-      name = `untitled-${counter}.tsx`;
-      counter++;
+      ? activeFile.split('/').slice(0, -1).join('/')
+      : '.';
+    setCreatingNode({ type: 'file', parentPath: basePath });
+    setCreatingName('');
+    if (basePath !== '.') {
+      setCollapsedDirs((prev) => {
+        const next = new Set(prev);
+        next.delete(basePath);
+        return next;
+      });
     }
-    const fullPath = basePath + name;
-    setSourceFiles((prev) => ({ ...prev, [fullPath]: '' }));
-    setActiveFile(fullPath);
-    setOpenFiles((prev) => [...prev, fullPath]);
-  }, [activeFile, sourceFiles]);
+  }, [activeFile]);
 
   const handleNewFolder = useCallback(() => {
     let basePath = activeFile.includes('/')
-      ? activeFile.split('/').slice(0, -1).join('/') + '/'
-      : '';
-    let name = 'new-folder';
-    let counter = 1;
-    while (sourceFiles[basePath + name] !== undefined) {
-      name = `new-folder-${counter}`;
-      counter++;
+      ? activeFile.split('/').slice(0, -1).join('/')
+      : '.';
+    setCreatingNode({ type: 'folder', parentPath: basePath });
+    setCreatingName('');
+    if (basePath !== '.') {
+      setCollapsedDirs((prev) => {
+        const next = new Set(prev);
+        next.delete(basePath);
+        return next;
+      });
     }
-    setSourceFiles((prev) => {
-      const next = { ...prev };
-      next[basePath + name] = '__DIR__';
-      return next;
-    });
-  }, [activeFile, sourceFiles]);
+  }, [activeFile]);
+
+  const handleCreateConfirm = useCallback(() => {
+    if (!creatingNode || !creatingName.trim()) {
+      setCreatingNode(null);
+      return;
+    }
+    const parentPath = creatingNode.parentPath;
+    const prefix = parentPath === '.' ? '' : parentPath + '/';
+    const name = creatingName.trim();
+    const fullPath = prefix + name;
+
+    if (creatingNode.type === 'file') {
+      setSourceFiles((prev) => ({ ...prev, [fullPath]: '' }));
+      setActiveFile(fullPath);
+      setOpenFiles((prev) => [...prev, fullPath]);
+    } else {
+      setSourceFiles((prev) => {
+        const next = { ...prev };
+        next[fullPath] = '__DIR__';
+        return next;
+      });
+    }
+    setCreatingNode(null);
+    setCreatingName('');
+  }, [creatingNode, creatingName]);
+
+  const handleCreateCancel = useCallback(() => {
+    setCreatingNode(null);
+    setCreatingName('');
+  }, []);
 
   const handleDeleteFile = useCallback(
     (path: string) => {
@@ -642,6 +609,58 @@ export function AppBuilder() {
     }
   }, []);
 
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = rightPanelWidth;
+
+    const onMouseMove = (moveEv: MouseEvent) => {
+      const delta = startX - moveEv.clientX;
+      const newWidth = Math.max(250, Math.min(800, startWidth + delta));
+      setRightPanelWidth(newWidth);
+    };
+
+    const onMouseUp = () => {
+      setIsResizing(false);
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    setIsResizing(true);
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  }, [rightPanelWidth]);
+
+  const handleFileTreeResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = fileTreeWidth;
+
+    const onMouseMove = (moveEv: MouseEvent) => {
+      const delta = moveEv.clientX - startX;
+      const newWidth = Math.max(120, Math.min(500, startWidth + delta));
+      setFileTreeWidth(newWidth);
+    };
+
+    const onMouseUp = () => {
+      setIsResizingFileTree(false);
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    setIsResizingFileTree(true);
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  }, [fileTreeWidth]);
+
   const handleSendMessage = useCallback(() => {
     if (!chatInput.trim() || isGenerating) return;
     runAgentLoop(chatInput.trim());
@@ -741,6 +760,41 @@ export function AppBuilder() {
                 </div>
               );
             })}
+            {creatingNode && creatingNode.parentPath === dirPath && (
+              <div
+                className="flex items-center gap-1 px-2 py-0.5 text-xs"
+                style={{ paddingLeft: `${8 + depth * 12 + 12}px` }}
+              >
+                {creatingNode.type === 'folder' ? (
+                  <Folder className="w-3.5 h-3.5 text-yellow-500 shrink-0" />
+                ) : (
+                  <FileText className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                )}
+                <input
+                  ref={creatingInputRef}
+                  className="bg-accent/70 text-foreground text-xs px-1 py-0 outline-none border border-purple-500 rounded flex-1 min-w-0"
+                  value={creatingName}
+                  onChange={(e) => setCreatingName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleCreateConfirm();
+                    } else if (e.key === 'Escape') {
+                      handleCreateCancel();
+                    }
+                  }}
+                  onFocus={() => { creatingInputFocusedRef.current = true; }}
+                  onBlur={() => {
+                    if (!creatingInputFocusedRef.current) return;
+                    if (creatingName.trim()) {
+                      handleCreateConfirm();
+                    } else {
+                      handleCreateCancel();
+                    }
+                  }}
+                  placeholder={creatingNode.type === 'folder' ? 'folder-name' : 'file.tsx'}
+                />
+              </div>
+            )}
           </>
         )}
       </div>
@@ -760,7 +814,10 @@ export function AppBuilder() {
         </div>
         <div className="flex-1" />
         <button
-          onClick={handleRefreshPreview}
+          onClick={() => {
+            if (rightPanel !== 'preview') setRightPanel('preview');
+            handleRefreshPreview();
+          }}
           className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
             rightPanel === 'preview'
               ? 'bg-blue-500/20 text-blue-700 dark:text-blue-300'
@@ -801,7 +858,10 @@ export function AppBuilder() {
 
       <div className="flex flex-1 overflow-hidden min-h-0">
         {showFiles && (
-          <div className="w-52 border-r border-border flex flex-col shrink-0">
+          <div
+            className="border-r border-border flex flex-col shrink-0"
+            style={{ width: fileTreeWidth }}
+          >
             <div className="flex items-center justify-between px-3 py-1.5 border-b border-border">
               <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</span>
               <div className="flex items-center gap-1">
@@ -825,6 +885,15 @@ export function AppBuilder() {
               {renderFileTreeDir('.')}
             </div>
           </div>
+        )}
+
+        {showFiles && (
+          <div
+            className={`w-1 cursor-col-resize hover:bg-purple-500/50 transition-colors shrink-0 ${
+              isResizingFileTree ? 'bg-purple-500/80' : 'bg-border/30'
+            }`}
+            onMouseDown={handleFileTreeResizeStart}
+          />
         )}
 
         <div className="flex-1 flex flex-col min-w-0">
@@ -950,7 +1019,17 @@ export function AppBuilder() {
           )}
         </div>
 
-        <div className="w-[400px] border-l border-border flex flex-col shrink-0">
+        <div
+          className={`w-1 cursor-col-resize hover:bg-purple-500/50 transition-colors shrink-0 ${
+            isResizing ? 'bg-purple-500/80' : 'bg-border/30'
+          }`}
+          onMouseDown={handleResizeStart}
+        />
+
+        <div
+          className={`shrink-0 border-l border-border flex flex-col ${isResizing ? '' : ''}`}
+          style={{ width: rightPanelWidth }}
+        >
           {rightPanel === 'preview' ? (
             <>
               <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-background">
@@ -977,75 +1056,94 @@ export function AppBuilder() {
             </>
           ) : (
             <>
-              <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-background">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                  <span className="text-xs font-medium text-foreground/70">AI Chat</span>
-                  {isGenerating && (
-                    <span className="text-[10px] text-purple-600 dark:text-purple-400 flex items-center gap-1">
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                      Generating...
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setAutoApprove(!autoApprove)}
-                    className={`flex items-center gap-1 text-[10px] px-2 py-0.5 rounded transition-colors ${
-                      autoApprove
-                        ? 'bg-green-500/20 text-green-700 dark:text-green-400'
-                        : 'bg-accent/50 text-foreground/40 hover:text-foreground/80'
-                    }`}
-                    title="When enabled, AI changes are applied automatically"
-                  >
-                    Auto-approve
-                  </button>
-                  {isGenerating && (
-                    <button
-                      onClick={handleStopGeneration}
-                      className="p-0.5 hover:bg-accent/60 rounded text-red-400"
-                      title="Stop generation"
-                    >
-                      <StopCircle className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                  <button
-                    onClick={() => setRightPanel('preview')}
-                    className="p-0.5 hover:bg-accent/60 rounded text-muted-foreground hover:text-foreground"
-                    title="Switch to preview"
-                  >
-                    <Play className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-3 space-y-3">
-                {chatMessages.length === 0 && (
-                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground/70 text-xs gap-3 px-4">
-                    <Sparkles className="w-8 h-8 text-purple-600/40 dark:text-purple-400/40" />
-                    <div className="text-center space-y-1">
-                      <p className="text-foreground/40 font-medium">What would you like to build?</p>
-                      <p className="text-muted-foreground/50 leading-relaxed">
-                        I can create React + TypeScript apps with surgical edits, file management, and package imports from esm.sh.
-                      </p>
+                <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/40 bg-muted/50 shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-md bg-purple-500/20 flex items-center justify-center shadow-[0_0_6px_rgba(168,85,247,0.15)]">
+                      <Sparkles className="w-3 h-3 text-purple-400" />
                     </div>
-                    <div className="flex flex-wrap gap-1.5 mt-1">
+                    <span className="text-xs font-semibold text-foreground/90">AI Chat</span>
+                    {isGenerating && (
+                      <span className="text-[10px] text-purple-600 dark:text-purple-400 flex items-center gap-1 animate-pulse">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Generating...
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setAutoApprove(!autoApprove)}
+                      className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded-md transition-all ${
+                        autoApprove
+                          ? 'bg-green-500/20 text-green-400 border border-green-500/25 shadow-[0_0_6px_rgba(34,197,94,0.1)]'
+                          : 'bg-muted/60 text-foreground/35 hover:text-foreground/60 border border-border/30 hover:border-border/50'
+                      }`}
+                      title="When enabled, AI changes are applied automatically"
+                    >
+                      <div className={`w-1.5 h-1.5 rounded-full ${autoApprove ? 'bg-green-400 shadow-[0_0_4px_rgba(34,197,94,0.5)]' : 'bg-foreground/20'}`} />
+                      Auto-approve
+                    </button>
+                    {isGenerating && (
+                      <button
+                        onClick={handleStopGeneration}
+                        className="p-1 rounded-md bg-red-500/15 text-red-400 hover:bg-red-500/25 transition-colors"
+                        title="Stop generation"
+                      >
+                        <StopCircle className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setRightPanel('preview')}
+                      className="p-1 rounded-md hover:bg-accent/50 text-muted-foreground hover:text-foreground transition-colors"
+                      title="Switch to preview"
+                    >
+                      <Play className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+              <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-muted/30">
+                {chatMessages.length === 0 && (
+                  <div className="flex flex-col items-center justify-center h-full text-center px-2">
+                    <div className="relative mb-5">
+                      <div className="absolute inset-0 bg-purple-500/20 rounded-full blur-2xl" />
+                      <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500/25 to-purple-600/10 border border-purple-500/25 flex items-center justify-center shadow-[0_4px_16px_rgba(139,92,246,0.15)]">
+                        <Sparkles className="w-8 h-8 text-purple-300 drop-shadow-[0_0_6px_rgba(139,92,246,0.4)]" />
+                      </div>
+                    </div>
+                    <h3 className="text-sm font-semibold text-foreground/80 mb-1.5">
+                      What would you like to build?
+                    </h3>
+                    <p className="text-xs text-muted-foreground/60 leading-relaxed max-w-xs mb-5">
+                      Describe your app idea and I&apos;ll generate React + TypeScript code with file management and esm.sh package imports.
+                    </p>
+                    <div className="grid grid-cols-1 gap-2 w-full max-w-xs">
                       {[
-                        'Build a dark-themed todo app with local storage',
-                        'Create a markdown editor with live preview',
-                        'Build a weather dashboard using a free API',
+                        { title: 'Todo App', desc: 'Dark-themed with local storage' },
+                        { title: 'Markdown Editor', desc: 'Split-pane with live preview' },
+                        { title: 'Weather Dashboard', desc: 'Free API integration' },
+                        { title: 'Pomodoro Timer', desc: 'Customizable work/break cycles' },
                       ].map((suggestion) => (
                         <button
-                          key={suggestion}
+                          key={suggestion.title}
                           onClick={() => {
                             if (!isGenerating) {
-                              setChatInput(suggestion);
+                              setChatInput(`Build a ${suggestion.title.toLowerCase()} — ${suggestion.desc}`);
                             }
                           }}
                           disabled={isGenerating}
-                          className="text-[10px] px-2 py-1 rounded-full bg-accent/50 hover:bg-accent/60 text-foreground/40 hover:text-foreground/70 transition-colors text-left disabled:opacity-30"
+                          className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-muted/60 hover:bg-muted/80 border border-border/40 hover:border-purple-500/25 transition-all text-left disabled:opacity-30 group shadow-[0_1px_2px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_8px_rgba(139,92,246,0.08)]"
                         >
-                          {suggestion}
+                          <div className="w-7 h-7 rounded-lg bg-purple-500/15 flex items-center justify-center shrink-0 group-hover:bg-purple-500/25 transition-colors shadow-[0_0_4px_rgba(139,92,246,0.1)]">
+                            <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium text-foreground/70 group-hover:text-foreground/90 transition-colors">
+                              {suggestion.title}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground/50 truncate">
+                              {suggestion.desc}
+                            </p>
+                          </div>
                         </button>
                       ))}
                     </div>
@@ -1059,36 +1157,36 @@ export function AppBuilder() {
                   const hasToolCalls = isAssistant && msg.tool_calls && msg.tool_calls.length > 0;
 
                   return (
-                    <div key={i} className={`flex gap-2 ${isUser ? 'flex-row-reverse' : ''}`}>
+                    <div key={i} className={`flex gap-2.5 ${isUser ? 'flex-row-reverse' : ''} animate-in fade-in slide-in-from-bottom-1 duration-200`}>
                       <div
-                        className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[10px] ${
+                        className={`shrink-0 w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-semibold ${
                           isUser
-                            ? 'bg-purple-500/30 text-purple-700 dark:text-purple-300'
-                            : 'bg-accent/70 text-muted-foreground'
+                            ? 'bg-purple-500/20 text-purple-400 shadow-[0_0_6px_rgba(139,92,246,0.12)]'
+                            : 'bg-gradient-to-br from-purple-500/25 to-purple-600/10 text-purple-300 border border-purple-500/25 shadow-[0_0_6px_rgba(139,92,246,0.1)]'
                         }`}
                       >
                         {isUser ? 'U' : 'AI'}
                       </div>
                       <div className={`flex-1 min-w-0 ${isUser ? 'flex justify-end' : ''}`}>
                         <div
-                          className={`inline-block max-w-full rounded-lg px-3 py-2 text-xs ${
+                          className={`inline-block max-w-full rounded-xl px-3 py-2 text-xs leading-relaxed ${
                             isUser
-                              ? 'bg-purple-500/15 text-purple-200'
-                              : 'bg-accent/40 text-foreground/75'
+                              ? 'bg-purple-500/20 text-purple-100 rounded-tr-md shadow-[0_1px_3px_rgba(139,92,246,0.1)]'
+                              : 'bg-accent/50 text-foreground/85 rounded-tl-md shadow-[0_1px_2px_rgba(0,0,0,0.06)]'
                           }`}
                         >
                           {msg.content && (
-                            <div className="whitespace-pre-wrap break-words leading-relaxed">
+                            <div className="whitespace-pre-wrap break-words">
                               {msg.content}
                             </div>
                           )}
                           {hasToolCalls && (
-                            <div className={msg.content ? 'mt-2 pt-2 border-t border-border' : ''}>
+                            <div className={msg.content ? 'mt-2 pt-2 border-t border-border/50' : ''}>
                               {msg.tool_calls!.map((tc, j) => (
                                 <div key={j} className="flex items-center gap-1.5 py-0.5 text-[10px]">
-                                  <span className="text-green-600/80 dark:text-green-400/80">⚡</span>
-                                  <code className="text-purple-700/80 dark:text-purple-300/80">{tc.function.name}</code>
-                                  <span className="text-muted-foreground/70 truncate">
+                                  <span className="text-green-500/70">&#x26A1;</span>
+                                  <code className="text-purple-400/80">{tc.function.name}</code>
+                                  <span className="text-muted-foreground/50 truncate">
                                     {(() => {
                                       try {
                                         const a = JSON.parse(tc.function.arguments);
@@ -1109,33 +1207,38 @@ export function AppBuilder() {
                 })}
 
                 {pendingApprovals.length > 0 && (
-                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 space-y-2">
+                  <div className="bg-amber-950/20 border border-amber-500/20 rounded-xl p-3 space-y-2.5 animate-in fade-in slide-in-from-bottom-1 duration-200 shadow-[0_1px_3px_rgba(245,158,11,0.06)]">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-amber-700 dark:text-amber-400 font-medium">
-                        Pending Changes ({pendingApprovals.length})
-                      </span>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 rounded-md bg-amber-500/15 flex items-center justify-center">
+                          <span className="text-amber-400 text-[10px]">&#x26A1;</span>
+                        </div>
+                        <span className="text-xs text-amber-400/90 font-semibold">
+                          Pending Changes ({pendingApprovals.length})
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
                         <button
                           onClick={handleApproveAll}
-                          className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-green-500/20 text-green-700 dark:text-green-400 hover:bg-green-500/30 transition-colors"
+                          className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-md bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors font-medium shadow-[0_0_4px_rgba(34,197,94,0.08)]"
                         >
                           <Check className="w-3 h-3" />
                           Approve All
                         </button>
                         <button
                           onClick={handleRejectAll}
-                          className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-500/30 transition-colors"
+                          className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-md bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors font-medium shadow-[0_0_4px_rgba(239,68,68,0.08)]"
                         >
                           <X className="w-3 h-3" />
                           Reject All
                         </button>
                       </div>
                     </div>
+                    <div className="border-t border-amber-500/10 pt-2">
                     {pendingApprovals.map((p, j) => (
-                      <div key={j} className="flex items-center gap-1.5 text-[10px] text-foreground/60">
-                        <span className="text-amber-700/80 dark:text-amber-400/80">⚡</span>
-                        <code className="text-amber-700/80 dark:text-amber-300/80">{p.toolCall.function.name}</code>
-                        <span className="text-foreground/40 truncate">
+                      <div key={j} className="flex items-center gap-1.5 text-[10px] py-0.5 pl-0.5">
+                        <code className="text-amber-400/80 font-mono bg-amber-500/10 px-1 py-0.5 rounded">{p.toolCall.function.name}</code>
+                        <span className="text-foreground/30 truncate">
                           {(() => {
                             try {
                               const a = JSON.parse(p.toolCall.function.arguments);
@@ -1147,24 +1250,25 @@ export function AppBuilder() {
                         </span>
                       </div>
                     ))}
+                    </div>
                   </div>
                 )}
 
                 {streamingText && (
-                  <div className="flex gap-2">
-                    <div className="shrink-0 w-6 h-6 rounded-full bg-accent/70 flex items-center justify-center text-[10px] text-muted-foreground">AI</div>
+                  <div className="flex gap-2.5 animate-in fade-in slide-in-from-bottom-1 duration-200">
+                    <div className="shrink-0 w-6 h-6 rounded-lg bg-gradient-to-br from-purple-500/25 to-purple-600/10 border border-purple-500/25 flex items-center justify-center text-[10px] text-purple-300 font-semibold shadow-[0_0_6px_rgba(139,92,246,0.1)]">AI</div>
                     <div className="flex-1 min-w-0">
-                      <div className="inline-block max-w-full rounded-lg px-3 py-2 text-xs bg-accent/40 text-foreground/75">
-                        <div className="whitespace-pre-wrap break-words leading-relaxed">{streamingText}</div>
-                        <span className="inline-block w-1.5 h-3.5 bg-purple-400 animate-pulse ml-0.5 align-text-bottom" />
+                      <div className="inline-block max-w-full rounded-xl rounded-tl-md px-3 py-2 text-xs bg-accent/50 text-foreground/85 leading-relaxed shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
+                        <div className="whitespace-pre-wrap break-words">{streamingText}</div>
+                        <span className="inline-block w-1.5 h-3.5 bg-purple-400/80 animate-pulse ml-0.5 align-text-bottom rounded-sm" />
                       </div>
                     </div>
                   </div>
                 )}
               </div>
 
-              <div className="border-t border-border p-3 bg-background">
-                <div className="flex items-start gap-2">
+              <div className="border-t border-border/40 p-3 bg-muted/50 shadow-[0_-1px_3px_rgba(0,0,0,0.06)]">
+                <div className="flex items-center gap-2">
                   <textarea
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
@@ -1175,14 +1279,14 @@ export function AppBuilder() {
                       }
                     }}
                     placeholder="Describe the app you want to build..."
-                    rows={2}
+                    rows={3}
                     disabled={isGenerating}
-                    className="flex-1 bg-accent/50 text-foreground text-xs rounded-lg px-3 py-2 outline-none border border-input focus:border-purple-600/50 dark:focus:border-purple-500/50 resize-none placeholder:text-muted-foreground/50 disabled:opacity-40"
+                    className="flex-1 bg-background/70 text-foreground text-xs rounded-xl px-3.5 py-2.5 outline-none ring-1 ring-border/40 focus:ring-purple-500/30 focus:bg-background/90 resize-none placeholder:text-muted-foreground/35 disabled:opacity-30 transition-all shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
                   />
                   {isGenerating ? (
                     <button
                       onClick={handleStopGeneration}
-                      className="p-2 rounded-lg bg-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-500/30 transition-colors shrink-0"
+                      className="p-2.5 rounded-xl bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors shrink-0 ring-1 ring-red-500/25 shadow-[0_0_8px_rgba(239,68,68,0.08)]"
                       title="Stop"
                     >
                       <StopCircle className="w-4 h-4" />
@@ -1191,7 +1295,7 @@ export function AppBuilder() {
                     <button
                       onClick={handleSendMessage}
                       disabled={!chatInput.trim()}
-                      className="p-2 rounded-lg bg-purple-500/20 text-purple-600 dark:text-purple-400 hover:bg-purple-500/30 transition-colors shrink-0 disabled:opacity-30"
+                      className="p-2.5 rounded-xl bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors shrink-0 disabled:opacity-20 ring-1 ring-purple-500/25 disabled:ring-transparent shadow-[0_0_8px_rgba(139,92,246,0.1)] disabled:shadow-none"
                       title="Send"
                     >
                       <Send className="w-4 h-4" />
