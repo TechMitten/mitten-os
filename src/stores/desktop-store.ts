@@ -113,12 +113,12 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
 
   setWallpaper: (url: string) => {
     set({ wallpaper: url });
-    const { userId } = get();
+    const { userId, welcomeDismissed, persistWindows } = get();
     if (!userId) return;
     const supabase = createClient();
     supabase
       .from("user_settings")
-      .upsert({ user_id: userId, wallpaper: url, updated_at: new Date().toISOString() });
+      .upsert({ user_id: userId, wallpaper: url, settings_json: { welcomeDismissed, persistWindows }, updated_at: new Date().toISOString() });
   },
 
   setTheme: (theme: "light" | "dark") => {
@@ -127,12 +127,12 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
         ? "linear-gradient(135deg, #c9d6ff, #e2e2e2)"
         : "linear-gradient(135deg, #0f0c29, #302b63, #24243e)";
     set({ theme, wallpaper });
-    const { userId } = get();
+    const { userId, welcomeDismissed, persistWindows } = get();
     if (!userId) return;
     const supabase = createClient();
     supabase
       .from("user_settings")
-      .upsert({ user_id: userId, theme, wallpaper, updated_at: new Date().toISOString() });
+      .upsert({ user_id: userId, theme, wallpaper, settings_json: { welcomeDismissed, persistWindows }, updated_at: new Date().toISOString() });
   },
 
   toggleTheme: () => {
@@ -143,12 +143,12 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
         ? "linear-gradient(135deg, #c9d6ff, #e2e2e2)"
         : "linear-gradient(135deg, #0f0c29, #302b63, #24243e)";
     set({ theme: next, wallpaper });
-    const { userId } = get();
+    const { userId, welcomeDismissed, persistWindows } = get();
     if (!userId) return;
     const supabase = createClient();
     supabase
       .from("user_settings")
-      .upsert({ user_id: userId, theme: next, wallpaper, updated_at: new Date().toISOString() });
+      .upsert({ user_id: userId, theme: next, wallpaper, settings_json: { welcomeDismissed, persistWindows }, updated_at: new Date().toISOString() });
   },
 
   setStartMenuOpen: (open: boolean) => set({ startMenuOpen: open }),
@@ -244,6 +244,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
 // Standalone function for saving window states (called from Desktop)
 export async function saveWindowStates(userId: string, windows: import("@/types/os").OSWindow[]) {
   const supabase = createClient();
+  const { welcomeDismissed, persistWindows } = useDesktopStore.getState();
   const states = windows.map((w) => ({
     appId: w.appId,
     windowId: w.id,
@@ -256,7 +257,7 @@ export async function saveWindowStates(userId: string, windows: import("@/types/
   }));
   await supabase
     .from("user_settings")
-    .upsert({ user_id: userId, window_states: states, updated_at: new Date().toISOString() });
+    .upsert({ user_id: userId, window_states: states, settings_json: { welcomeDismissed, persistWindows }, updated_at: new Date().toISOString() });
 }
 
 export async function loadWindowStates(userId: string) {
@@ -280,13 +281,14 @@ export async function loadWindowStates(userId: string) {
 
 export async function saveIconPositions(userId: string, icons: DesktopIcon[]) {
   const supabase = createClient();
+  const { welcomeDismissed, persistWindows } = useDesktopStore.getState();
   const positions: Record<string, WindowPosition> = {};
   for (const icon of icons) {
     positions[icon.id] = icon.position;
   }
   await supabase
     .from("user_settings")
-    .upsert({ user_id: userId, icon_positions: positions, updated_at: new Date().toISOString() });
+    .upsert({ user_id: userId, icon_positions: positions, settings_json: { welcomeDismissed, persistWindows }, updated_at: new Date().toISOString() });
 }
 
 export async function loadIconPositions(userId: string) {

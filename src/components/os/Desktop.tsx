@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useDesktopStore, type ContextMenuItem, saveWindowStates, loadWindowStates, saveIconPositions, loadIconPositions as fetchIconPositions } from '@/stores/desktop-store';
+import { useDesktopStore, type ContextMenuItem, loadWindowStates, saveIconPositions, loadIconPositions as fetchIconPositions } from '@/stores/desktop-store';
 import { useWindowStore } from '@/stores/window-store';
 import { useFileSystemStore } from '@/stores/filesystem-store';
 import { useAuthStore } from '@/stores/auth-store';
+import { createClient } from '@/lib/supabase/client';
 import { ContextMenu } from '@/components/os/ContextMenu';
 import { DesktopIcon } from '@/components/os/DesktopIcon';
 import Window from '@/components/os/Window';
@@ -157,11 +158,34 @@ export function Desktop() {
   });
   useEffect(() => {
     if (!user?.id || !dataLoaded) return;
-    const interval = setInterval(() => {
-      if (useDesktopStore.getState().persistWindows) {
-        saveWindowStates(user.id, windowsRef.current);
+    const interval = setInterval(async () => {
+      const { persistWindows, welcomeDismissed } = useDesktopStore.getState();
+      const states = persistWindows ? windowsRef.current.map((w) => ({
+        appId: w.appId,
+        windowId: w.id,
+        title: w.title,
+        x: w.position.x,
+        y: w.position.y,
+        width: w.size.width,
+        height: w.size.height,
+        state: w.state,
+      })) : undefined;
+
+      const positions: Record<string, { x: number; y: number }> = {};
+      for (const icon of iconsRef.current) {
+        positions[icon.id] = icon.position;
       }
-      saveIconPositions(user.id, iconsRef.current);
+
+      const supabase = createClient();
+      await supabase
+        .from('user_settings')
+        .upsert({
+          user_id: user.id,
+          ...(states ? { window_states: states } : {}),
+          icon_positions: positions,
+          settings_json: { welcomeDismissed, persistWindows },
+          updated_at: new Date().toISOString(),
+        });
     }, 10000);
     return () => clearInterval(interval);
   }, [user?.id, dataLoaded]);
