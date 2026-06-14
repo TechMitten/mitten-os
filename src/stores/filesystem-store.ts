@@ -36,7 +36,7 @@ const createDefaultFS = (): FSNode => {
             id: "welcome-txt",
             name: "welcome.txt",
             type: "file",
-            content: "Welcome to Z.ai OS!\n\nThis is your browser-based operating system.\nFeel free to explore the apps and features.\n\nTips:\n- Right-click on the desktop for options\n- Use the taskbar at the bottom to manage windows\n- Open the App Store to discover more apps\n",
+            content: "Welcome to MittenOS!\n\nThis is your browser-based operating system.\nFeel free to explore the apps and features.\n\nTips:\n- Right-click on the desktop for options\n- Use the taskbar at the bottom to manage windows\n- Open the App Store to discover more apps\n",
             parentId: "desktop",
             createdAt: now,
             modifiedAt: now,

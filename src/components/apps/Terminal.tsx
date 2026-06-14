@@ -22,7 +22,7 @@ export function Terminal() {
   const fsStore = useFileSystemStore();
 
   const [lines, setLines] = useState<TerminalLine[]>([
-    { type: 'output', text: 'Welcome to Z.ai OS Terminal v1.0.0' },
+    { type: 'output', text: 'Welcome to MittenOS Terminal v1.0.0' },
     { type: 'output', text: 'Type "help" for available commands.\n' },
   ]);
   const [currentInput, setCurrentInput] = useState('');
@@ -67,7 +67,7 @@ export function Terminal() {
       if (!trimmed) {
         setLines((prev) => [
           ...prev,
-          { type: 'input', text: `user@zai-os:${getPathDisplay()}$ ` },
+          { type: 'input', text: `user@mittenos:${getPathDisplay()}$ ` },
         ]);
         return;
       }
@@ -75,7 +75,7 @@ export function Terminal() {
       // Add input line
       setLines((prev) => [
         ...prev,
-        { type: 'input', text: `user@zai-os:${getPathDisplay()}$ ${trimmed}` },
+        { type: 'input', text: `user@mittenos:${getPathDisplay()}$ ${trimmed}` },
       ]);
 
       // Add to history
@@ -127,7 +127,7 @@ export function Terminal() {
           break;
 
         case 'hostname':
-          output = [{ type: 'output', text: 'zai-os' }];
+          output = [{ type: 'output', text: 'mittenos' }];
           break;
 
         case 'pwd': {
@@ -255,10 +255,10 @@ export function Terminal() {
           output = [
             { type: 'output', text: NEOFETCH_ASCII },
             { type: 'output', text: '' },
-            { type: 'output', text: '  OS:       Z.ai OS 1.0.0' },
+            { type: 'output', text: '  OS:       MittenOS 1.0.0' },
             { type: 'output', text: '  Kernel:   Browser/WebKit' },
             { type: 'output', text: '  Shell:    zsh 1.0' },
-            { type: 'output', text: '  Terminal: zai-term' },
+            { type: 'output', text: '  Terminal: mitten-term' },
             { type: 'output', text: '  CPU:      WebAssembly vCPU' },
             { type: 'output', text: '  Memory:   ∞ MB / ∞ MB' },
             { type: 'output', text: '  Uptime:   just now' },
@@ -338,7 +338,7 @@ export function Terminal() {
             const names = matches.map((m) => m.name).join('  ');
             setLines((prev) => [
               ...prev,
-              { type: 'input', text: `user@zai-os:${getPathDisplay()}$ ${currentInput}` },
+              { type: 'input', text: `user@mittenos:${getPathDisplay()}$ ${currentInput}` },
               { type: 'output', text: names },
             ]);
           }
@@ -390,7 +390,7 @@ export function Terminal() {
       {/* Input line */}
       <div className="flex items-center px-3 py-2 shrink-0">
         <span className="text-[#7aa2f7] whitespace-nowrap">
-          user@zai-os:{getPathDisplay()}${' '}
+          user@mittenos:{getPathDisplay()}${' '}
         </span>
         <input
           ref={inputRef}

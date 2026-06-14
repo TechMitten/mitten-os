@@ -140,7 +140,7 @@ export function StartMenu() {
 
           {/* Footer */}
           <div className="flex items-center justify-between p-3 border-t border-white/[0.06]">
-            <span className="text-[11px] text-white/30">Z.ai OS</span>
+            <span className="text-[11px] text-white/30">MittenOS</span>
             <button className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors">
               <Power className="w-4 h-4 text-white/40" />
             </button>

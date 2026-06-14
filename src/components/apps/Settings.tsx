@@ -385,13 +385,13 @@ function AboutSection() {
           <Cpu className="w-10 h-10 text-white" />
         </div>
 
-        <h4 className="text-xl font-semibold text-white mb-1">Z.ai OS</h4>
+        <h4 className="text-xl font-semibold text-white mb-1">MittenOS</h4>
         <p className="text-sm text-white/40 mb-6">Version 1.0.0</p>
 
         <div className="w-full max-w-xs space-y-3">
           <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-zinc-800/60 border border-white/5">
             <span className="text-xs text-white/40">System</span>
-            <span className="text-xs text-white/70">Z.ai OS</span>
+            <span className="text-xs text-white/70">MittenOS</span>
           </div>
           <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-zinc-800/60 border border-white/5">
             <span className="text-xs text-white/40">Version</span>
@@ -408,7 +408,7 @@ function AboutSection() {
         </div>
 
         <p className="text-[10px] text-white/20 mt-8 text-center">
-          © 2025 Z.ai. All rights reserved.
+          © 2025 MittenOS. All rights reserved.
         </p>
       </div>
     </div>

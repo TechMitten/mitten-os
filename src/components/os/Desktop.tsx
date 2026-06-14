@@ -111,7 +111,7 @@ export function Desktop() {
           action: () => {},
         },
         {
-          label: 'About Z.ai OS',
+          label: 'About MittenOS',
           icon: 'Info',
           action: () => {
             openWindow('about-system');

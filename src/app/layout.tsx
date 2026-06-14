@@ -14,10 +14,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Z.ai OS",
-  description: "A browser-based operating system powered by Z.ai",
+  title: "MittenOS",
+  description: "A browser-based operating system powered by MittenOS",
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    icon: "/favicon.svg",
   },
 };
 

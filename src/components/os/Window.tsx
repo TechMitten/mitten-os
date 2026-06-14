@@ -272,9 +272,23 @@ export function Window({ window: win, children, isActive }: WindowProps) {
             onMouseDown={handleDragStart}
             onDoubleClick={handleTitleBarDoubleClick}
           >
+            {/* Spacer to visually balance the control buttons */}
+            <div className="w-[52px] shrink-0" />
+
+            {/* Title Text */}
+            <span
+              className={`
+                text-xs font-medium truncate flex-1 text-center
+                ${isActive ? 'text-gray-800 dark:text-gray-200' : 'text-gray-500 dark:text-gray-500'}
+                transition-colors duration-200
+              `}
+            >
+              {win.title}
+            </span>
+
             {/* macOS-style Window Control Buttons */}
             <div
-              className="flex items-center gap-1.5 mr-2 shrink-0"
+              className="flex items-center gap-1.5 ml-2 shrink-0"
               onMouseDown={(e) => e.stopPropagation()}
             >
               {/* Close - Red */}
@@ -336,19 +350,7 @@ export function Window({ window: win, children, isActive }: WindowProps) {
               </button>
             </div>
 
-            {/* Title Text */}
-            <span
-              className={`
-                text-xs font-medium truncate flex-1 text-center
-                ${isActive ? 'text-gray-800 dark:text-gray-200' : 'text-gray-500 dark:text-gray-500'}
-                transition-colors duration-200
-              `}
-            >
-              {win.title}
-            </span>
 
-            {/* Spacer to visually balance the control buttons */}
-            <div className="w-[52px] shrink-0" />
           </div>
 
           {/* Window Content Area */}

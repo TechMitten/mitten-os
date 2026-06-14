@@ -42,9 +42,9 @@ export default function AboutSystem() {
       {/* Logo area */}
       <div className="pt-8 pb-6 flex flex-col items-center">
         <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg mb-4">
-          <span className="text-3xl font-bold text-white">Z</span>
+          <span className="text-3xl font-bold text-white">M</span>
         </div>
-        <h1 className="text-xl font-semibold">Z.ai OS</h1>
+        <h1 className="text-xl font-semibold">MittenOS</h1>
         <p className="text-xs text-white/40 mt-1">Browser-based Operating System</p>
       </div>
 
@@ -130,7 +130,7 @@ export default function AboutSystem() {
       <div className="w-full max-w-sm px-6 mt-3 mb-6">
         <div className="bg-white/5 rounded-xl p-4 text-center">
           <p className="text-xs text-white/40">Licensed under the MIT License</p>
-          <p className="text-[10px] text-white/25 mt-1">© 2025 Z.ai OS Project</p>
+          <p className="text-[10px] text-white/25 mt-1">© 2025 MittenOS Project</p>
         </div>
       </div>
     </div>
