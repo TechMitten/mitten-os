@@ -52,7 +52,7 @@ function getProviderConfig(provider: AIProvider): ProviderConfig {
 export function buildSystemMessages(fileManifest?: string[]): ChatMessage[] {
   const fileContext = fileManifest?.length
     ? `\n\n## Current Project Files\n${fileManifest.map((f) => `- ${f}`).join('\n')}`
-    : '';
+    : '\n\n## Current Project Files\n(empty — no files exist yet. Create files with write_file.)';
 
   return [
     {

@@ -1,8 +1,21 @@
 import { create } from "zustand";
 import { FSNode } from "@/types/os";
 import { createClient } from "@/lib/supabase/client";
-import { saveGuestFilesystem, loadGuestFilesystem } from "@/lib/guest-storage";
-import { useAuthStore } from "@/stores/auth-store";
+
+function isGuest(userId: string): boolean {
+  return userId.startsWith("guest-");
+}
+
+function generateUUID(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0
+    const v = c === 'x' ? r : (r & 0x3 | 0x8)
+    return v.toString(16)
+  })
+}
 
 interface FileSystemStore {
   root: FSNode;
@@ -85,15 +98,6 @@ function buildTree(rows: DBNode[]): FSNode {
   return rootNode || defaultRoot();
 }
 
-function guestUuid(): string {
-  return crypto.randomUUID()
-}
-
-function persistGuestFs(userId: string) {
-  const { root } = useFileSystemStore.getState()
-  saveGuestFilesystem(userId, root)
-}
-
 export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
   root: defaultRoot(),
   loaded: false,
@@ -101,17 +105,11 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
   userId: null,
 
   loadFromDB: async (userId: string) => {
-    const isGuest = useAuthStore.getState().isGuest
-    set({ loading: true, userId })
+    set({ loading: true, userId });
 
-    if (isGuest) {
-      const savedRoot = loadGuestFilesystem(userId)
-      if (savedRoot) {
-        set({ root: savedRoot, loaded: true, loading: false })
-      } else {
-        set({ root: defaultRoot(), loaded: true, loading: false })
-      }
-      return
+    if (isGuest(userId)) {
+      set({ root: defaultRoot(), loaded: true, loading: false });
+      return;
     }
 
     const supabase = createClient();
@@ -128,6 +126,7 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
     }
 
     if (!data || data.length === 0) {
+      // No data yet — this shouldn't happen with the trigger, but be safe
       const root = defaultRoot();
       set({ root, loaded: true, loading: false });
       return;
@@ -167,23 +166,37 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
   },
 
   createFile: async (parentId: string, name: string, content = "", mimeType = "text/plain") => {
-    const { userId } = get();
+    const { userId, root } = get();
     if (!userId) return;
-    const isGuest = useAuthStore.getState().isGuest;
 
-    if (isGuest) {
-      const now = Date.now()
-      const id = guestUuid()
-      const newNode: FSNode = {
-        id,
-        name,
-        type: "file",
-        content,
-        mimeType,
-        parentId,
-        createdAt: now,
-        modifiedAt: now,
+    const now = new Date().toISOString();
+    const guest = isGuest(userId);
+
+    if (!guest) {
+      const supabase = createClient();
+
+      const { data, error } = await supabase
+        .from("filesystem_nodes")
+        .insert({
+          user_id: userId,
+          parent_id: parentId,
+          name,
+          type: "file",
+          content,
+          mime_type: mimeType,
+          sort_order: 0,
+          created_at: now,
+          updated_at: now,
+        })
+        .select()
+        .single();
+
+      if (error || !data) {
+        console.error("Failed to create file:", error?.message);
+        return;
       }
+
+      const newNode = dbNodeToFSNode(data as DBNode);
 
       set((state) => {
         const newRoot = JSON.parse(JSON.stringify(state.root)) as FSNode;
@@ -191,69 +204,65 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
         if (parent && parent.type === "folder") {
           if (!parent.children) parent.children = [];
           parent.children.push(newNode);
-          parent.modifiedAt = now;
+          parent.modifiedAt = Date.now();
         }
         return { root: newRoot };
-      })
-      persistGuestFs(userId)
-      return
-    }
-
-    const supabase = createClient();
-    const now = new Date().toISOString();
-
-    const { data, error } = await supabase
-      .from("filesystem_nodes")
-      .insert({
-        user_id: userId,
-        parent_id: parentId,
+      });
+    } else {
+      const newNode: FSNode = {
+        id: generateUUID(),
         name,
         type: "file",
         content,
-        mime_type: mimeType,
-        sort_order: 0,
-        created_at: now,
-        updated_at: now,
-      })
-      .select()
-      .single();
+        parentId,
+        createdAt: Date.now(),
+        modifiedAt: Date.now(),
+        mimeType,
+      };
 
-    if (error || !data) {
-      console.error("Failed to create file:", error?.message);
-      return;
+      set((state) => {
+        const newRoot = JSON.parse(JSON.stringify(state.root)) as FSNode;
+        const parent = findNodeInTree(newRoot, parentId);
+        if (parent && parent.type === "folder") {
+          if (!parent.children) parent.children = [];
+          parent.children.push(newNode);
+          parent.modifiedAt = Date.now();
+        }
+        return { root: newRoot };
+      });
     }
-
-    const newNode = dbNodeToFSNode(data as DBNode);
-
-    set((state) => {
-      const newRoot = JSON.parse(JSON.stringify(state.root)) as FSNode;
-      const parent = findNodeInTree(newRoot, parentId);
-      if (parent && parent.type === "folder") {
-        if (!parent.children) parent.children = [];
-        parent.children.push(newNode);
-        parent.modifiedAt = Date.now();
-      }
-      return { root: newRoot };
-    });
   },
 
   createFolder: async (parentId: string, name: string) => {
     const { userId } = get();
     if (!userId) return;
-    const isGuest = useAuthStore.getState().isGuest;
 
-    if (isGuest) {
-      const now = Date.now()
-      const id = guestUuid()
-      const newNode: FSNode = {
-        id,
-        name,
-        type: "folder",
-        parentId,
-        createdAt: now,
-        modifiedAt: now,
-        children: [],
+    const now = new Date().toISOString();
+    const guest = isGuest(userId);
+
+    if (!guest) {
+      const supabase = createClient();
+
+      const { data, error } = await supabase
+        .from("filesystem_nodes")
+        .insert({
+          user_id: userId,
+          parent_id: parentId,
+          name,
+          type: "folder",
+          sort_order: 0,
+          created_at: now,
+          updated_at: now,
+        })
+        .select()
+        .single();
+
+      if (error || !data) {
+        console.error("Failed to create folder:", error?.message);
+        return;
       }
+
+      const newNode = dbNodeToFSNode(data as DBNode);
 
       set((state) => {
         const newRoot = JSON.parse(JSON.stringify(state.root)) as FSNode;
@@ -261,70 +270,44 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
         if (parent && parent.type === "folder") {
           if (!parent.children) parent.children = [];
           parent.children.push(newNode);
-          parent.modifiedAt = now;
+          parent.modifiedAt = Date.now();
         }
         return { root: newRoot };
-      })
-      persistGuestFs(userId)
-      return
-    }
-
-    const supabase = createClient();
-    const now = new Date().toISOString();
-
-    const { data, error } = await supabase
-      .from("filesystem_nodes")
-      .insert({
-        user_id: userId,
-        parent_id: parentId,
+      });
+    } else {
+      const newNode: FSNode = {
+        id: generateUUID(),
         name,
         type: "folder",
-        sort_order: 0,
-        created_at: now,
-        updated_at: now,
-      })
-      .select()
-      .single();
+        parentId,
+        createdAt: Date.now(),
+        modifiedAt: Date.now(),
+      };
 
-    if (error || !data) {
-      console.error("Failed to create folder:", error?.message);
-      return;
+      set((state) => {
+        const newRoot = JSON.parse(JSON.stringify(state.root)) as FSNode;
+        const parent = findNodeInTree(newRoot, parentId);
+        if (parent && parent.type === "folder") {
+          if (!parent.children) parent.children = [];
+          parent.children.push(newNode);
+          parent.modifiedAt = Date.now();
+        }
+        return { root: newRoot };
+      });
     }
-
-    const newNode = dbNodeToFSNode(data as DBNode);
-
-    set((state) => {
-      const newRoot = JSON.parse(JSON.stringify(state.root)) as FSNode;
-      const parent = findNodeInTree(newRoot, parentId);
-      if (parent && parent.type === "folder") {
-        if (!parent.children) parent.children = [];
-        parent.children.push(newNode);
-        parent.modifiedAt = Date.now();
-      }
-      return { root: newRoot };
-    });
   },
 
   deleteNode: async (id: string) => {
     const { userId } = get();
     if (!userId) return;
-    const isGuest = useAuthStore.getState().isGuest;
 
-    if (isGuest) {
-      set((state) => {
-        const newRoot = JSON.parse(JSON.stringify(state.root)) as FSNode;
-        deleteNodeInTree(newRoot, id);
-        return { root: newRoot };
-      })
-      persistGuestFs(userId)
-      return
-    }
-
-    const supabase = createClient();
-    const { error } = await supabase.from("filesystem_nodes").delete().eq("id", id);
-    if (error) {
-      console.error("Failed to delete node:", error.message);
-      return;
+    if (!isGuest(userId)) {
+      const supabase = createClient();
+      const { error } = await supabase.from("filesystem_nodes").delete().eq("id", id);
+      if (error) {
+        console.error("Failed to delete node:", error.message);
+        return;
+      }
     }
 
     set((state) => {
@@ -337,32 +320,19 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
   renameNode: async (id: string, newName: string) => {
     const { userId } = get();
     if (!userId) return;
-    const isGuest = useAuthStore.getState().isGuest;
 
-    if (isGuest) {
-      set((state) => {
-        const newRoot = JSON.parse(JSON.stringify(state.root)) as FSNode;
-        const node = findNodeInTree(newRoot, id);
-        if (node) {
-          node.name = newName;
-          node.modifiedAt = Date.now();
-        }
-        return { root: newRoot };
-      })
-      persistGuestFs(userId)
-      return
-    }
+    if (!isGuest(userId)) {
+      const supabase = createClient();
+      const now = new Date().toISOString();
+      const { error } = await supabase
+        .from("filesystem_nodes")
+        .update({ name: newName, updated_at: now })
+        .eq("id", id);
 
-    const supabase = createClient();
-    const now = new Date().toISOString();
-    const { error } = await supabase
-      .from("filesystem_nodes")
-      .update({ name: newName, updated_at: now })
-      .eq("id", id);
-
-    if (error) {
-      console.error("Failed to rename node:", error.message);
-      return;
+      if (error) {
+        console.error("Failed to rename node:", error.message);
+        return;
+      }
     }
 
     set((state) => {
@@ -379,32 +349,19 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
   updateFileContent: async (id: string, content: string) => {
     const { userId } = get();
     if (!userId) return;
-    const isGuest = useAuthStore.getState().isGuest;
 
-    if (isGuest) {
-      set((state) => {
-        const newRoot = JSON.parse(JSON.stringify(state.root)) as FSNode;
-        const node = findNodeInTree(newRoot, id);
-        if (node && node.type === "file") {
-          node.content = content;
-          node.modifiedAt = Date.now();
-        }
-        return { root: newRoot };
-      })
-      persistGuestFs(userId)
-      return
-    }
+    if (!isGuest(userId)) {
+      const supabase = createClient();
+      const now = new Date().toISOString();
+      const { error } = await supabase
+        .from("filesystem_nodes")
+        .update({ content, updated_at: now })
+        .eq("id", id);
 
-    const supabase = createClient();
-    const now = new Date().toISOString();
-    const { error } = await supabase
-      .from("filesystem_nodes")
-      .update({ content, updated_at: now })
-      .eq("id", id);
-
-    if (error) {
-      console.error("Failed to update file content:", error.message);
-      return;
+      if (error) {
+        console.error("Failed to update file content:", error.message);
+        return;
+      }
     }
 
     set((state) => {

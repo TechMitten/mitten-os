@@ -1,16 +1,10 @@
 import { create } from "zustand";
 import { DesktopIcon, DESKTOP_GRID_CELL, DESKTOP_GRID_OFFSET_X, DESKTOP_GRID_OFFSET_Y, Notification, WindowPosition } from "@/types/os";
 import { createClient } from "@/lib/supabase/client";
-import {
-  saveGuestSettings,
-  loadGuestSettings,
-  saveGuestWindowStates,
-  loadGuestWindowStates as loadGuestWindows,
-  saveGuestIconPositions,
-  loadGuestIconPositions,
-  type GuestSettings,
-} from "@/lib/guest-storage";
-import { useAuthStore } from "@/stores/auth-store";
+
+function isGuest(userId: string): boolean {
+  return userId.startsWith("guest-");
+}
 
 interface DesktopStore {
   wallpaper: string;
@@ -24,8 +18,6 @@ interface DesktopStore {
   userId: string | null;
   welcomeDismissed: boolean;
   persistWindows: boolean;
-  signInModalOpen: boolean;
-  signInModalMode: 'signin' | 'signup';
 
   loadSettings: (userId: string) => Promise<void>;
   setWallpaper: (url: string) => void;
@@ -40,7 +32,6 @@ interface DesktopStore {
   setSearchQuery: (query: string) => void;
   setWelcomeDismissed: (dismissed: boolean) => void;
   setPersistWindows: (persist: boolean) => void;
-  setSignInModal: (open: boolean, mode?: 'signin' | 'signup') => void;
   updateIconPosition: (id: string, position: WindowPosition) => void;
   loadIconPositions: (positions: Record<string, WindowPosition>) => void;
   reset: () => void;
@@ -79,17 +70,6 @@ const defaultIcons: DesktopIcon[] = [
 
 let notificationCounter = 0;
 
-function persistGuest(userId: string) {
-  const state = useDesktopStore.getState()
-  const settings: GuestSettings = {
-    wallpaper: state.wallpaper,
-    theme: state.theme,
-    welcomeDismissed: state.welcomeDismissed,
-    persistWindows: state.persistWindows,
-  }
-  saveGuestSettings(userId, settings)
-}
-
 export const useDesktopStore = create<DesktopStore>((set, get) => ({
   wallpaper: "linear-gradient(135deg, #0f0c29, #302b63, #24243e)",
   theme: "dark",
@@ -102,27 +82,11 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   userId: null,
   welcomeDismissed: false,
   persistWindows: true,
-  signInModalOpen: false,
-  signInModalMode: 'signin',
 
   loadSettings: async (userId: string) => {
-    const isGuest = useAuthStore.getState().isGuest
-
-    if (isGuest) {
-      const saved = loadGuestSettings(userId)
-      if (saved) {
-        set({
-          theme: saved.theme || "dark",
-          wallpaper: saved.wallpaper || "linear-gradient(135deg, #0f0c29, #302b63, #24243e)",
-          welcomeDismissed: saved.welcomeDismissed ?? false,
-          persistWindows: saved.persistWindows ?? true,
-          userId,
-          loaded: true,
-        })
-      } else {
-        set({ userId, loaded: true })
-      }
-      return
+    if (isGuest(userId)) {
+      set({ loaded: true, userId, welcomeDismissed: false, persistWindows: false });
+      return;
     }
 
     const supabase = createClient();
@@ -134,6 +98,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
       .single();
 
     if (error || !data) {
+      // Settings don't exist yet — use defaults and upsert
       const state = get();
       await supabase.from("user_settings").upsert({
         user_id: userId,
@@ -158,12 +123,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   setWallpaper: (url: string) => {
     set({ wallpaper: url });
     const { userId, welcomeDismissed, persistWindows } = get();
-    if (!userId) return;
-    const isGuest = useAuthStore.getState().isGuest;
-    if (isGuest) {
-      persistGuest(userId)
-      return
-    }
+    if (!userId || isGuest(userId)) return;
     const supabase = createClient();
     supabase
       .from("user_settings")
@@ -177,12 +137,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
         : "linear-gradient(135deg, #0f0c29, #302b63, #24243e)";
     set({ theme, wallpaper });
     const { userId, welcomeDismissed, persistWindows } = get();
-    if (!userId) return;
-    const isGuest = useAuthStore.getState().isGuest;
-    if (isGuest) {
-      persistGuest(userId)
-      return
-    }
+    if (!userId || isGuest(userId)) return;
     const supabase = createClient();
     supabase
       .from("user_settings")
@@ -198,12 +153,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
         : "linear-gradient(135deg, #0f0c29, #302b63, #24243e)";
     set({ theme: next, wallpaper });
     const { userId, welcomeDismissed, persistWindows } = get();
-    if (!userId) return;
-    const isGuest = useAuthStore.getState().isGuest;
-    if (isGuest) {
-      persistGuest(userId)
-      return
-    }
+    if (!userId || isGuest(userId)) return;
     const supabase = createClient();
     supabase
       .from("user_settings")
@@ -261,12 +211,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     if (userId) {
       localStorage.setItem(`mittenos:welcomeDismissed:${userId}`, String(dismissed));
     }
-    if (!userId) return;
-    const isGuest = useAuthStore.getState().isGuest;
-    if (isGuest) {
-      persistGuest(userId)
-      return
-    }
+    if (!userId || isGuest(userId)) return;
     const supabase = createClient();
     supabase
       .from("user_settings")
@@ -280,12 +225,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   setPersistWindows: (persist: boolean) => {
     set({ persistWindows: persist });
     const { userId, welcomeDismissed } = get();
-    if (!userId) return;
-    const isGuest = useAuthStore.getState().isGuest;
-    if (isGuest) {
-      persistGuest(userId)
-      return
-    }
+    if (!userId || isGuest(userId)) return;
     const supabase = createClient();
     supabase
       .from("user_settings")
@@ -295,8 +235,6 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
         updated_at: new Date().toISOString(),
       });
   },
-
-  setSignInModal: (open: boolean, mode = 'signin') => set({ signInModalOpen: open, signInModalMode: mode }),
 
   reset: () => {
     const { theme, wallpaper } = get();
@@ -312,31 +250,13 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
       userId: null,
       welcomeDismissed: false,
       persistWindows: true,
-      signInModalOpen: false,
-      signInModalMode: 'signin',
     });
   },
 }));
 
 // Standalone function for saving window states (called from Desktop)
 export async function saveWindowStates(userId: string, windows: import("@/types/os").OSWindow[]) {
-  const isGuest = useAuthStore.getState().isGuest
-
-  if (isGuest) {
-    const states = windows.map((w) => ({
-      appId: w.appId,
-      windowId: w.id,
-      title: w.title,
-      x: w.position.x,
-      y: w.position.y,
-      width: w.size.width,
-      height: w.size.height,
-      state: w.state,
-    }))
-    saveGuestWindowStates(userId, states)
-    return
-  }
-
+  if (isGuest(userId)) return;
   const supabase = createClient();
   const { welcomeDismissed, persistWindows } = useDesktopStore.getState();
   const states = windows.map((w) => ({
@@ -355,12 +275,7 @@ export async function saveWindowStates(userId: string, windows: import("@/types/
 }
 
 export async function loadWindowStates(userId: string) {
-  const isGuest = useAuthStore.getState().isGuest
-
-  if (isGuest) {
-    return loadGuestWindows(userId)
-  }
-
+  if (isGuest(userId)) return [];
   const supabase = createClient();
   const { data } = await supabase
     .from("user_settings")
@@ -380,32 +295,20 @@ export async function loadWindowStates(userId: string) {
 }
 
 export async function saveIconPositions(userId: string, icons: DesktopIcon[]) {
-  const isGuest = useAuthStore.getState().isGuest
-
+  if (isGuest(userId)) return;
+  const supabase = createClient();
+  const { welcomeDismissed, persistWindows } = useDesktopStore.getState();
   const positions: Record<string, WindowPosition> = {};
   for (const icon of icons) {
     positions[icon.id] = icon.position;
   }
-
-  if (isGuest) {
-    saveGuestIconPositions(userId, positions)
-    return
-  }
-
-  const supabase = createClient();
-  const { welcomeDismissed, persistWindows } = useDesktopStore.getState();
   await supabase
     .from("user_settings")
     .upsert({ user_id: userId, icon_positions: positions, settings_json: { welcomeDismissed, persistWindows }, updated_at: new Date().toISOString() });
 }
 
 export async function loadIconPositions(userId: string) {
-  const isGuest = useAuthStore.getState().isGuest
-
-  if (isGuest) {
-    return loadGuestIconPositions(userId)
-  }
-
+  if (isGuest(userId)) return {};
   const supabase = createClient();
   const { data } = await supabase
     .from("user_settings")

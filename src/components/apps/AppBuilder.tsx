@@ -27,7 +27,6 @@ import {
 import Editor, { type OnMount } from '@monaco-editor/react';
 import { SandboxedApp } from '@/components/apps/SandboxedApp';
 import { useDesktopStore } from '@/stores/desktop-store';
-import { useAuthStore } from '@/stores/auth-store';
 import { createClient } from '@/lib/supabase/client';
 import type { ChatMessage, ToolCall, ToolResult } from '@/lib/ai/types';
 
@@ -47,18 +46,18 @@ interface ConsoleEntry {
 
 function getFileIcon(filename: string): React.ReactNode {
   if (filename.endsWith('.tsx') || filename.endsWith('.jsx')) {
-    return <FileText className="w-3.5 h-3.5 text-blue-400" />;
+    return <FileText className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400" />;
   }
   if (filename.endsWith('.ts') || filename.endsWith('.js')) {
-    return <FileText className="w-3.5 h-3.5 text-yellow-400" />;
+    return <FileText className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />;
   }
   if (filename.endsWith('.css')) {
-    return <FileText className="w-3.5 h-3.5 text-purple-400" />;
+    return <FileText className="w-3.5 h-3.5 text-purple-500 dark:text-purple-400" />;
   }
   if (filename.endsWith('.json')) {
-    return <FileText className="w-3.5 h-3.5 text-green-400" />;
+    return <FileText className="w-3.5 h-3.5 text-green-500 dark:text-green-400" />;
   }
-  return <FileText className="w-3.5 h-3.5 text-gray-400" />;
+  return <FileText className="w-3.5 h-3.5 text-muted-foreground" />;
 }
 
 export function AppBuilder() {
@@ -126,7 +125,7 @@ export function AppBuilder() {
   }, [chatMessages, streamingText, pendingApprovals]);
 
   const fileTree = useMemo(() => {
-    const tree: Record<string, { files: string[]; dirs: string[] }> = {};
+    const tree: Record<string, { files: string[]; dirs: string[] }> = { '.': { files: [], dirs: [] } };
     for (const path of Object.keys(sourceFiles).sort()) {
       const parts = path.split('/');
       const dir = parts.length > 1 ? parts.slice(0, -1).join('/') : '.';
@@ -165,13 +164,6 @@ export function AppBuilder() {
     setSaving(true);
     setCompileError(null);
     try {
-      if (useAuthStore.getState().isGuest) {
-        useDesktopStore.getState().setSignInModal(true, 'signup');
-        addNotification({ title: 'App Builder', message: 'Sign up to save and publish apps.', type: 'info' });
-        setSaving(false);
-        return;
-      }
-
       const supabase = createClient();
       const { data: auth } = await supabase.auth.getUser();
       const userId = auth.user?.id;
@@ -223,13 +215,6 @@ export function AppBuilder() {
     setPublishing(true);
     setCompileError(null);
     try {
-      if (useAuthStore.getState().isGuest) {
-        useDesktopStore.getState().setSignInModal(true, 'signup');
-        addNotification({ title: 'App Builder', message: 'Sign up to save and publish apps.', type: 'info' });
-        setPublishing(false);
-        return;
-      }
-
       const supabase = createClient();
       const { data: auth } = await supabase.auth.getUser();
       const userId = auth.user?.id;
@@ -395,10 +380,10 @@ export function AppBuilder() {
 
     switch (toolCall.function.name) {
       case 'list_files': {
-        content = Object.keys(sourceFilesRef.current)
-          .sort()
-          .map((p) => `${sourceFilesRef.current[p] === '__DIR__' ? '📁' : '📄'} ${p}`)
-          .join('\n');
+        const paths = Object.keys(sourceFilesRef.current).sort();
+        content = paths.length > 0
+          ? paths.map((p) => `${sourceFilesRef.current[p] === '__DIR__' ? '📁' : '📄'} ${p}`).join('\n')
+          : '(empty — no files exist yet. Start creating files with write_file.)';
         break;
       }
       case 'read_file': {
@@ -407,7 +392,11 @@ export function AppBuilder() {
         break;
       }
       case 'write_file': {
-        setSourceFiles((prev) => ({ ...prev, [args.path]: args.content }));
+        setSourceFiles((prev) => {
+          const next = { ...prev, [args.path]: args.content };
+          sourceFilesRef.current = next;
+          return next;
+        });
         setOpenFiles((prev) => {
           if (!prev.includes(args.path)) return [...prev, args.path];
           return prev;
@@ -433,7 +422,11 @@ export function AppBuilder() {
           break;
         }
         const newContent = currentContent.replace(args.old_string, args.new_string);
-        setSourceFiles((prev) => ({ ...prev, [args.path]: newContent }));
+        setSourceFiles((prev) => {
+          const next = { ...prev, [args.path]: newContent };
+          sourceFilesRef.current = next;
+          return next;
+        });
         content = `File edited: ${args.path}`;
         addLog('info', `AI edited ${args.path}`);
         break;
@@ -445,6 +438,7 @@ export function AppBuilder() {
           for (const key of Object.keys(next).filter((k) => k.startsWith(args.path + '/'))) {
             delete next[key];
           }
+          sourceFilesRef.current = next;
           return next;
         });
         setOpenFiles((prev) => prev.filter((f) => f !== args.path));
@@ -453,7 +447,11 @@ export function AppBuilder() {
         break;
       }
       case 'create_directory': {
-        setSourceFiles((prev) => ({ ...prev, [args.path]: '__DIR__' }));
+        setSourceFiles((prev) => {
+          const next = { ...prev, [args.path]: '__DIR__' };
+          sourceFilesRef.current = next;
+          return next;
+        });
         content = `Directory created: ${args.path}`;
         addLog('info', `AI created directory ${args.path}`);
         break;
@@ -708,7 +706,7 @@ export function AppBuilder() {
             ) : (
               <ChevronDown className="w-3 h-3 shrink-0" />
             )}
-            <Folder className="w-3.5 h-3.5 text-yellow-500 shrink-0" />
+            <Folder className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 shrink-0" />
             <span className="truncate">{dirLabel}</span>
           </div>
         )}
@@ -781,13 +779,13 @@ export function AppBuilder() {
                 style={{ paddingLeft: `${8 + depth * 12 + 12}px` }}
               >
                 {creatingNode.type === 'folder' ? (
-                  <Folder className="w-3.5 h-3.5 text-yellow-500 shrink-0" />
+                  <Folder className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 shrink-0" />
                 ) : (
-                  <FileText className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                  <FileText className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400 shrink-0" />
                 )}
                 <input
                   ref={creatingInputRef}
-                  className="bg-accent/70 text-foreground text-xs px-1 py-0 outline-none border border-purple-500 rounded flex-1 min-w-0"
+                  className="bg-accent/70 text-foreground text-xs px-1 py-0 outline-none border border-primary rounded flex-1 min-w-0"
                   value={creatingName}
                   onChange={(e) => setCreatingName(e.target.value)}
                   onKeyDown={(e) => {
@@ -817,12 +815,12 @@ export function AppBuilder() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-card text-foreground select-none">
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-background border-b border-border shrink-0">
+    <div className="flex flex-col h-full bg-card dark:bg-zinc-900 text-card-foreground select-none overflow-hidden">
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-muted dark:bg-zinc-800/30 border-b border-border shrink-0">
         <div className="flex items-center gap-2 text-sm font-medium">
-          <Pencil className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+          <Pencil className="w-4 h-4 text-muted-foreground" />
           <input
-            className="bg-transparent outline-none border-b border-transparent hover:border-input focus:border-purple-600 dark:focus:border-purple-400 px-1 text-sm w-40"
+            className="bg-transparent outline-none border-b border-transparent hover:border-input focus:border-primary px-1 text-sm w-40"
             value={projectMeta.name}
             onChange={(e) => setProjectMeta((prev) => ({ ...prev, name: e.target.value }))}
           />
@@ -835,8 +833,8 @@ export function AppBuilder() {
           }}
           className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
             rightPanel === 'preview'
-              ? 'bg-blue-500/20 text-blue-700 dark:text-blue-300'
-              : 'bg-accent/50 hover:bg-accent/60 text-foreground/60 hover:text-foreground'
+              ? 'bg-accent dark:bg-white/10 text-foreground'
+              : 'hover:bg-accent dark:hover:bg-white/5 text-muted-foreground hover:text-foreground'
           }`}
         >
           <Play className="w-3.5 h-3.5" />
@@ -846,8 +844,8 @@ export function AppBuilder() {
           onClick={() => setRightPanel(rightPanel === 'chat' ? 'preview' : 'chat')}
           className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
             rightPanel === 'chat'
-              ? 'bg-purple-500/20 text-purple-700 dark:text-purple-300'
-              : 'bg-accent/50 hover:bg-accent/60 text-foreground/60 hover:text-foreground'
+              ? 'bg-accent dark:bg-white/10 text-foreground'
+              : 'hover:bg-accent dark:hover:bg-white/5 text-muted-foreground hover:text-foreground'
           }`}
         >
           <Sparkles className="w-3.5 h-3.5" />
@@ -856,7 +854,7 @@ export function AppBuilder() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-500/20 hover:bg-blue-500/30 text-blue-700 dark:text-blue-300 rounded transition-colors disabled:opacity-50"
+          className="flex items-center gap-1 px-2 py-1 text-xs hover:bg-accent dark:hover:bg-white/5 text-muted-foreground hover:text-foreground rounded transition-colors disabled:opacity-50"
         >
           {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
           Save
@@ -864,7 +862,7 @@ export function AppBuilder() {
         <button
           onClick={handlePublish}
           disabled={publishing}
-          className="flex items-center gap-1 px-2 py-1 text-xs bg-purple-500/20 hover:bg-purple-500/30 text-purple-700 dark:text-purple-300 rounded transition-colors disabled:opacity-50"
+          className="flex items-center gap-1 px-2 py-1 text-xs hover:bg-accent dark:hover:bg-white/5 text-muted-foreground hover:text-foreground rounded transition-colors disabled:opacity-50"
         >
           {publishing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
           Publish
@@ -877,19 +875,19 @@ export function AppBuilder() {
             className="border-r border-border flex flex-col shrink-0"
             style={{ width: fileTreeWidth }}
           >
-            <div className="flex items-center justify-between px-3 py-1.5 border-b border-border">
+            <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-muted dark:bg-zinc-800/50">
               <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</span>
               <div className="flex items-center gap-1">
                 <button
                   onClick={handleNewFile}
-                  className="p-0.5 hover:bg-accent/60 rounded text-muted-foreground hover:text-foreground"
+                  className="p-0.5 hover:bg-accent dark:hover:bg-white/5 rounded text-muted-foreground hover:text-foreground"
                   title="New File"
                 >
                   <FilePlus className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={handleNewFolder}
-                  className="p-0.5 hover:bg-accent/60 rounded text-muted-foreground hover:text-foreground"
+                  className="p-0.5 hover:bg-accent dark:hover:bg-white/5 rounded text-muted-foreground hover:text-foreground"
                   title="New Folder"
                 >
                   <FolderPlus className="w-3.5 h-3.5" />
@@ -904,18 +902,18 @@ export function AppBuilder() {
 
         {showFiles && (
           <div
-            className={`w-1 cursor-col-resize hover:bg-purple-500/50 transition-colors shrink-0 ${
-              isResizingFileTree ? 'bg-purple-500/80' : 'bg-border/30'
+            className={`w-1 cursor-col-resize hover:bg-accent-foreground/20 transition-colors shrink-0 ${
+              isResizingFileTree ? 'bg-accent-foreground/30' : 'bg-border/30'
             }`}
             onMouseDown={handleFileTreeResizeStart}
           />
         )}
 
         <div className="flex-1 flex flex-col min-w-0">
-          <div className="flex items-center bg-background border-b border-border shrink-0">
+          <div className="flex items-center bg-muted dark:bg-zinc-800/50 border-b border-border shrink-0">
             <button
               onClick={() => setShowFiles(!showFiles)}
-              className="p-1.5 hover:bg-accent text-muted-foreground hover:text-foreground"
+              className="p-1.5 hover:bg-accent dark:hover:bg-white/5 text-muted-foreground hover:text-foreground"
               title={showFiles ? 'Hide file tree' : 'Show file tree'}
             >
               {showFiles ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
@@ -928,8 +926,8 @@ export function AppBuilder() {
                     key={file}
                     className={`flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer border-r border-border shrink-0 ${
                       activeFile === file
-                        ? 'bg-card text-foreground'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                        ? 'bg-card dark:bg-zinc-900 text-foreground'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-accent dark:hover:bg-white/5'
                     }`}
                     onClick={() => setActiveFile(file)}
                   >
@@ -1000,7 +998,7 @@ export function AppBuilder() {
 
           {showConsole && (
             <div className="h-32 border-t border-border flex flex-col shrink-0">
-              <div className="flex items-center justify-between px-3 py-1 bg-background border-b border-border">
+              <div className="flex items-center justify-between px-3 py-1 bg-muted dark:bg-zinc-800/50 border-b border-border">
                 <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                   <TerminalIcon className="w-3.5 h-3.5" />
                   Console
@@ -1035,8 +1033,8 @@ export function AppBuilder() {
         </div>
 
         <div
-          className={`w-1 cursor-col-resize hover:bg-purple-500/50 transition-colors shrink-0 ${
-            isResizing ? 'bg-purple-500/80' : 'bg-border/30'
+          className={`w-1 cursor-col-resize hover:bg-accent-foreground/20 transition-colors shrink-0 ${
+            isResizing ? 'bg-accent-foreground/30' : 'bg-border/30'
           }`}
           onMouseDown={handleResizeStart}
         />
@@ -1047,19 +1045,19 @@ export function AppBuilder() {
         >
           {rightPanel === 'preview' ? (
             <>
-              <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-background">
+              <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-muted dark:bg-zinc-800/50">
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Preview</span>
                 <div className="flex items-center gap-1">
                   <button
                     onClick={handleRefreshPreview}
-                    className="p-0.5 hover:bg-accent/60 rounded text-muted-foreground hover:text-foreground"
+                    className="p-0.5 hover:bg-accent dark:hover:bg-white/5 rounded text-muted-foreground hover:text-foreground"
                     title="Refresh preview"
                   >
                     <Play className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => setRightPanel('chat')}
-                    className="p-0.5 hover:bg-accent/60 rounded text-muted-foreground hover:text-foreground"
+                    className="p-0.5 hover:bg-accent dark:hover:bg-white/5 rounded text-muted-foreground hover:text-foreground"
                   >
                     <XCircle className="w-3.5 h-3.5" />
                   </button>
@@ -1071,14 +1069,12 @@ export function AppBuilder() {
             </>
           ) : (
             <>
-                <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/40 bg-muted/50 shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
+                <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-muted dark:bg-zinc-800/50">
                   <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-md bg-purple-500/20 flex items-center justify-center shadow-[0_0_6px_rgba(168,85,247,0.15)]">
-                      <Sparkles className="w-3 h-3 text-purple-400" />
-                    </div>
-                    <span className="text-xs font-semibold text-foreground/90">AI Chat</span>
+                    <Sparkles className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="text-xs font-medium text-foreground">AI Chat</span>
                     {isGenerating && (
-                      <span className="text-[10px] text-purple-600 dark:text-purple-400 flex items-center gap-1 animate-pulse">
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
                         <Loader2 className="w-3 h-3 animate-spin" />
                         Generating...
                       </span>
@@ -1087,20 +1083,19 @@ export function AppBuilder() {
                   <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => setAutoApprove(!autoApprove)}
-                      className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded-md transition-all ${
+                      className={`flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${
                         autoApprove
-                          ? 'bg-green-500/20 text-green-400 border border-green-500/25 shadow-[0_0_6px_rgba(34,197,94,0.1)]'
-                          : 'bg-muted/60 text-foreground/35 hover:text-foreground/60 border border-border/30 hover:border-border/50'
+                          ? 'bg-accent dark:bg-white/10 text-foreground'
+                          : 'hover:bg-accent dark:hover:bg-white/5 text-muted-foreground hover:text-foreground'
                       }`}
                       title="When enabled, AI changes are applied automatically"
                     >
-                      <div className={`w-1.5 h-1.5 rounded-full ${autoApprove ? 'bg-green-400 shadow-[0_0_4px_rgba(34,197,94,0.5)]' : 'bg-foreground/20'}`} />
                       Auto-approve
                     </button>
                     {isGenerating && (
                       <button
                         onClick={handleStopGeneration}
-                        className="p-1 rounded-md bg-red-500/15 text-red-400 hover:bg-red-500/25 transition-colors"
+                        className="p-1 rounded hover:bg-accent dark:hover:bg-white/5 text-muted-foreground hover:text-foreground transition-colors"
                         title="Stop generation"
                       >
                         <StopCircle className="w-3.5 h-3.5" />
@@ -1108,7 +1103,7 @@ export function AppBuilder() {
                     )}
                     <button
                       onClick={() => setRightPanel('preview')}
-                      className="p-1 rounded-md hover:bg-accent/50 text-muted-foreground hover:text-foreground transition-colors"
+                      className="p-1 rounded hover:bg-accent dark:hover:bg-white/5 text-muted-foreground hover:text-foreground transition-colors"
                       title="Switch to preview"
                     >
                       <Play className="w-3.5 h-3.5" />
@@ -1116,19 +1111,18 @@ export function AppBuilder() {
                   </div>
                 </div>
 
-              <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-muted/30">
+              <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3">
                 {chatMessages.length === 0 && (
                   <div className="flex flex-col items-center justify-center h-full text-center px-2">
-                    <div className="relative mb-5">
-                      <div className="absolute inset-0 bg-purple-500/20 rounded-full blur-2xl" />
-                      <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500/25 to-purple-600/10 border border-purple-500/25 flex items-center justify-center shadow-[0_4px_16px_rgba(139,92,246,0.15)]">
-                        <Sparkles className="w-8 h-8 text-purple-300 drop-shadow-[0_0_6px_rgba(139,92,246,0.4)]" />
+                    <div className="mb-4">
+                      <div className="w-12 h-12 rounded-xl bg-accent dark:bg-white/5 flex items-center justify-center">
+                        <Sparkles className="w-6 h-6 text-muted-foreground" />
                       </div>
                     </div>
-                    <h3 className="text-sm font-semibold text-foreground/80 mb-1.5">
+                    <h3 className="text-sm font-medium text-foreground mb-1.5">
                       What would you like to build?
                     </h3>
-                    <p className="text-xs text-muted-foreground/60 leading-relaxed max-w-xs mb-5">
+                    <p className="text-xs text-muted-foreground leading-relaxed max-w-xs mb-5">
                       Describe your app idea and I&apos;ll generate React + TypeScript code with file management and esm.sh package imports.
                     </p>
                     <div className="grid grid-cols-1 gap-2 w-full max-w-xs">
@@ -1146,16 +1140,16 @@ export function AppBuilder() {
                             }
                           }}
                           disabled={isGenerating}
-                          className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-muted/60 hover:bg-muted/80 border border-border/40 hover:border-purple-500/25 transition-all text-left disabled:opacity-30 group shadow-[0_1px_2px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_8px_rgba(139,92,246,0.08)]"
+                          className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-muted dark:bg-zinc-800/50 hover:bg-accent dark:hover:bg-white/5 transition-colors text-left disabled:opacity-30"
                         >
-                          <div className="w-7 h-7 rounded-lg bg-purple-500/15 flex items-center justify-center shrink-0 group-hover:bg-purple-500/25 transition-colors shadow-[0_0_4px_rgba(139,92,246,0.1)]">
-                            <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                          <div className="w-7 h-7 rounded-lg bg-accent dark:bg-white/5 flex items-center justify-center shrink-0">
+                            <Sparkles className="w-3.5 h-3.5 text-muted-foreground" />
                           </div>
                           <div className="min-w-0">
-                            <p className="text-xs font-medium text-foreground/70 group-hover:text-foreground/90 transition-colors">
+                            <p className="text-xs font-medium text-foreground">
                               {suggestion.title}
                             </p>
-                            <p className="text-[10px] text-muted-foreground/50 truncate">
+                            <p className="text-[10px] text-muted-foreground truncate">
                               {suggestion.desc}
                             </p>
                           </div>
@@ -1174,20 +1168,20 @@ export function AppBuilder() {
                   return (
                     <div key={i} className={`flex gap-2.5 ${isUser ? 'flex-row-reverse' : ''} animate-in fade-in slide-in-from-bottom-1 duration-200`}>
                       <div
-                        className={`shrink-0 w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-semibold ${
+                        className={`shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-semibold ${
                           isUser
-                            ? 'bg-purple-500/20 text-purple-400 shadow-[0_0_6px_rgba(139,92,246,0.12)]'
-                            : 'bg-gradient-to-br from-purple-500/25 to-purple-600/10 text-purple-300 border border-purple-500/25 shadow-[0_0_6px_rgba(139,92,246,0.1)]'
+                            ? 'bg-accent dark:bg-white/10 text-muted-foreground'
+                            : 'bg-accent dark:bg-white/10 text-muted-foreground'
                         }`}
                       >
                         {isUser ? 'U' : 'AI'}
                       </div>
                       <div className={`flex-1 min-w-0 ${isUser ? 'flex justify-end' : ''}`}>
                         <div
-                          className={`inline-block max-w-full rounded-xl px-3 py-2 text-xs leading-relaxed ${
+                          className={`inline-block max-w-full rounded-lg px-3 py-2 text-sm leading-relaxed ${
                             isUser
-                              ? 'bg-purple-500/20 text-purple-100 rounded-tr-md shadow-[0_1px_3px_rgba(139,92,246,0.1)]'
-                              : 'bg-accent/50 text-foreground/85 rounded-tl-md shadow-[0_1px_2px_rgba(0,0,0,0.06)]'
+                              ? 'bg-accent dark:bg-white/10 text-foreground'
+                              : 'bg-muted dark:bg-zinc-800/50 text-foreground'
                           }`}
                         >
                           {msg.content && (
@@ -1198,9 +1192,8 @@ export function AppBuilder() {
                           {hasToolCalls && (
                             <div className={msg.content ? 'mt-2 pt-2 border-t border-border/50' : ''}>
                               {msg.tool_calls!.map((tc, j) => (
-                                <div key={j} className="flex items-center gap-1.5 py-0.5 text-[10px]">
-                                  <span className="text-green-500/70">&#x26A1;</span>
-                                  <code className="text-purple-400/80">{tc.function.name}</code>
+                                <div key={j} className="flex items-center gap-1.5 py-0.5 text-xs">
+                                  <code className="text-muted-foreground">{tc.function.name}</code>
                                   <span className="text-muted-foreground/50 truncate">
                                     {(() => {
                                       try {
@@ -1222,37 +1215,32 @@ export function AppBuilder() {
                 })}
 
                 {pendingApprovals.length > 0 && (
-                  <div className="bg-amber-950/20 border border-amber-500/20 rounded-xl p-3 space-y-2.5 animate-in fade-in slide-in-from-bottom-1 duration-200 shadow-[0_1px_3px_rgba(245,158,11,0.06)]">
+                  <div className="bg-muted dark:bg-zinc-800/50 border border-border rounded-lg p-3 space-y-2.5">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 rounded-md bg-amber-500/15 flex items-center justify-center">
-                          <span className="text-amber-400 text-[10px]">&#x26A1;</span>
-                        </div>
-                        <span className="text-xs text-amber-400/90 font-semibold">
-                          Pending Changes ({pendingApprovals.length})
-                        </span>
-                      </div>
+                      <span className="text-xs font-medium text-foreground">
+                        Pending Changes ({pendingApprovals.length})
+                      </span>
                       <div className="flex items-center gap-1.5">
                         <button
                           onClick={handleApproveAll}
-                          className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-md bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors font-medium shadow-[0_0_4px_rgba(34,197,94,0.08)]"
+                          className="flex items-center gap-1 text-xs px-2.5 py-1 rounded hover:bg-accent dark:hover:bg-white/5 transition-colors"
                         >
                           <Check className="w-3 h-3" />
                           Approve All
                         </button>
                         <button
                           onClick={handleRejectAll}
-                          className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-md bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors font-medium shadow-[0_0_4px_rgba(239,68,68,0.08)]"
+                          className="flex items-center gap-1 text-xs px-2.5 py-1 rounded hover:bg-accent dark:hover:bg-white/5 transition-colors text-muted-foreground hover:text-foreground"
                         >
                           <X className="w-3 h-3" />
                           Reject All
                         </button>
                       </div>
                     </div>
-                    <div className="border-t border-amber-500/10 pt-2">
+                    <div className="border-t border-border pt-2">
                     {pendingApprovals.map((p, j) => (
-                      <div key={j} className="flex items-center gap-1.5 text-[10px] py-0.5 pl-0.5">
-                        <code className="text-amber-400/80 font-mono bg-amber-500/10 px-1 py-0.5 rounded">{p.toolCall.function.name}</code>
+                      <div key={j} className="flex items-center gap-1.5 text-xs py-0.5 pl-0.5">
+                        <code className="text-muted-foreground font-mono bg-accent dark:bg-white/5 px-1 py-0.5 rounded">{p.toolCall.function.name}</code>
                         <span className="text-foreground/30 truncate">
                           {(() => {
                             try {
@@ -1271,18 +1259,18 @@ export function AppBuilder() {
 
                 {streamingText && (
                   <div className="flex gap-2.5 animate-in fade-in slide-in-from-bottom-1 duration-200">
-                    <div className="shrink-0 w-6 h-6 rounded-lg bg-gradient-to-br from-purple-500/25 to-purple-600/10 border border-purple-500/25 flex items-center justify-center text-[10px] text-purple-300 font-semibold shadow-[0_0_6px_rgba(139,92,246,0.1)]">AI</div>
+                    <div className="shrink-0 w-6 h-6 rounded-md bg-accent dark:bg-white/10 flex items-center justify-center text-[10px] text-muted-foreground font-semibold">AI</div>
                     <div className="flex-1 min-w-0">
-                      <div className="inline-block max-w-full rounded-xl rounded-tl-md px-3 py-2 text-xs bg-accent/50 text-foreground/85 leading-relaxed shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
+                      <div className="inline-block max-w-full rounded-lg px-3 py-2 text-sm bg-muted dark:bg-zinc-800/50 text-foreground leading-relaxed">
                         <div className="whitespace-pre-wrap break-words">{streamingText}</div>
-                        <span className="inline-block w-1.5 h-3.5 bg-purple-400/80 animate-pulse ml-0.5 align-text-bottom rounded-sm" />
+                        <span className="inline-block w-1.5 h-4 bg-muted-foreground animate-pulse ml-0.5 align-text-bottom rounded-sm" />
                       </div>
                     </div>
                   </div>
                 )}
               </div>
 
-              <div className="border-t border-border/40 p-3 bg-muted/50 shadow-[0_-1px_3px_rgba(0,0,0,0.06)]">
+              <div className="border-t border-border p-3 bg-muted dark:bg-zinc-800/50">
                 <div className="flex items-center gap-2">
                   <textarea
                     value={chatInput}
@@ -1296,12 +1284,12 @@ export function AppBuilder() {
                     placeholder="Describe the app you want to build..."
                     rows={3}
                     disabled={isGenerating}
-                    className="flex-1 bg-background/70 text-foreground text-xs rounded-xl px-3.5 py-2.5 outline-none ring-1 ring-border/40 focus:ring-purple-500/30 focus:bg-background/90 resize-none placeholder:text-muted-foreground/35 disabled:opacity-30 transition-all shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+                    className="flex-1 bg-background dark:bg-zinc-900 text-foreground text-sm rounded-lg px-3.5 py-2.5 outline-none border border-border focus:border-muted-foreground/40 resize-none placeholder:text-muted-foreground disabled:opacity-30 transition-colors"
                   />
                   {isGenerating ? (
                     <button
                       onClick={handleStopGeneration}
-                      className="p-2.5 rounded-xl bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors shrink-0 ring-1 ring-red-500/25 shadow-[0_0_8px_rgba(239,68,68,0.08)]"
+                      className="p-2.5 rounded-lg hover:bg-accent dark:hover:bg-white/5 text-muted-foreground hover:text-foreground transition-colors shrink-0"
                       title="Stop"
                     >
                       <StopCircle className="w-4 h-4" />
@@ -1310,7 +1298,7 @@ export function AppBuilder() {
                     <button
                       onClick={handleSendMessage}
                       disabled={!chatInput.trim()}
-                      className="p-2.5 rounded-xl bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors shrink-0 disabled:opacity-20 ring-1 ring-purple-500/25 disabled:ring-transparent shadow-[0_0_8px_rgba(139,92,246,0.1)] disabled:shadow-none"
+                      className="p-2.5 rounded-lg hover:bg-accent dark:hover:bg-white/5 text-muted-foreground hover:text-foreground transition-colors shrink-0 disabled:opacity-20"
                       title="Send"
                     >
                       <Send className="w-4 h-4" />
@@ -1323,11 +1311,11 @@ export function AppBuilder() {
         </div>
       </div>
 
-      <div className="flex items-center gap-2 px-3 py-1 bg-background border-t border-border shrink-0">
+      <div className="flex items-center gap-2 px-3 py-1 bg-muted dark:bg-zinc-800/30 border-t border-border shrink-0">
         <button
           onClick={() => setShowConsole(!showConsole)}
           className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded transition-colors ${
-            showConsole ? 'bg-accent/70 text-foreground' : 'text-muted-foreground hover:text-foreground'
+            showConsole ? 'bg-accent dark:bg-white/10 text-foreground' : 'text-muted-foreground hover:text-foreground'
           }`}
         >
           <TerminalIcon className="w-3.5 h-3.5" />

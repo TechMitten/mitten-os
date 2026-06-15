@@ -4,16 +4,17 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useDesktopStore, type ContextMenuItem, loadWindowStates, saveIconPositions, loadIconPositions as fetchIconPositions } from '@/stores/desktop-store';
 import { useWindowStore } from '@/stores/window-store';
 import { useFileSystemStore } from '@/stores/filesystem-store';
-import { useAuthStore } from '@/stores/auth-store';
+import { useAuthStore, isGuestUser } from '@/stores/auth-store';
 import { createClient } from '@/lib/supabase/client';
 import { ContextMenu } from '@/components/os/ContextMenu';
 import { DesktopIcon } from '@/components/os/DesktopIcon';
 import Window from '@/components/os/Window';
 import { StartMenu } from '@/components/os/StartMenu';
 import Taskbar from '@/components/os/Taskbar';
-import SignInModal from '@/components/auth/SignInModal';
+import LoginScreen from '@/components/auth/LoginScreen';
+import AccountSwitcher from '@/components/auth/AccountSwitcher';
 import WelcomeWindow from '@/components/os/WelcomeWindow';
-import { saveGuestSettings, saveGuestWindowStates, saveGuestIconPositions } from '@/lib/guest-storage';
+import { getSavedAccounts } from '@/lib/saved-accounts';
 import { Loader2 } from 'lucide-react';
 import { isWallpaperDark } from '@/lib/utils';
 import {
@@ -59,9 +60,6 @@ export function Desktop() {
   const setWelcomeDismissed = useDesktopStore((s) => s.setWelcomeDismissed);
   const updateIconPosition = useDesktopStore((s) => s.updateIconPosition);
   const loadIconPositions = useDesktopStore((s) => s.loadIconPositions);
-  const signInModalOpen = useDesktopStore((s) => s.signInModalOpen);
-  const signInModalMode = useDesktopStore((s) => s.signInModalMode);
-  const setSignInModal = useDesktopStore((s) => s.setSignInModal);
 
   const windows = useWindowStore((s) => s.windows);
   const activeWindowId = useWindowStore((s) => s.activeWindowId);
@@ -91,32 +89,37 @@ export function Desktop() {
     }
   }, [initialize]);
 
-  // Detect user ID changes (guest→real, real→guest, real→real) and reset data
+  // Reset data-loaded flag when user logs out
   useEffect(() => {
-    const currentUserId = user?.id;
-    const prevUserId = prevUserIdRef.current;
-
-    if (prevUserId && currentUserId && prevUserId !== currentUserId) {
+    if (!user) {
       setDataLoaded(false);
       setShowWelcome(false);
     }
-    prevUserIdRef.current = currentUserId;
-  }, [user?.id]);
+  }, [user]);
 
-  // Show welcome window on sign-in (only for real users)
+  // Show welcome window on sign-in
   useEffect(() => {
     if (!dataLoaded) return;
-    if (isGuest) return;
 
+    const currentUserId = user?.id;
     const prevUserId = prevUserIdRef.current;
-    if (!prevUserId && user?.id && !welcomeDismissed) {
+    prevUserIdRef.current = currentUserId;
+
+    if (!prevUserId && currentUserId && !welcomeDismissed) {
       setShowWelcome(true);
     }
-  }, [dataLoaded, user?.id, welcomeDismissed, isGuest]);
+  }, [dataLoaded, user, welcomeDismissed]);
 
-  // Load user data when authenticated (real or guest)
+  // Load user data when authenticated
   useEffect(() => {
     if (!user?.id || dataLoaded) return;
+
+    if (isGuest || isGuestUser(user.id)) {
+      loadSettings(user.id);
+      loadApprovedApps();
+      setDataLoaded(true);
+      return;
+    }
 
     let cancelled = false;
     (async () => {
@@ -160,7 +163,7 @@ export function Desktop() {
     })();
 
     return () => { cancelled = true; };
-  }, [user?.id, dataLoaded, loadSettings, loadFromDB]);
+  }, [user?.id, dataLoaded, isGuest, loadSettings, loadFromDB, loadApprovedApps]);
 
   // Save window states and icon positions periodically
   const windowsRef = useRef(windows);
@@ -172,14 +175,10 @@ export function Desktop() {
     iconsRef.current = desktopIcons;
   });
   useEffect(() => {
-    if (!user?.id || !dataLoaded) return;
+    if (!user?.id || !dataLoaded || isGuest || isGuestUser(user.id)) return;
     const interval = setInterval(async () => {
-      const { persistWindows: pw, welcomeDismissed: wd } = useDesktopStore.getState();
-      const isG = useAuthStore.getState().isGuest;
-      const uid = useAuthStore.getState().user?.id;
-      if (!uid) return;
-
-      const states = pw ? windowsRef.current.map((w) => ({
+      const { persistWindows, welcomeDismissed } = useDesktopStore.getState();
+      const states = persistWindows ? windowsRef.current.map((w) => ({
         appId: w.appId,
         windowId: w.id,
         title: w.title,
@@ -195,30 +194,21 @@ export function Desktop() {
         positions[icon.id] = icon.position;
       }
 
-      if (isG) {
-        if (states) saveGuestWindowStates(uid, states);
-        saveGuestIconPositions(uid, positions);
-        saveGuestSettings(uid, {
-          wallpaper: useDesktopStore.getState().wallpaper,
-          theme: useDesktopStore.getState().theme,
-          welcomeDismissed: wd,
-          persistWindows: pw,
+      const supabase = createClient();
+      await supabase
+        .from('user_settings')
+        .upsert({
+          user_id: user.id,
+          ...(states ? { window_states: states } : {}),
+          icon_positions: positions,
+          settings_json: { welcomeDismissed, persistWindows },
+          updated_at: new Date().toISOString(),
         });
-      } else {
-        const supabase = createClient();
-        await supabase
-          .from('user_settings')
-          .upsert({
-            user_id: uid,
-            ...(states ? { window_states: states } : {}),
-            icon_positions: positions,
-            settings_json: { welcomeDismissed: wd, persistWindows: pw },
-            updated_at: new Date().toISOString(),
-          });
-      }
     }, 10000);
     return () => clearInterval(interval);
   }, [user?.id, dataLoaded]);
+
+  // Save windows on close — use the interval above plus the logout handler in StartMenu
 
   const handleDesktopClick = useCallback(
     (e: React.MouseEvent) => {
@@ -339,6 +329,16 @@ export function Desktop() {
     );
   }
 
+  // --- Not authenticated ---
+  if (!user) {
+    const savedAccounts = getSavedAccounts();
+    return (
+      <div className={theme === 'dark' ? 'dark' : ''}>
+        {savedAccounts.length > 0 ? <AccountSwitcher /> : <LoginScreen />}
+      </div>
+    );
+  }
+
   // --- Data still loading ---
   if (!dataLoaded) {
     return (
@@ -353,7 +353,7 @@ export function Desktop() {
     );
   }
 
-  // --- Desktop ---
+  // --- Authenticated and loaded ---
   const wallpaperStyle: React.CSSProperties = wallpaper.startsWith('linear-gradient') ||
     wallpaper.startsWith('radial-gradient') ||
     wallpaper.startsWith('conic-gradient')
@@ -361,10 +361,6 @@ export function Desktop() {
     : wallpaper.startsWith('http') || wallpaper.startsWith('/')
       ? { backgroundImage: `url(${wallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center' }
       : { backgroundImage: wallpaper };
-
-  const wallpaperBg = theme === 'dark'
-    ? 'linear-gradient(135deg, #0f0c29, #302b63, #24243e)'
-    : 'linear-gradient(135deg, #c9d6ff, #e2e2e2, #f5f7fa)';
 
   return (
     <div className={theme === 'dark' ? 'dark' : ''}>
@@ -450,12 +446,6 @@ export function Desktop() {
 
         <Taskbar />
       </div>
-
-      <SignInModal
-        open={signInModalOpen}
-        mode={signInModalMode}
-        onClose={() => setSignInModal(false)}
-      />
     </div>
   );
 }

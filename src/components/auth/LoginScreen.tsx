@@ -17,6 +17,7 @@ export default function LoginScreen() {
   const [linkSent, setLinkSent] = useState(false)
 
   const sendOtp = useAuthStore((s) => s.sendOtp)
+  const signInAsGuest = useAuthStore((s) => s.signInAsGuest)
 
   const backToEmail = () => {
     setStep('email')
@@ -177,6 +178,26 @@ export default function LoginScreen() {
                 >
                   {busy && <Loader2 className="w-4 h-4 animate-spin" />}
                   Send Link
+                </button>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-black/[0.06] dark:border-white/[0.08]" />
+                  </div>
+                  <div className="relative flex justify-center text-xs">
+                    <span className="px-2 text-muted-foreground/40 dark:text-white/20" style={{ background: theme === 'dark' ? '#1c1c26' : '#ffffff' }}>
+                      or
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={signInAsGuest}
+                  disabled={busy}
+                  className="w-full py-2.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.05] border border-black/[0.06] dark:border-white/[0.08] text-sm text-muted-foreground dark:text-white/50 hover:bg-black/[0.06] dark:hover:bg-white/[0.08] hover:text-foreground/70 dark:hover:text-white/70 transition-all"
+                >
+                  Continue as Guest
                 </button>
               </motion.form>
             )}

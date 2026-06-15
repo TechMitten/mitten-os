@@ -1,16 +1,35 @@
 import { create } from 'zustand'
 import { createClient } from '@/lib/supabase/client'
 import { saveAccount } from '@/lib/saved-accounts'
-import {
-  getOrCreateGuestId,
-  setPendingAuthAction,
-  getPendingAuthAction,
-  clearPendingAuthAction,
-  migrateGuestToSupabase,
-  clearGuestData,
-  type AuthAction,
-} from '@/lib/guest-storage'
 import type { User, Session } from '@supabase/supabase-js'
+
+function generateUUID(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0
+    const v = c === 'x' ? r : (r & 0x3 | 0x8)
+    return v.toString(16)
+  })
+}
+
+function createGuestUser(): User {
+  const id = `guest-${generateUUID()}`
+  return {
+    id,
+    app_metadata: {},
+    user_metadata: {},
+    aud: 'guest',
+    created_at: new Date().toISOString(),
+    email: 'guest@mittenos.local',
+    role: 'guest',
+  } as User
+}
+
+export function isGuestUser(userId: string | undefined): boolean {
+  return !!userId && userId.startsWith('guest-')
+}
 
 interface AuthStore {
   user: User | null
@@ -19,31 +38,10 @@ interface AuthStore {
   isGuest: boolean
 
   initialize: () => Promise<void>
-  signInAsGuest: (guestId?: string) => void
-  sendOtp: (email: string, action?: AuthAction) => Promise<{ error: string | null }>
+  signInAsGuest: () => void
+  sendOtp: (email: string) => Promise<{ error: string | null }>
   verifyOtp: (email: string, token: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
-}
-
-function makeGuestUser(guestId: string): User {
-  return {
-    id: guestId,
-    app_metadata: {},
-    user_metadata: {},
-    aud: '',
-    created_at: '',
-    email: undefined,
-    phone: undefined,
-    confirmed_at: undefined,
-    email_confirmed_at: undefined,
-    phone_confirmed_at: undefined,
-    last_sign_in_at: undefined,
-    role: '',
-    updated_at: undefined,
-    identities: undefined,
-    is_anonymous: true,
-    factors: undefined,
-  } as unknown as User
 }
 
 export const useAuthStore = create<AuthStore>((set, get) => ({
@@ -59,92 +57,45 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       data: { session },
     } = await supabase.auth.getSession()
 
-    if (session?.user) {
+    set({
+      session,
+      user: session?.user ?? null,
+      loading: false,
+    })
+
+    supabase.auth.onAuthStateChange((event, session) => {
       set({
         session,
-        user: session.user,
+        user: session?.user ?? null,
         loading: false,
-        isGuest: false,
       })
-    } else {
-      const guestId = getOrCreateGuestId()
-      set({
-        session: null,
-        user: makeGuestUser(guestId),
-        loading: false,
-        isGuest: true,
-      })
-    }
-
-    supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
-        const pending = getPendingAuthAction()
-        const wasGuest = get().isGuest
-
-        if (pending && pending.action === 'signup' && wasGuest) {
-          await migrateGuestToSupabase(pending.guestId, session.user.id)
-        } else if (pending && pending.action === 'signin' && wasGuest) {
-          clearGuestData(pending.guestId)
-        }
-
-        clearPendingAuthAction()
-
-        set({
-          session,
-          user: session.user,
-          loading: false,
-          isGuest: false,
-        })
-
+        const user = session.user
         saveAccount({
-          id: session.user.id,
-          email: session.user.email ?? '',
-          avatarUrl: session.user.user_metadata?.avatar_url ?? undefined,
-          displayName: session.user.user_metadata?.full_name ?? session.user.user_metadata?.name ?? undefined,
+          id: user.id,
+          email: user.email ?? '',
+          avatarUrl: user.user_metadata?.avatar_url ?? undefined,
+          displayName: user.user_metadata?.full_name ?? user.user_metadata?.name ?? undefined,
           lastLogin: new Date().toISOString(),
-        })
-      } else if (event === 'SIGNED_OUT') {
-        const guestId = getOrCreateGuestId()
-        set({
-          session: null,
-          user: makeGuestUser(guestId),
-          loading: false,
-          isGuest: true,
-        })
-      } else if (event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
-        set({
-          session,
-          user: session?.user ?? get().user,
         })
       }
     })
   },
 
-  signInAsGuest: (guestId?: string) => {
-    const id = guestId ?? getOrCreateGuestId()
-    set({
-      user: makeGuestUser(id),
-      session: null,
-      loading: false,
-      isGuest: true,
-    })
+  signInAsGuest: () => {
+    const guestUser = createGuestUser()
+    set({ user: guestUser, session: null, loading: false, isGuest: true })
   },
 
-  sendOtp: async (email: string, action?: AuthAction) => {
+  sendOtp: async (email: string) => {
     const supabase = createClient()
-    if (action) {
-      setPendingAuthAction(action, get().user?.id ?? getOrCreateGuestId())
-    }
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
         shouldCreateUser: true,
       },
     })
-    if (error) {
-      clearPendingAuthAction()
-      return { error: error.message }
-    }
+    if (error) return { error: error.message }
     return { error: null }
   },
 
@@ -160,19 +111,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   },
 
   signOut: async () => {
-    const { isGuest } = get()
     const supabase = createClient()
-
-    if (!isGuest) {
-      await supabase.auth.signOut()
-    }
-
-    const guestId = getOrCreateGuestId()
-    set({
-      user: makeGuestUser(guestId),
-      session: null,
-      loading: false,
-      isGuest: true,
-    })
+    await supabase.auth.signOut()
+    set({ user: null, session: null, isGuest: false })
   },
 }))

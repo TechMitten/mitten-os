@@ -37,6 +37,7 @@ export default function AccountSwitcher() {
   const [linkSent, setLinkSent] = useState(false)
 
   const sendOtp = useAuthStore((s) => s.sendOtp)
+  const signInAsGuest = useAuthStore((s) => s.signInAsGuest)
 
   const handleRemove = (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
@@ -211,11 +212,18 @@ export default function AccountSwitcher() {
                   ))}
                 </div>
 
-                <div className="px-6 py-4">
+                <div className="px-6 py-2 space-y-2">
+                  <button
+                    type="button"
+                    onClick={signInAsGuest}
+                    className="w-full py-2.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.05] border border-black/[0.06] dark:border-white/[0.08] text-sm text-muted-foreground dark:text-white/50 hover:bg-black/[0.06] dark:hover:bg-white/[0.08] hover:text-foreground/70 dark:hover:text-white/70 transition-all"
+                  >
+                    Continue as Guest
+                  </button>
                   <button
                     type="button"
                     onClick={() => setShowLogin(true)}
-                    className="w-full py-2.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.05] border border-black/[0.06] dark:border-white/[0.08] text-sm text-muted-foreground dark:text-white/50 hover:bg-black/[0.06] dark:hover:bg-white/[0.08] hover:text-foreground/70 dark:hover:text-white/70 transition-all"
+                    className="w-full py-2.5 rounded-xl bg-transparent text-xs text-muted-foreground/40 dark:text-white/20 hover:text-foreground/50 dark:hover:text-white/40 transition-colors"
                   >
                     Use another account
                   </button>
