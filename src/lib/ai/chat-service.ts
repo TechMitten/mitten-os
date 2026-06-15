@@ -2,7 +2,7 @@ import { SYSTEM_PROMPT, TOOL_DEFINITIONS } from './tools';
 import type { AIProvider, ChatMessage } from './types';
 
 const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY;
-const ZAI_KEY = process.env.ZAI_API_KEY;
+const ZAI_KEY = process.env.NEXT_PUBLIC_ZAI_API_KEY;
 
 function detectProvider(): { provider: AIProvider; key: string } {
   const hasDeepseek = Boolean(DEEPSEEK_KEY);
@@ -10,7 +10,7 @@ function detectProvider(): { provider: AIProvider; key: string } {
 
   if (hasDeepseek && hasZai) {
     throw new Error(
-      'Both DEEPSEEK_API_KEY and ZAI_API_KEY are configured. Please set only one.'
+      'Both DEEPSEEK_API_KEY and NEXT_PUBLIC_ZAI_API_KEY are configured. Please set only one.'
     );
   }
 
@@ -18,7 +18,7 @@ function detectProvider(): { provider: AIProvider; key: string } {
   if (hasZai) return { provider: 'zai', key: ZAI_KEY! };
 
   throw new Error(
-    'No AI API key configured. Set either DEEPSEEK_API_KEY or ZAI_API_KEY in the environment.'
+    'No AI API key configured. Set either DEEPSEEK_API_KEY or NEXT_PUBLIC_ZAI_API_KEY in the environment.'
   );
 }
 
@@ -33,7 +33,7 @@ function getProviderConfig(provider: AIProvider): ProviderConfig {
     case 'zai':
       return {
         baseUrl: 'https://api.z.ai/api/coding/paas/v4',
-        model: process.env.ZAI_MODEL || 'glm-5.1',
+        model: process.env.NEXT_PUBLIC_ZAI_MODEL || 'glm-5.1',
         extraRequestFields: {},
       };
     case 'deepseek':

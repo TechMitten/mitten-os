@@ -28,7 +28,7 @@ import {
   AppStore,
   Weather,
   AboutSystem,
-  AppBuilder,
+  OrionAppBuilder,
   SandboxedApp,
 } from '@/components/apps';
 import { useAppRegistryStore } from '@/stores/app-registry-store';
@@ -44,7 +44,7 @@ const APP_COMPONENT_MAP: Record<string, React.ComponentType> = {
   'app-store': AppStore,
   weather: Weather,
   'about-system': AboutSystem,
-  'app-builder': AppBuilder,
+  'app-builder': OrionAppBuilder,
 };
 
 export function Desktop() {
@@ -194,11 +194,14 @@ export function Desktop() {
         positions[icon.id] = icon.position;
       }
 
+      const { theme, wallpaper } = useDesktopStore.getState();
       const supabase = createClient();
       await supabase
         .from('user_settings')
         .upsert({
           user_id: user.id,
+          theme,
+          wallpaper,
           ...(states ? { window_states: states } : {}),
           icon_positions: positions,
           settings_json: { welcomeDismissed, persistWindows },

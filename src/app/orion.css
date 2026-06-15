@@ -1,0 +1,288 @@
+/* Orion App Builder — Device mockups, animations, code syntax, and design system */
+
+/* ———————————————————————————————
+   Code Syntax Highlighting (One Dark inspired)
+   ——————————————————————————————— */
+.token-comment { color: #5c6370; font-style: italic; }
+.token-doctype { color: #c678dd; }
+.token-tag-name { color: #e06c75; }
+.token-attr-name { color: #d19a66; }
+.token-string { color: #98c379; }
+.token-keyword { color: #c678dd; }
+
+/* ———————————————————————————————
+   Animations
+   ——————————————————————————————— */
+@keyframes orion-fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes orion-slideInRight {
+  from { transform: translateX(12px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes orion-scaleIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes orion-expandDown {
+  from { opacity: 0; max-height: 0; transform: translateY(-8px); }
+  to { opacity: 1; max-height: 500px; transform: translateY(0); }
+}
+@keyframes orion-fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes orion-glowPulse {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(99,102,241,0.3), 0 0 0 3px rgba(99,102,241,0.06), 0 0 18px -6px rgba(99,102,241,0.12); }
+  50% { box-shadow: 0 0 0 1px rgba(99,102,241,0.4), 0 0 0 4px rgba(99,102,241,0.10), 0 0 24px -6px rgba(99,102,241,0.18); }
+}
+@keyframes orion-softPulse {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.05); opacity: 1; }
+}
+
+.orion-animate-fade-in { animation: orion-fadeIn 0.3s ease-out forwards; }
+.orion-animate-slide-in { animation: orion-slideInRight 0.25s ease-out forwards; }
+.orion-animate-scale-in { animation: orion-scaleIn 0.2s ease-out forwards; }
+.orion-stagger-1 { animation: orion-fadeInUp 0.35s 0.05s ease-out both; }
+.orion-stagger-2 { animation: orion-fadeInUp 0.35s 0.10s ease-out both; }
+.orion-stagger-3 { animation: orion-fadeInUp 0.35s 0.15s ease-out both; }
+.orion-stagger-4 { animation: orion-fadeInUp 0.35s 0.20s ease-out both; }
+.orion-stagger-5 { animation: orion-fadeInUp 0.35s 0.25s ease-out both; }
+
+/* ———————————————————————————————
+   Device Mockups
+   ——————————————————————————————— */
+.orion-device-smartphone {
+  --device-safe-area-top: 52px;
+  --device-safe-area-bottom: 40px;
+  position: relative;
+  height: 800px;
+  aspect-ratio: 9/19;
+  background: #0f172a;
+  border-radius: 48px;
+  padding: 10px;
+  box-shadow:
+    0 0 0 2px #334155,
+    0 20px 50px -12px rgba(0,0,0,0.5),
+    inset 0 0 2px 2px rgba(255,255,255,0.1);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.orion-device-smartphone::before {
+  content: '';
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  bottom: 9px;
+  height: 18px;
+  border-radius: 0 0 28px 28px;
+  background: linear-gradient(180deg, rgba(148,163,184,0.02) 0%, rgba(15,23,42,0.1) 35%, rgba(15,23,42,0.42) 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), inset 0 -4px 10px rgba(2,6,23,0.26);
+  pointer-events: none;
+  z-index: 4;
+}
+
+.orion-device-desktop {
+  position: relative;
+  width: 1440px;
+  height: 960px;
+  background: linear-gradient(180deg, #334155 0%, #0f172a 100%);
+  border-radius: 32px;
+  padding: 14px 14px 48px;
+  box-shadow:
+    0 0 0 1px rgba(148,163,184,0.4),
+    0 28px 80px -24px rgba(15,23,42,0.65),
+    inset 0 1px 0 rgba(255,255,255,0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.orion-device-desktop-toolbar {
+  height: 52px;
+  border-radius: 22px 22px 14px 14px;
+  background: linear-gradient(180deg, rgba(248,250,252,0.95), rgba(226,232,240,0.92));
+  border: 1px solid rgba(148,163,184,0.35);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.85);
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 18px;
+}
+.orion-device-desktop-lights { display: flex; align-items: center; gap: 8px; }
+.orion-device-desktop-light { width: 10px; height: 10px; border-radius: 999px; display: inline-block; }
+.orion-device-desktop-light-red { background: #f87171; }
+.orion-device-desktop-light-amber { background: #fbbf24; }
+.orion-device-desktop-light-green { background: #34d399; }
+.orion-device-desktop-addressbar {
+  flex: 1; min-width: 0; height: 34px; border-radius: 999px;
+  background: rgba(255,255,255,0.72); border: 1px solid rgba(148,163,184,0.3);
+  display: flex; align-items: center; gap: 10px; padding: 0 14px;
+}
+.orion-device-desktop-address-pill { width: 44px; height: 6px; border-radius: 999px; background: #cbd5e1; flex-shrink: 0; }
+.orion-device-desktop-address-text {
+  color: #64748b; font-size: 0.82rem; font-weight: 600; letter-spacing: 0.01em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.orion-device-desktop-stand {
+  position: absolute; inset-inline: 0; bottom: 12px; width: 240px; height: 16px; margin: 0 auto;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(148,163,184,0.78), rgba(71,85,105,0.92) 58%, rgba(30,41,59,0.98));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.24), inset 0 -2px 6px rgba(15,23,42,0.35), 0 12px 24px -16px rgba(15,23,42,0.65);
+}
+
+.orion-device-screen {
+  position: relative; width: 100%; height: 100%; background: white; border-radius: 38px;
+  overflow: hidden; box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
+}
+.orion-device-screen-mobile {
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05), inset 0 -12px 18px rgba(15,23,42,0.08), inset 0 0 10px rgba(0,0,0,0.08);
+}
+.orion-device-screen-mobile::before, .orion-device-screen-mobile::after { content: none; pointer-events: none; }
+
+.orion-device-preview-surface { position: relative; width: 100%; height: 100%; touch-action: none; }
+.orion-device-preview-surface-mobile {
+  position: absolute; inset: 0; border-radius: inherit; overflow: hidden;
+  touch-action: none; overscroll-behavior: none;
+}
+.orion-device-smartphone::after { content: none; }
+
+.orion-device-desktop .orion-device-screen {
+  flex: 1; height: auto; border-radius: 18px;
+  box-shadow: inset 0 0 0 1px rgba(15,23,42,0.08), 0 18px 40px -24px rgba(15,23,42,0.45);
+}
+
+/* ———————————————————————————————
+   Streaming Marquee
+   ——————————————————————————————— */
+.orion-marquee-container {
+  --marquee-gap: 2rem;
+  overflow: hidden;
+  position: relative;
+  background: #0f172a;
+  padding: 6px 0;
+  border-bottom: 2px solid rgba(79,70,229,0.2);
+  pointer-events: none;
+}
+.orion-marquee-track {
+  display: flex; align-items: center; gap: var(--marquee-gap);
+  width: max-content;
+  animation: orion-marquee-scroll 80s linear infinite;
+  will-change: transform;
+}
+.orion-marquee-segment {
+  flex: 0 0 auto; display: inline-flex; align-items: center; white-space: nowrap;
+  line-height: 1.4; color: #ffffff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.75rem; letter-spacing: 0.05em; font-weight: 500;
+  text-shadow: 0 0 12px rgba(255,255,255,0.08);
+}
+@keyframes orion-marquee-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(calc(-50% - (var(--marquee-gap) / 2))); }
+}
+
+/* ———————————————————————————————
+   Code View
+   ——————————————————————————————— */
+.orion-code-line { display: flex; transition: background 0.2s; }
+.orion-code-line:hover { background: rgba(255,255,255,0.05); }
+.orion-line-number {
+  min-width: 3.5rem; text-align: right; padding-right: 1.5rem;
+  color: #444b6a; user-select: none; font-size: 0.8rem;
+}
+.orion-line-content { flex: 1; color: #cfd8f3; padding-left: 0.5rem; }
+
+/* ———————————————————————————————
+   Premium Design System
+   ——————————————————————————————— */
+.orion-shadow-premium-sm { box-shadow: 0 1px 2px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04); }
+.orion-shadow-premium-md { box-shadow: 0 2px 4px rgba(15,23,42,0.05), 0 4px 12px rgba(15,23,42,0.06), 0 8px 18px -6px rgba(15,23,42,0.08); }
+.orion-shadow-premium-lg { box-shadow: 0 4px 8px rgba(15,23,42,0.05), 0 8px 20px rgba(15,23,42,0.07), 0 16px 32px -12px rgba(15,23,42,0.10); }
+
+.orion-version-item { position: relative; overflow: hidden; transition: all 0.3s cubic-bezier(0.4,0,0.2,1); }
+.orion-version-item:hover { transform: translateY(-1px); box-shadow: 0 8px 16px -8px rgba(0,0,0,0.15), 0 4px 8px -4px rgba(0,0,0,0.08); }
+.orion-version-item:active { transform: translateY(0) scale(0.98); }
+
+.orion-refine-card {
+  position: relative; overflow: hidden; background: #ffffff;
+  border: 1px solid #e2e8f0; border-radius: 20px; padding: 28px;
+  transition: all 0.25s ease; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
+}
+.orion-refine-card:hover { border-color: #c7d2fe; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.04); }
+
+.orion-suggestion-card { transition: all 0.25s cubic-bezier(0.4,0,0.2,1); position: relative; overflow: hidden; }
+.orion-suggestion-card::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  background: linear-gradient(135deg, rgba(99,102,241,0.04), transparent 60%);
+  opacity: 0; transition: opacity 0.3s ease;
+}
+.orion-suggestion-card:hover::after { opacity: 1; }
+.orion-suggestion-card:hover { border-color: #c7d2fe; box-shadow: 0 2px 8px rgba(99,102,241,0.08); transform: translateX(3px); }
+
+.orion-input-glow:focus-within { animation: orion-glowPulse 2.5s ease-in-out infinite; }
+
+.orion-version-expand-enter { animation: orion-expandDown 0.3s cubic-bezier(0.4,0,0.2,1) forwards; overflow: hidden; }
+
+.orion-active-version-glow {
+  box-shadow: 0 0 0 1px rgba(99,102,241,0.15), 0 2px 4px rgba(99,102,241,0.06), 0 6px 16px -6px rgba(99,102,241,0.12);
+}
+
+.orion-layout-selector { transition: all 0.2s cubic-bezier(0.4,0,0.2,1); }
+.orion-layout-selector:hover { border-color: #c7d2fe; background: rgba(238,242,255,0.4); }
+.orion-layout-selector-selected {
+  background: linear-gradient(135deg, rgba(238,242,255,0.8), rgba(255,255,255,0.9));
+  border-color: #a5b4fc;
+  box-shadow: 0 0 0 1px rgba(99,102,241,0.12), 0 2px 8px rgba(99,102,241,0.08);
+}
+
+.orion-btn-premium {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 6px; padding: 8px 16px; border-radius: 10px;
+  font-size: 13px; font-weight: 600; letter-spacing: 0.01em;
+  transition: all 0.2s cubic-bezier(0.4,0,0.2,1); cursor: pointer; border: none;
+}
+.orion-btn-premium-primary {
+  background: linear-gradient(135deg, #4f46e5, #6366f1); color: #ffffff;
+  box-shadow: 0 1px 2px rgba(79,70,229,0.3), 0 4px 8px -4px rgba(79,70,229,0.2);
+}
+.orion-btn-premium-primary:hover {
+  background: linear-gradient(135deg, #4338ca, #4f46e5);
+  box-shadow: 0 2px 4px rgba(79,70,229,0.35), 0 6px 14px -4px rgba(79,70,229,0.25);
+  transform: translateY(-0.5px);
+}
+.orion-btn-premium-primary:active { transform: translateY(0) scale(0.98); box-shadow: 0 1px 2px rgba(79,70,229,0.25); }
+.orion-btn-premium-secondary { background: #ffffff; color: #334155; border: 1px solid #e2e8f0; box-shadow: 0 1px 2px rgba(15,23,42,0.04); }
+.orion-btn-premium-secondary:hover { background: #f8fafc; border-color: #cbd5e1; box-shadow: 0 2px 6px rgba(15,23,42,0.06); }
+
+.orion-history-bg { background: linear-gradient(180deg, #fafbfc 0%, #f5f6f8 50%, #f8fafc 100%); }
+.orion-history-header-bg { background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(250,251,252,0.7)); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+
+.orion-prompt-atmosphere {
+  background: radial-gradient(ellipse 80% 60% at 50% 40%, rgba(99,102,241,0.03), transparent),
+              radial-gradient(ellipse 60% 40% at 30% 60%, rgba(99,102,241,0.02), transparent);
+}
+
+.orion-panel-shadow-right { box-shadow: 3px 0 20px -5px rgba(15,23,42,0.14), 5px 0 14px -8px rgba(15,23,42,0.12); }
+.orion-panel-shadow-left { box-shadow: -3px 0 20px -5px rgba(15,23,42,0.14), -5px 0 14px -8px rgba(15,23,42,0.12); }
+.orion-inset-shadow-preview { box-shadow: inset 0 10px 24px -10px rgba(15,23,42,0.10), inset 0 0 0 1px rgba(15,23,42,0.05); }
+.orion-header-shadow { box-shadow: 0 1px 3px rgba(15,23,42,0.04), 0 4px 18px -6px rgba(15,23,42,0.12); }
+
+.orion-workspace-grid {
+  background-image: radial-gradient(circle, #94a3b8 0.8px, transparent 0.8px);
+  background-size: 24px 24px;
+}
+.orion-section-divider { height: 1px; background: linear-gradient(90deg, transparent, #e2e8f0 20%, #e2e8f0 80%, transparent); }
+
+.orion-custom-scrollbar::-webkit-scrollbar { width: 6px; }
+.orion-custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.orion-custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; transition: background 0.2s; }
+.orion-custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+
+.orion-chat-scrollbar::-webkit-scrollbar { width: 4px; }
+.orion-chat-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.orion-chat-scrollbar::-webkit-scrollbar-thumb { background: #e8ecf1; border-radius: 8px; }
+.orion-chat-scrollbar::-webkit-scrollbar-thumb:hover { background: #d4d9e2; }

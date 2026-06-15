@@ -16,7 +16,7 @@ There are no typecheck or test scripts. `next.config.ts` sets `ignoreBuildErrors
 MittenOS is a Next.js App Router app that renders a browser-based desktop environment ("OS"). The single page (`/`) mounts `Desktop`, which orchestrates everything:
 
 - **`src/components/os/`** — shell layer: Desktop, Taskbar, StartMenu, Window chrome, DesktopIcon, ContextMenu, WelcomeWindow, LoginScreen
-- **`src/components/apps/`** — built-in OS apps: FileExplorer, Terminal, Browser, TextEditor, Calculator, Settings, ImageViewer, AppStore, Weather, AboutSystem, AppBuilder, SandboxedApp
+- **`src/components/apps/`** — built-in OS apps: FileExplorer, Terminal, Browser, TextEditor, Calculator, Settings, ImageViewer, AppStore, Weather, AboutSystem, OrionAppBuilder, SandboxedApp
 - **`src/stores/`** — Zustand stores: `desktop-store` (wallpaper/theme/icons/notifications/settings persistence), `window-store` (window lifecycle), `filesystem-store` (virtual FS synced to Supabase), `auth-store` (Supabase auth), `app-registry-store` (built-in + user-submitted apps)
 - **`src/lib/supabase/`** — thin wrappers for `@supabase/ssr` (browser client + server client using cookies)
 - **`src/lib/os-bridge/`** — iframe sandboxing for user-built apps. The `SandboxedApp` component creates an iframe, injects `OS_BRIDGE_CLIENT_SCRIPT` + compiled React/HTML code, and communicates via `postMessage`. CSP headers restrict what sandboxed apps can access.
@@ -38,6 +38,7 @@ The app expects these tables (no migration files in the repo):
 - `user_settings` — columns: `user_id`, `theme`, `wallpaper`, `settings_json` (jsonb), `window_states` (jsonb), `icon_positions` (jsonb), `updated_at`
 - `filesystem_nodes` — columns: `id`, `user_id`, `parent_id`, `name`, `type`, `content`, `mime_type`, `sort_order`, `created_at`, `updated_at`
 - `user_apps` — columns: `id`, `user_id`, `name`, `description`, `icon`, `category`, `html_content`, `source_files` (jsonb), `compiled_html`, `app_type`, `default_window_size` (jsonb), `min_window_size` (jsonb), `singleton`, `status`, `submitted_at`, `reviewed_at`, `created_at`, `updated_at`
+- `projects` — columns: `id` (text PK), `user_id` (uuid), `name` (text), `data` (jsonb: `{ versions, currentVersionIndex }`), `updated_at` (timestamptz)
 - A Supabase RPC function `check_user_exists(user_email)` returning `{ user_exists: boolean, email_confirmed: boolean }`
 
 ## Environment
@@ -58,6 +59,6 @@ ZAI_MODEL=<optional, defaults to glm-5.1>
 - **Standalone output requires manual copy.** The `build` script copies `.next/static` to `.next/standalone/.next/` and `public` to `.next/standalone/`. This is because Next.js standalone output doesn't include these automatically.
 - **No RLS or migration files in the repo.** All Supabase schema/auth setup is external. Apps are loaded from `user_apps` where `status = 'approved'`.
 - **User auth is mandatory.** `Desktop.tsx` gatekeeps everything behind `useAuthStore` — unauthenticated users see `LoginScreen`, and loading states render a spinner.
-- **The App Builder (`AppBuilder.tsx`) compiles TypeScript in the browser** using `@babel/standalone`. It generates iframe-ready HTML with an import map pointing to `esm.sh` CDN for React 19.
+- **The App Builder (`OrionAppBuilder.tsx`) is an AI-powered app generator** that creates self-contained HTML files from natural language prompts. It uses direct client-side AI API calls (Z.ai, OpenRouter, or custom OpenAI-compatible endpoint) with streaming, surgical edits, and version history. Projects are saved to Supabase's `projects` table.
 - **`dev.log` and `server.log` are gitignored** but are produced by the npm scripts using `tee`.
 - **File system is flat via `buildTree`.** The `filesystem_nodes` table stores all nodes with `parent_id` references; `loadFromDB` reconstructs the tree in memory.

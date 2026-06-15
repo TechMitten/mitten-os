@@ -122,12 +122,13 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
 
   setWallpaper: (url: string) => {
     set({ wallpaper: url });
-    const { userId, welcomeDismissed, persistWindows } = get();
+    const { userId, theme, welcomeDismissed, persistWindows } = get();
     if (!userId || isGuest(userId)) return;
     const supabase = createClient();
     supabase
       .from("user_settings")
-      .upsert({ user_id: userId, wallpaper: url, settings_json: { welcomeDismissed, persistWindows }, updated_at: new Date().toISOString() });
+      .upsert({ user_id: userId, theme, wallpaper: url, settings_json: { welcomeDismissed, persistWindows }, updated_at: new Date().toISOString() })
+      .then(({ error }) => { if (error) console.error("Failed to save wallpaper:", error); });
   },
 
   setTheme: (theme: "light" | "dark") => {
@@ -141,7 +142,8 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     const supabase = createClient();
     supabase
       .from("user_settings")
-      .upsert({ user_id: userId, theme, wallpaper, settings_json: { welcomeDismissed, persistWindows }, updated_at: new Date().toISOString() });
+      .upsert({ user_id: userId, theme, wallpaper, settings_json: { welcomeDismissed, persistWindows }, updated_at: new Date().toISOString() })
+      .then(({ error }) => { if (error) console.error("Failed to save theme:", error); });
   },
 
   toggleTheme: () => {
@@ -157,7 +159,8 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     const supabase = createClient();
     supabase
       .from("user_settings")
-      .upsert({ user_id: userId, theme: next, wallpaper, settings_json: { welcomeDismissed, persistWindows }, updated_at: new Date().toISOString() });
+      .upsert({ user_id: userId, theme: next, wallpaper, settings_json: { welcomeDismissed, persistWindows }, updated_at: new Date().toISOString() })
+      .then(({ error }) => { if (error) console.error("Failed to save theme:", error); });
   },
 
   setStartMenuOpen: (open: boolean) => set({ startMenuOpen: open }),
@@ -207,7 +210,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
 
   setWelcomeDismissed: (dismissed: boolean) => {
     set({ welcomeDismissed: dismissed });
-    const { userId, persistWindows } = get();
+    const { userId, theme, wallpaper, persistWindows } = get();
     if (userId) {
       localStorage.setItem(`mittenos:welcomeDismissed:${userId}`, String(dismissed));
     }
@@ -217,6 +220,8 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
       .from("user_settings")
       .upsert({
         user_id: userId,
+        theme,
+        wallpaper,
         settings_json: { welcomeDismissed: dismissed, persistWindows },
         updated_at: new Date().toISOString(),
       });
@@ -224,13 +229,15 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
 
   setPersistWindows: (persist: boolean) => {
     set({ persistWindows: persist });
-    const { userId, welcomeDismissed } = get();
+    const { userId, theme, wallpaper, welcomeDismissed } = get();
     if (!userId || isGuest(userId)) return;
     const supabase = createClient();
     supabase
       .from("user_settings")
       .upsert({
         user_id: userId,
+        theme,
+        wallpaper,
         settings_json: { welcomeDismissed, persistWindows: persist },
         updated_at: new Date().toISOString(),
       });
@@ -258,7 +265,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
 export async function saveWindowStates(userId: string, windows: import("@/types/os").OSWindow[]) {
   if (isGuest(userId)) return;
   const supabase = createClient();
-  const { welcomeDismissed, persistWindows } = useDesktopStore.getState();
+  const { theme, wallpaper, welcomeDismissed, persistWindows } = useDesktopStore.getState();
   const states = windows.map((w) => ({
     appId: w.appId,
     windowId: w.id,
@@ -271,7 +278,7 @@ export async function saveWindowStates(userId: string, windows: import("@/types/
   }));
   await supabase
     .from("user_settings")
-    .upsert({ user_id: userId, window_states: states, settings_json: { welcomeDismissed, persistWindows }, updated_at: new Date().toISOString() });
+    .upsert({ user_id: userId, theme, wallpaper, window_states: states, settings_json: { welcomeDismissed, persistWindows }, updated_at: new Date().toISOString() });
 }
 
 export async function loadWindowStates(userId: string) {
@@ -297,14 +304,14 @@ export async function loadWindowStates(userId: string) {
 export async function saveIconPositions(userId: string, icons: DesktopIcon[]) {
   if (isGuest(userId)) return;
   const supabase = createClient();
-  const { welcomeDismissed, persistWindows } = useDesktopStore.getState();
+  const { theme, wallpaper, welcomeDismissed, persistWindows } = useDesktopStore.getState();
   const positions: Record<string, WindowPosition> = {};
   for (const icon of icons) {
     positions[icon.id] = icon.position;
   }
   await supabase
     .from("user_settings")
-    .upsert({ user_id: userId, icon_positions: positions, settings_json: { welcomeDismissed, persistWindows }, updated_at: new Date().toISOString() });
+    .upsert({ user_id: userId, theme, wallpaper, icon_positions: positions, settings_json: { welcomeDismissed, persistWindows }, updated_at: new Date().toISOString() });
 }
 
 export async function loadIconPositions(userId: string) {
