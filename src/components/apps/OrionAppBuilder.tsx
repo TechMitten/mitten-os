@@ -1446,103 +1446,127 @@ export function OrionAppBuilder() {
       {/* Main Content */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* History Sidebar */}
-        <aside className={`flex-shrink-0 flex-col transition-all duration-300 ease-out relative orion-history-bg border-r border-slate-200 ${
-          isHistoryOpen ? 'w-64 flex' : 'w-0 border-r-0 overflow-hidden opacity-0 hidden'
+        <aside className={`flex-shrink-0 flex-col transition-all duration-300 ease-out relative orion-history-bg border-r-2 border-slate-300/60 shadow-[2px_0_12px_-2px_rgba(15,23,42,0.08)] ${
+          isHistoryOpen ? 'w-64 flex' : 'w-0 border-r-0 shadow-none overflow-hidden opacity-0 hidden'
         }`}>
-          <div className="shrink-0 px-4 py-3 flex items-center justify-between orion-history-header-bg border-b border-slate-200/60">
-            <div className="flex items-center gap-2">
-              <button onClick={() => setIsHistoryOpen(false)} className="text-slate-400 hover:text-slate-600 hover:bg-white p-1 rounded-lg transition-all duration-200 flex-shrink-0" title="Hide history panel">
-                <PanelLeftClose size={13} />
-              </button>
-              <div className="h-6 w-6 rounded-lg bg-gradient-to-br from-indigo-50 to-indigo-100 flex items-center justify-center text-indigo-500 flex-shrink-0 border border-indigo-100">
-                <History size={11} />
+          <div className="shrink-0 px-4 py-3 orion-history-header-bg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-indigo-50 to-indigo-100 flex items-center justify-center text-indigo-500 flex-shrink-0 border border-indigo-100/80">
+                  <History size={13} />
+                </div>
+                <h2 className="text-sm font-semibold text-slate-800 whitespace-nowrap tracking-tight">History</h2>
               </div>
-              <h2 className="text-xs font-semibold text-slate-800 whitespace-nowrap tracking-tight">History</h2>
+              {versions.length > 0 && (
+                <span className="text-[11px] font-semibold text-slate-400 bg-white/70 px-2 py-0.5 rounded-full border border-slate-200/70">
+                  {versions.length} v{versions.length !== 1 ? 's' : ''}
+                </span>
+              )}
             </div>
-            {versions.length > 0 && (
-              <span className="text-[10px] font-semibold text-slate-400 bg-slate-100/80 px-2 py-0.5 rounded-full border border-slate-200/60">
-                {versions.length} v{versions.length !== 1 ? 's' : ''}
-              </span>
+            {currentVersionIndex >= 0 && versions[currentVersionIndex] && (
+              <div className="mt-2 pl-9 flex items-center gap-1.5">
+                <div className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-pulse" />
+                <span className="text-[11px] text-slate-500">
+                  Viewing <span className="text-indigo-600 font-semibold">v{currentVersionIndex + 1}</span> of <span className="font-medium text-slate-600">{versions.length}</span>
+                </span>
+              </div>
             )}
           </div>
+          <div className="orion-history-header-divider" />
           <div className="flex-1 overflow-y-auto px-2 py-2 space-y-0 orion-chat-scrollbar relative">
             {versions.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 px-3">
-                <div className="relative mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center border border-slate-200 orion-shadow-premium-sm">
-                    <Clock size={20} className="text-slate-300" />
+              <div className="flex flex-col items-center justify-center py-24 px-4">
+                <div className="relative mb-5">
+                  <div className="w-16 h-16 rounded-2xl orion-history-empty-icon flex items-center justify-center">
+                    <History size={24} className="text-slate-300" />
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-slate-100 border-2 border-slate-200/80 flex items-center justify-center">
+                    <Plus size={10} className="text-slate-400" />
                   </div>
                 </div>
-                <h3 className="text-slate-700 font-semibold text-xs mb-1">No versions yet</h3>
-                <p className="text-slate-400 text-[10px] leading-relaxed text-center max-w-[12rem]">Each generation creates a version snapshot you can revisit anytime.</p>
+                <h3 className="text-slate-700 font-semibold text-sm mb-1.5">No versions yet</h3>
+                <p className="text-slate-400 text-xs leading-relaxed text-center max-w-[14rem]">Each generation creates a version snapshot you can revisit anytime.</p>
               </div>
             ) : (
               <div className="relative pl-5">
-                <div className="absolute left-[12px] top-2 bottom-2 w-px bg-gradient-to-b from-transparent via-slate-200 to-transparent" />
+                <div className="absolute left-[14px] top-3 bottom-3 w-px orion-history-timeline-line" />
                 {[...versions].reverse().map((ver, reversedIdx) => {
                   const idx = versions.length - 1 - reversedIdx;
                   const isActive = currentVersionIndex === idx;
                   const isExpanded = expandedVersionIndex === idx;
+                  const isSurgical = ver.editMode === 'surgical';
                   return (
                     <div key={ver.id} className="relative mb-0.5 orion-animate-fade-in" style={{ animationDelay: `${reversedIdx * 40}ms` }}>
-                      <div className={`absolute left-[-16px] top-[12px] w-[8px] h-[8px] rounded-full border-2 z-[2] transition-all duration-300 ${
-                        isActive ? 'border-indigo-500 bg-indigo-100 shadow-[0_0_0_4px_rgba(99,102,241,0.12)]' : 'border-slate-300 bg-white'
+                      <div className={`absolute left-[-17px] top-[15px] w-[10px] h-[10px] rounded-full border-2 z-[2] orion-history-dot ${
+                        isActive ? 'border-indigo-500 bg-indigo-100 orion-history-dot-active' : 'border-slate-300 bg-slate-50'
                       }`} />
-                      <div onClick={() => toggleExpandVersion(idx)} className={`relative cursor-pointer rounded-lg border transition-all duration-200 overflow-hidden ${
-                        isActive ? 'bg-white border-indigo-200/60 orion-active-version-glow' : 'bg-white/80 border-transparent hover:border-slate-200 hover:bg-white hover:shadow-sm'
+                      <div onClick={() => toggleExpandVersion(idx)} className={`orion-history-item-card rounded-lg border overflow-hidden ${
+                        isActive ? 'bg-white border-indigo-300/70 orion-history-item-card-active' : 'bg-white/60 border-transparent hover:border-slate-200 hover:bg-white hover:shadow-sm'
                       }`}>
-                        <div className="px-2.5 py-2">
-                          <div className="flex items-start gap-2 min-w-0">
-                            <div className={`shrink-0 h-[18px] min-w-[32px] px-1.5 rounded flex items-center justify-center text-[9px] font-bold tracking-wide transition-all duration-200 ${
-                              isActive ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-200' : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'
-                            }`}>v{idx + 1}</div>
+                        <div className="px-3 py-2.5">
+                          <div className="flex items-start gap-2.5 min-w-0">
+                            <div className={`shrink-0 h-[22px] min-w-[30px] px-1.5 rounded-md flex items-center justify-center text-[10px] font-bold tracking-tight transition-all duration-200 orion-history-version-badge ${
+                              isActive ? 'bg-indigo-600 text-white orion-history-version-badge-active' : 'bg-slate-100 text-slate-500'
+                            }`}>{idx + 1}</div>
                             <div className="flex-1 min-w-0 pt-0.5">
-                              <div className="flex items-start gap-1 min-w-0">
-                                <span className={`block text-[11px] leading-[1.35] transition-colors truncate ${isActive ? 'text-slate-900 font-semibold' : 'text-slate-600'}`}>{ver.prompt}</span>
-                                {idx === 0 && <span className="shrink-0 text-[7px] font-bold px-1 py-[1px] rounded-full bg-slate-100 text-slate-400 border border-slate-200 uppercase tracking-wider mt-0.5">Initial</span>}
-                              </div>
-                              <div className="mt-1 flex items-center gap-1.5 text-[9px] font-medium">
-                                <span className={isActive ? 'text-indigo-500' : 'text-slate-400'}>{ver.timestamp}</span>
+                              <p className={`text-xs leading-[1.4] transition-colors line-clamp-2 ${isActive ? 'text-slate-900 font-semibold' : 'text-slate-600 font-medium'}`}>{ver.prompt}</p>
+                              <div className="mt-1.5 flex items-center gap-1.5 text-[10px] font-medium">
+                                <span className={`flex items-center gap-1 ${isActive ? 'text-indigo-500' : 'text-slate-400'}`}>
+                                  {isSurgical ? <Edit2 size={10} /> : <Wand2 size={10} />}
+                                  {isSurgical ? 'Edit' : 'Gen'}
+                                </span>
+                                <span className="text-slate-300 leading-none">·</span>
+                                <span className={isActive ? 'text-indigo-400' : 'text-slate-400'}>{ver.timestamp}</span>
+                                {idx === 0 && (
+                                  <>
+                                    <span className="text-slate-300 leading-none">·</span>
+                                    <span className="text-[9px] font-bold text-slate-400 bg-slate-100/80 px-1.5 py-px rounded-full border border-slate-200/60 uppercase tracking-wider">Initial</span>
+                                  </>
+                                )}
                               </div>
                             </div>
-                            <ChevronRight size={12} className={`shrink-0 mt-1 transition-all duration-200 ${
+                            <ChevronRight size={14} className={`shrink-0 mt-1 transition-all duration-200 ${
                               isExpanded ? 'rotate-90 text-indigo-500' : isActive ? 'text-indigo-400' : 'text-slate-300'
                             }`} />
                           </div>
                         </div>
                       </div>
                       {isExpanded && (
-                        <div className="mt-1.5 ml-1 mr-0 mb-1.5 orion-version-expand-enter">
-                          <div className="bg-white border border-slate-200 rounded-lg p-3 orion-shadow-premium-md">
+                        <div className="mt-2 ml-1 mr-0 mb-2 orion-version-expand-enter">
+                          <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-sm">
                             <div className="space-y-3">
                               <div>
-                                <div className="flex items-center gap-1.5 mb-1.5">
-                                  <div className="w-1 h-2.5 rounded-full bg-indigo-400" />
-                                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.12em]">Prompt</span>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <div className="w-1.5 h-3 rounded-full bg-indigo-400" />
+                                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.12em]">Prompt</span>
                                 </div>
-                                <div className="text-[11px] text-slate-700 font-medium leading-relaxed bg-slate-50/80 p-2.5 rounded-lg border border-slate-100">{ver.prompt}</div>
+                                <div className="text-xs text-slate-700 font-medium leading-relaxed bg-slate-50/80 p-3 rounded-lg border border-slate-100/80">{ver.prompt}</div>
                               </div>
-                              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-1 border-t border-slate-100">
-                                <div className="flex flex-col">
-                                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.10em]">Modified</span>
-                                  <span className="text-[10px] text-slate-600 font-medium mt-0.5">{ver.timestamp}</span>
+                              <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
+                                <div className="flex items-center gap-1.5">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+                                  <span className="text-[11px] text-slate-400">{ver.timestamp}</span>
                                 </div>
-                                {ver.editSummary && (
-                                  <div className="flex flex-col flex-1 min-w-0">
-                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.10em]">Summary</span>
-                                    <span className="text-[10px] text-slate-600 font-medium mt-0.5 truncate">{ver.editSummary}</span>
-                                  </div>
-                                )}
+                                <div className="flex items-center gap-1.5">
+                                  {isSurgical ? <Edit2 size={11} className="text-slate-400" /> : <Wand2 size={11} className="text-slate-400" />}
+                                  <span className="text-[11px] text-slate-500 font-medium">{isSurgical ? 'Surgical edit' : 'Full generation'}</span>
+                                </div>
                               </div>
-                              <div className="grid grid-cols-3 gap-1.5">
-                                <button onClick={(e) => { e.stopPropagation(); switchVersion(idx); }} className="orion-btn-premium orion-btn-premium-primary py-1.5 text-[10px]">
-                                  <Play size={11} /> Restore
+                              {ver.editSummary && ver.editSummary !== ver.prompt && (
+                                <div className="text-[11px] text-slate-500 bg-slate-50/60 rounded-lg p-2.5 border border-slate-100/80 leading-relaxed">
+                                  <span className="font-semibold text-slate-400 block mb-0.5">Summary</span>
+                                  {ver.editSummary}
+                                </div>
+                              )}
+                              <div className="grid grid-cols-3 gap-2 pt-1">
+                                <button onClick={(e) => { e.stopPropagation(); switchVersion(idx); }} className="orion-btn-premium orion-btn-premium-primary w-full py-2 text-[11px]">
+                                  <Play size={12} /> Restore
                                 </button>
-                                <button onClick={(e) => { e.stopPropagation(); copyVersionCode(ver); }} className="orion-btn-premium orion-btn-premium-secondary py-1.5 text-[10px]">
-                                  <Copy size={11} /> Copy
+                                <button onClick={(e) => { e.stopPropagation(); copyVersionCode(ver); }} className="orion-btn-premium orion-btn-premium-secondary w-full py-2 text-[11px]">
+                                  <Copy size={12} /> Copy
                                 </button>
-                                <button onClick={(e) => { e.stopPropagation(); downloadVersion(ver); }} className="orion-btn-premium orion-btn-premium-secondary py-1.5 text-[10px]">
-                                  <Download size={11} /> Save
+                                <button onClick={(e) => { e.stopPropagation(); downloadVersion(ver); }} className="orion-btn-premium orion-btn-premium-secondary w-full py-2 text-[11px]">
+                                  <Download size={12} /> Save
                                 </button>
                               </div>
                             </div>
