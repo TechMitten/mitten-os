@@ -263,8 +263,6 @@ export function Window({ window: win, children, isActive }: WindowProps) {
     { direction: 'sw', className: 'absolute bottom-0 left-0 w-4 h-4 cursor-sw-resize' },
   ];
 
-  if (isMinimized) return null;
-
   return (
     <AnimatePresence>
       {!isClosing && (
@@ -279,13 +277,17 @@ export function Window({ window: win, children, isActive }: WindowProps) {
                   y: minimizeTarget.y,
                   scale: minimizeTarget.scale,
                 }
-              : { opacity: 1, x: 0, y: 0, scale: 1 }
+              : isMinimized
+                ? { opacity: 0, x: 0, y: 0, scale: 1 }
+                : { opacity: 1, x: 0, y: 0, scale: 1 }
           }
           exit={{ opacity: 0, scale: 0.92, y: 10 }}
           transition={
             isMinimizing
               ? { duration: 0.3, ease: [0.4, 0, 1, 1] }
-              : { duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }
+              : isMinimized
+                ? { duration: 0 }
+                : { duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }
           }
           onAnimationComplete={() => {
             if (isMinimizingRef.current) {
@@ -294,7 +296,10 @@ export function Window({ window: win, children, isActive }: WindowProps) {
               isMinimizingRef.current = false;
             }
           }}
-          style={windowStyle}
+          style={{
+            ...windowStyle,
+            ...(isMinimized ? { pointerEvents: 'none' as const } : {}),
+          }}
           className={`
             flex flex-col
             ${isMaximized ? '' : 'rounded-lg'}

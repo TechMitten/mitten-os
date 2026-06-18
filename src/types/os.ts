@@ -215,9 +215,9 @@ export const APP_REGISTRY: Record<string, Omit<AppDefinition, "component">> = {
   },
   "app-builder": {
     id: "app-builder",
-    name: "App Builder",
+    name: "Orion",
     icon: "Code2",
-    description: "Build React + TypeScript apps",
+    description: "AI-powered app generator",
     category: "development",
     defaultWindowSize: { width: 1200, height: 700 },
     minWindowSize: { width: 800, height: 500 },

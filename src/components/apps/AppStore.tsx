@@ -161,8 +161,8 @@ export default function AppStore() {
                 <Code2 className="w-5 h-5 text-purple-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium">App Builder</div>
-                <div className="text-xs text-muted-foreground dark:text-white/50 truncate">Create your own apps with React + TypeScript</div>
+                <div className="text-sm font-medium">Orion</div>
+                <div className="text-xs text-muted-foreground dark:text-white/50 truncate">AI-powered app generator</div>
               </div>
               <button
                 className="px-3 py-1 rounded-full text-xs bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors shrink-0"

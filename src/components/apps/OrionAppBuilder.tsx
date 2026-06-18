@@ -502,6 +502,15 @@ export function OrionAppBuilder() {
     localStorage.setItem('orion-history-open', String(isHistoryOpen));
   }, [isHistoryOpen]);
 
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, []);
+
   const clearStreamingState = () => {
     setStreamingCode('');
     setStreamingGeneratedCode('');
@@ -1366,12 +1375,13 @@ export function OrionAppBuilder() {
       )}
 
       {/* Toolbar */}
-      <div className="shrink-0 bg-white border-b border-slate-200/80 orion-header-shadow px-3 py-2 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="bg-indigo-600 p-1.5 rounded-lg text-white">
-            <Sparkles size={16} />
-          </div>
-          <h1 className="text-sm font-bold text-slate-900 tracking-tight">{projectName}</h1>
+      <div className="shrink-0 bg-white border-b border-slate-200 px-3 py-2 flex items-center">
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Layout size={20} className="text-indigo-600" />
+          <span className="text-lg font-extrabold text-indigo-600 tracking-tight">Orion</span>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <h1 className="text-sm font-medium text-slate-500 tracking-tight">{projectName}</h1>
         </div>
         <div className="flex items-center gap-1.5">
           <button onClick={handleNewApp} className="flex items-center gap-1 text-slate-600 hover:text-indigo-600 font-medium px-2 py-1.5 rounded-lg hover:bg-indigo-50/60 transition-colors text-xs" title="Start a new app">
@@ -1435,16 +1445,9 @@ export function OrionAppBuilder() {
 
       {/* Main Content */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* Collapse toggle when sidebar hidden */}
-        {!isHistoryOpen && (
-          <button onClick={() => setIsHistoryOpen(true)} className="flex items-center justify-center w-6 bg-white border border-slate-200 rounded-r-lg orion-shadow-premium-sm hover:bg-slate-50 transition-all duration-200 z-20 flex-shrink-0 group" title="Show history panel">
-            <PanelLeftOpen size={12} className="text-slate-400 group-hover:text-indigo-500 transition-colors" />
-          </button>
-        )}
-
         {/* History Sidebar */}
-        <aside className={`flex-shrink-0 flex-col z-10 transition-all duration-300 ease-out relative orion-history-bg border-r border-slate-200 ${
-          isHistoryOpen ? 'w-64 flex' : 'w-0 min-w-0 border-r-0 overflow-hidden opacity-0 hidden'
+        <aside className={`flex-shrink-0 flex-col transition-all duration-300 ease-out relative orion-history-bg border-r border-slate-200 ${
+          isHistoryOpen ? 'w-64 flex' : 'w-0 border-r-0 overflow-hidden opacity-0 hidden'
         }`}>
           <div className="shrink-0 px-4 py-3 flex items-center justify-between orion-history-header-bg border-b border-slate-200/60">
             <div className="flex items-center gap-2">
@@ -1557,7 +1560,7 @@ export function OrionAppBuilder() {
         {/* Main Workspace */}
         <main className="flex-1 min-h-0 flex overflow-hidden">
           {/* Prompt/Chat Sidebar (Left) */}
-          <div className="w-full md:w-[280px] lg:w-[340px] min-h-0 overflow-hidden flex flex-col bg-white border-r border-slate-200/60 z-20 flex-shrink-0 orion-shadow-premium-lg relative">
+          <div className="w-full md:w-[280px] lg:w-[340px] min-h-0 overflow-hidden flex flex-col bg-white border-r border-slate-200 flex-shrink-0 relative">
             <div className="absolute inset-0 pointer-events-none z-0 orion-prompt-atmosphere" />
             <div className="flex-1 min-h-0 overflow-y-auto px-4 lg:px-5 pt-5 pb-3 flex flex-col justify-start relative z-[1] orion-chat-scrollbar">
               <div className="max-w-2xl w-full mx-auto space-y-5 orion-animate-fade-in">

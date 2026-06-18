@@ -28,7 +28,8 @@
     "zustand": "^5.0.6"
   },
   "overrides": {
-    "postcss": ">=8.5.10"
+    "postcss": ">=8.5.10",
+    "dompurify": ">=3.4.11"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
