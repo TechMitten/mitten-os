@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/stores/auth-store';
+import { useWindowStore } from '@/stores/window-store';
 import { createClient } from '@/lib/supabase/client';
 import {
   Wand2, Smartphone, Code2, Play, Loader2, History, Settings, Layout, Download,
@@ -493,6 +494,11 @@ export function OrionAppBuilder() {
   const streamingGeneratedCodeRef = useRef('');
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  const appWindow = useWindowStore(s => s.windows.find(w => w.appId === 'app-builder'));
+  const appWindowSize = appWindow?.size;
+  const updateWindowSize = useWindowStore(s => s.updateWindowSize);
+  const isMaximized = appWindow?.state === 'maximized';
+
   const codePanelCode = isGenerating ? (streamingGeneratedCode || generatedCode) : generatedCode;
   const activePreviewPreset = PREVIEW_MODES[previewMode];
   const scaledPreviewWidth = activePreviewPreset.width * zoomLevel;
@@ -501,6 +507,26 @@ export function OrionAppBuilder() {
   useEffect(() => {
     localStorage.setItem('orion-history-open', String(isHistoryOpen));
   }, [isHistoryOpen]);
+
+  useEffect(() => {
+    if (!appWindow?.id || isMaximized || !generatedCode) return;
+
+    const historyWidth = isHistoryOpen ? 256 : 0;
+    const promptSidebarWidth = 340;
+    const horizontalPadding = 48;
+
+    const previewWidth = previewMode === 'desktop'
+      ? PREVIEW_MODES.desktop.width
+      : Math.max(PREVIEW_MODES.mobile.width, 540);
+
+    const targetWidth = historyWidth + promptSidebarWidth + previewWidth + horizontalPadding;
+    const clampedWidth = Math.min(targetWidth, (typeof window !== 'undefined' ? window.innerWidth : 1920) - 32);
+
+    updateWindowSize(appWindow.id, {
+      width: clampedWidth,
+      height: appWindow.size?.height ?? 700,
+    });
+  }, [previewMode, isHistoryOpen, appWindow?.id, isMaximized, generatedCode, updateWindowSize]);
 
   useEffect(() => {
     return () => {
@@ -541,7 +567,15 @@ export function OrionAppBuilder() {
     };
     calculateZoom();
     window.addEventListener('resize', calculateZoom);
-    return () => window.removeEventListener('resize', calculateZoom);
+    let resizeObserver: ResizeObserver | null = null;
+    if (previewContainerRef.current) {
+      resizeObserver = new ResizeObserver(() => calculateZoom());
+      resizeObserver.observe(previewContainerRef.current);
+    }
+    return () => {
+      window.removeEventListener('resize', calculateZoom);
+      if (resizeObserver) resizeObserver.disconnect();
+    };
   }, [isAutoZoom, activeTab, previewMode]);
 
   // --- Mobile Touch Scroll Simulation ---
