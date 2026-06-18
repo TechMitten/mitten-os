@@ -222,4 +222,14 @@ export const APP_REGISTRY: Record<string, Omit<AppDefinition, "component">> = {
     defaultWindowSize: { width: 1200, height: 700 },
     minWindowSize: { width: 800, height: 500 },
   },
+  "coding-assistant": {
+    id: "coding-assistant",
+    name: "MittenAI",
+    icon: "Bot",
+    description: "AI-powered virtual coding chat assistant",
+    category: "development",
+    defaultWindowSize: { width: 900, height: 650 },
+    minWindowSize: { width: 500, height: 400 },
+    singleton: true,
+  },
 };

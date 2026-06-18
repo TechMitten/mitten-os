@@ -30,6 +30,7 @@ import {
   AboutSystem,
   OrionAppBuilder,
   SandboxedApp,
+  CodingAssistant,
 } from '@/components/apps';
 import { useAppRegistryStore } from '@/stores/app-registry-store';
 
@@ -45,6 +46,7 @@ const APP_COMPONENT_MAP: Record<string, React.ComponentType> = {
   weather: Weather,
   'about-system': AboutSystem,
   'app-builder': OrionAppBuilder,
+  'coding-assistant': CodingAssistant,
 };
 
 export function Desktop() {

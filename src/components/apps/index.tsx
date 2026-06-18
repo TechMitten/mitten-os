@@ -12,3 +12,4 @@ export { default as Weather } from './Weather';
 export { default as AboutSystem } from './AboutSystem';
 export { OrionAppBuilder } from './OrionAppBuilder';
 export { SandboxedApp } from './SandboxedApp';
+export { CodingAssistant } from './CodingAssistant';

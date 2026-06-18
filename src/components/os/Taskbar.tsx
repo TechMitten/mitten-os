@@ -17,6 +17,7 @@ import {
   CloudSun,
   Info,
   User,
+  Bot,
 } from 'lucide-react';
 import { useWindowStore } from '@/stores/window-store';
 import { useDesktopStore } from '@/stores/desktop-store';
@@ -46,6 +47,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Moon,
   Bell,
   User,
+  Bot,
 };
 
 function Clock() {

@@ -12,6 +12,7 @@ import {
   Store,
   CloudSun,
   Info,
+  Bot,
   type LucideIcon,
 } from 'lucide-react';
 import { DESKTOP_GRID_CELL, DESKTOP_GRID_OFFSET_X, DESKTOP_GRID_OFFSET_Y, DRAG_THRESHOLD, type WindowPosition } from '@/types/os';
@@ -27,6 +28,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Store,
   CloudSun,
   Info,
+  Bot,
 };
 
 function snapToGrid(pos: WindowPosition): WindowPosition {

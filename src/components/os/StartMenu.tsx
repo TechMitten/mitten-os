@@ -15,6 +15,7 @@ import {
   Info,
   Search,
   LogOut,
+  Bot,
   type LucideIcon,
 } from 'lucide-react';
 import { useDesktopStore } from '@/stores/desktop-store';
@@ -36,6 +37,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Store,
   CloudSun,
   Info,
+  Bot,
 };
 
 export function StartMenu() {
