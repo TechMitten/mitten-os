@@ -284,7 +284,7 @@ const requestModelText = async (params: RequestModelTextParams): Promise<{ conte
     if (!response.ok) throw new Error(`API Error: ${response.status}`);
 
     if (!onChunk) {
-      const data = await response.json();
+      const data = await response.json() as any;
       return data.choices[0].message;
     }
 
@@ -549,8 +549,8 @@ export function OrionAppBuilder() {
     const calculateZoom = () => {
       if (!isAutoZoom || !previewContainerRef.current || activeTab !== 'preview') return;
       const container = previewContainerRef.current;
-      const viewportHeight = (typeof window !== 'undefined' && window.visualViewport?.height) ?? (typeof window !== 'undefined' ? window.innerHeight : 0);
-      const viewportWidth = (typeof window !== 'undefined' && window.visualViewport?.width) ?? (typeof window !== 'undefined' ? window.innerWidth : 0);
+      const viewportHeight = (typeof window !== 'undefined' ? (window.visualViewport?.height ?? window.innerHeight) : 0);
+      const viewportWidth = (typeof window !== 'undefined' ? (window.visualViewport?.width ?? window.innerWidth) : 0);
       const containerRect = container.getBoundingClientRect();
       const verticalPadding = previewMode === 'mobile' ? 16 : 32;
       const horizontalPadding = 32;
@@ -639,7 +639,7 @@ export function OrionAppBuilder() {
         lastX = e.clientX; lastY = e.clientY;
         velocityX = 0; velocityY = 0;
         try { (e.target as Element).setPointerCapture(e.pointerId); pointerCaptureTarget = e.target as Element; } catch { /* */ }
-        doc.body.style.userSelect = 'none'; doc.body.style.webkitUserSelect = 'none'; (doc.body.style as Record<string, string>).MozUserSelect = 'none';
+        doc.body.style.userSelect = 'none'; doc.body.style.webkitUserSelect = 'none'; (doc.body.style as any).MozUserSelect = 'none';
         if (momentumId) { cancelAnimationFrame(momentumId); momentumId = null; }
         e.preventDefault();
       };
@@ -664,7 +664,7 @@ export function OrionAppBuilder() {
         isDragging = false;
         try { if (pointerCaptureTarget) { pointerCaptureTarget.releasePointerCapture(e.pointerId); pointerCaptureTarget = null; } } catch { /* */ }
         doc.documentElement.style.cursor = '';
-        doc.body.style.userSelect = ''; doc.body.style.webkitUserSelect = ''; (doc.body.style as Record<string, string>).MozUserSelect = '';
+        doc.body.style.userSelect = ''; doc.body.style.webkitUserSelect = ''; (doc.body.style as any).MozUserSelect = '';
         if (!hasMoved) return;
         e.preventDefault(); e.stopPropagation();
         const applyMomentum = () => {
@@ -699,7 +699,7 @@ export function OrionAppBuilder() {
         if (touchStyle.parentNode) touchStyle.parentNode.removeChild(touchStyle);
         try {
           doc.documentElement.style.cursor = '';
-          doc.body.style.userSelect = ''; doc.body.style.webkitUserSelect = ''; (doc.body.style as Record<string, string>).MozUserSelect = '';
+          doc.body.style.userSelect = ''; doc.body.style.webkitUserSelect = ''; (doc.body.style as any).MozUserSelect = '';
         } catch { /* */ }
       };
     };
