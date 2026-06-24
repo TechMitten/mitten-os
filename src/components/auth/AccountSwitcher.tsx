@@ -1,12 +1,15 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { useAuthStore } from '@/stores/auth-store'
 import { useDesktopStore } from '@/stores/desktop-store'
 import { getSavedAccounts, removeSavedAccount, type SavedAccount } from '@/lib/saved-accounts'
 import { Cpu, Loader2, X, Users, CheckCircle, Send } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LoginScreen from '@/components/auth/LoginScreen'
+import Turnstile, { type TurnstileHandle } from '@/components/auth/Turnstile'
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
 function getInitials(email: string): string {
   const localPart = email.split('@')[0]
@@ -35,6 +38,8 @@ export default function AccountSwitcher() {
   const [busy, setBusy] = useState(false)
   const [showLogin, setShowLogin] = useState(false)
   const [linkSent, setLinkSent] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const turnstileRef = useRef<TurnstileHandle>(null)
 
   const sendOtp = useAuthStore((s) => s.sendOtp)
   const signInAsGuest = useAuthStore((s) => s.signInAsGuest)
@@ -55,13 +60,20 @@ export default function AccountSwitcher() {
   }
 
   const handleSelect = async (account: SavedAccount) => {
+    if (TURNSTILE_SITE_KEY && !captchaToken) {
+      setError('Please complete the verification')
+      return
+    }
+
     setSelectedId(account.id)
     setError(null)
     setLinkSent(false)
     setBusy(true)
 
-    const result = await sendOtp(account.email)
+    const result = await sendOtp(account.email, captchaToken ?? undefined)
     setBusy(false)
+    turnstileRef.current?.reset()
+    setCaptchaToken(null)
 
     if (result.error) {
       setError(result.error)
@@ -81,11 +93,18 @@ export default function AccountSwitcher() {
     const account = accounts.find((a) => a.id === selectedId)
     if (!account) return
 
+    if (TURNSTILE_SITE_KEY && !captchaToken) {
+      setError('Please complete the verification')
+      return
+    }
+
     setError(null)
     setLinkSent(false)
     setBusy(true)
-    const result = await sendOtp(account.email)
+    const result = await sendOtp(account.email, captchaToken ?? undefined)
     setBusy(false)
+    turnstileRef.current?.reset()
+    setCaptchaToken(null)
 
     if (result.error) {
       setError(result.error)
@@ -212,6 +231,29 @@ export default function AccountSwitcher() {
                   ))}
                 </div>
 
+                {TURNSTILE_SITE_KEY && (
+                  <div className="px-6 pt-1">
+                    <Turnstile
+                      ref={turnstileRef}
+                      siteKey={TURNSTILE_SITE_KEY}
+                      theme={theme === 'dark' ? 'dark' : 'light'}
+                      onVerify={setCaptchaToken}
+                      onExpire={() => setCaptchaToken(null)}
+                      onError={() => setCaptchaToken(null)}
+                    />
+                  </div>
+                )}
+
+                {error && (
+                  <motion.p
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 mx-6"
+                  >
+                    {error}
+                  </motion.p>
+                )}
+
                 <div className="px-6 py-2 space-y-2">
                   <button
                     type="button"
@@ -303,6 +345,17 @@ export default function AccountSwitcher() {
                       </motion.p>
                     )}
 
+                    {TURNSTILE_SITE_KEY && (
+                      <Turnstile
+                        ref={turnstileRef}
+                        siteKey={TURNSTILE_SITE_KEY}
+                        theme={theme === 'dark' ? 'dark' : 'light'}
+                        onVerify={setCaptchaToken}
+                        onExpire={() => setCaptchaToken(null)}
+                        onError={() => setCaptchaToken(null)}
+                      />
+                    )}
+
                     {error && (
                       <motion.p
                         initial={{ opacity: 0, y: -4 }}
@@ -316,7 +369,7 @@ export default function AccountSwitcher() {
                     <button
                       type="button"
                       onClick={handleResend}
-                      disabled={busy}
+                      disabled={busy || (Boolean(TURNSTILE_SITE_KEY) && !captchaToken)}
                       className="w-full py-2.5 rounded-xl bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] text-white/60 hover:bg-white/[0.10] hover:text-foreground/80 dark:hover:text-white/80 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-sm flex items-center justify-center gap-2"
                     >
                       {busy ? (

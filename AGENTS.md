@@ -56,14 +56,18 @@ DEEPSEEK_API_KEY=<set to use DeepSeek>
 DEEPSEEK_MODEL=<optional, defaults to deepseek-v4-pro>
 ZAI_API_KEY=<set to use Z.ai GLM (mutually exclusive with DEEPSEEK_API_KEY)>
 ZAI_MODEL=<optional, defaults to glm-5.1>
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=<set to enable the Turnstile widget on the email/OTP sign-in flow; unset = no widget, no gating, today's behavior>
 ```
+
+**Turnstile protects the OTP email flow via Supabase Auth's own bot-protection, not a custom API route.** `LoginScreen` and `AccountSwitcher` render a Cloudflare Turnstile widget (`src/components/auth/Turnstile.tsx`) when `NEXT_PUBLIC_TURNSTILE_SITE_KEY` is set, and pass the resulting token as `captchaToken` into `supabase.auth.signInWithOtp()` (`src/stores/auth-store.ts`). For that token to actually be enforced, **Bot and Abuse Protection must be enabled in the Supabase Dashboard** (Authentication → Settings, provider = Turnstile, paste the Turnstile secret key there) — this is a manual, one-time step outside this repo since auth config isn't exposed via the Supabase MCP tools. GitHub OAuth is intentionally left ungated: Supabase doesn't support `captchaToken` for OAuth, and GitHub's own consent screen is already the bot barrier there.
 
 ## Cloudflare deployment
 
 The app deploys to Cloudflare Workers via [OpenNext for Cloudflare](https://opennext.js.org/cloudflare) (`@opennextjs/cloudflare` + `wrangler`, configured in `wrangler.jsonc` / `open-next.config.ts`), bound to the custom domain `mittenai.dev` (and `www.mittenai.dev`).
 
-- **`NEXT_PUBLIC_*` vars are build-time.** They get inlined into the client bundle when `next build` runs (inside `npm run build:cf`), so they must be set wherever the build runs (local `.env.local`, or as build variables in the Cloudflare dashboard if using Git-connected builds) — not as Worker secrets.
+- **`NEXT_PUBLIC_*` vars are build-time.** They get inlined into the client bundle when `next build` runs (inside `npm run build:cf`), so they must be set wherever the build runs (local `.env.local`, or as build variables in the Cloudflare dashboard if using Git-connected builds) — not as Worker secrets. This includes `NEXT_PUBLIC_TURNSTILE_SITE_KEY`.
 - **Non-public vars are runtime.** `DEEPSEEK_API_KEY`, `DEEPSEEK_MODEL`, `DEEPSEEK_BASE_URL`, `CODING_ASSISTANT_DEEPSEEK_API_KEY`, `CODING_ASSISTANT_DEEPSEEK_MODEL` are read from `process.env` inside Route Handlers at request time. Set them with `wrangler secret put <NAME>` for production, or in a local `.dev.vars` (copy from `.dev.vars.example`) for `npm run preview`.
+- **Exception: the Turnstile secret key is not a Worker secret.** It's configured directly in the Supabase Dashboard (Bot and Abuse Protection), not read by this app's `process.env` anywhere, so it doesn't go through `wrangler secret put` or `.dev.vars` — only the public site key is part of this app's build.
 - **`npm run cf-typegen`** regenerates `cloudflare-env.d.ts` after editing `wrangler.jsonc` bindings.
 
 ## Gotchas
