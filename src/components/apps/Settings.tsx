@@ -593,7 +593,7 @@ function AiKeysSection() {
         {/* Zai Key */}
         <div className="p-4 rounded-xl border border-border bg-muted/20 space-y-4">
           <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Orion Z.ai Provider
+            Z.ai Provider
           </h4>
 
           <div className="space-y-1.5">

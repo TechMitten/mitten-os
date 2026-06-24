@@ -84,7 +84,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   loaded: false,
   userId: null,
   welcomeDismissed: false,
-  persistWindows: true,
+  persistWindows: false,
   iconSize: "medium",
 
   loadSettings: async (userId: string) => {
@@ -118,7 +118,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
       theme: data.theme || "dark",
       wallpaper: data.wallpaper || "linear-gradient(135deg, #030b20, #0d2b63, #071730)",
       welcomeDismissed: localStorage.getItem(`mittenos:welcomeDismissed:${userId}`) === "true" || (data.settings_json?.welcomeDismissed ?? false),
-      persistWindows: data.settings_json?.persistWindows ?? true,
+      persistWindows: data.settings_json?.persistWindows ?? false,
       iconSize: data.settings_json?.iconSize || "medium",
       userId,
       loaded: true,
@@ -277,7 +277,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
       loaded: false,
       userId: null,
       welcomeDismissed: false,
-      persistWindows: true,
+      persistWindows: false,
       iconSize: "medium",
     });
   },
