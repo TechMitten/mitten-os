@@ -349,7 +349,7 @@ export default function Taskbar() {
                 <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-foreground/60 text-[11px]">
                   <User className="w-3.5 h-3.5" />
                   <span className="max-w-[80px] truncate hidden sm:block">
-                    {user.email?.split('@')[0]}
+                    {user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0]}
                   </span>
                 </div>
               </TooltipTrigger>

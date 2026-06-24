@@ -12,9 +12,7 @@ import Window from '@/components/os/Window';
 import { StartMenu } from '@/components/os/StartMenu';
 import Taskbar from '@/components/os/Taskbar';
 import LoginScreen from '@/components/auth/LoginScreen';
-import AccountSwitcher from '@/components/auth/AccountSwitcher';
 import WelcomeWindow from '@/components/os/WelcomeWindow';
-import { getSavedAccounts } from '@/lib/saved-accounts';
 import { Loader2 } from 'lucide-react';
 import { isWallpaperDark } from '@/lib/utils';
 import { DESKTOP_GRID_OFFSET_X, DESKTOP_GRID_OFFSET_Y, DRAG_THRESHOLD, type WindowPosition } from '@/types/os';
@@ -576,10 +574,9 @@ export function Desktop() {
 
   // --- Not authenticated ---
   if (!user) {
-    const savedAccounts = getSavedAccounts();
     return (
       <div className={theme === 'dark' ? 'dark' : ''}>
-        {savedAccounts.length > 0 ? <AccountSwitcher /> : <LoginScreen />}
+        <LoginScreen />
       </div>
     );
   }

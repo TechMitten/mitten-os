@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import { createClient } from '@/lib/supabase/client'
-import { saveAccount } from '@/lib/saved-accounts'
 import type { User, Session } from '@supabase/supabase-js'
 
 function generateUUID(): string {
@@ -39,8 +38,6 @@ interface AuthStore {
 
   initialize: () => Promise<void>
   signInAsGuest: () => void
-  sendOtp: (email: string) => Promise<{ error: string | null }>
-  verifyOtp: (email: string, token: string) => Promise<{ error: string | null }>
   signInWithGithub: () => Promise<{ error: string | null }>
   signOut: () => Promise<void>
 }
@@ -64,51 +61,18 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       loading: false,
     })
 
-    supabase.auth.onAuthStateChange((event, session) => {
+    supabase.auth.onAuthStateChange((_event, session) => {
       set({
         session,
         user: session?.user ?? null,
         loading: false,
       })
-      if (event === 'SIGNED_IN' && session?.user) {
-        const user = session.user
-        saveAccount({
-          id: user.id,
-          email: user.email ?? '',
-          avatarUrl: user.user_metadata?.avatar_url ?? undefined,
-          displayName: user.user_metadata?.full_name ?? user.user_metadata?.name ?? undefined,
-          lastLogin: new Date().toISOString(),
-        })
-      }
     })
   },
 
   signInAsGuest: () => {
     const guestUser = createGuestUser()
     set({ user: guestUser, session: null, loading: false, isGuest: true })
-  },
-
-  sendOtp: async (email: string) => {
-    const supabase = createClient()
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: true,
-      },
-    })
-    if (error) return { error: error.message }
-    return { error: null }
-  },
-
-  verifyOtp: async (email: string, token: string) => {
-    const supabase = createClient()
-    const { error } = await supabase.auth.verifyOtp({
-      email,
-      token,
-      type: 'email',
-    })
-    if (error) return { error: error.message }
-    return { error: null }
   },
 
   signInWithGithub: async () => {
