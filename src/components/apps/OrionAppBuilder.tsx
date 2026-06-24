@@ -8,7 +8,7 @@ import {
   Wand2, Smartphone, Code2, Play, Loader2, History, Settings, Layout, Download,
   RefreshCw, Sparkles, ChevronRight, TerminalSquare, Plus, Edit2, Clock,
   Undo2, Redo2, FolderOpen, X, Copy, Check, Trash2, ZoomIn, ZoomOut,
-  Monitor, PanelLeftOpen, PanelLeftClose, TriangleAlert,
+  Monitor, PanelLeftOpen, PanelLeftClose, TriangleAlert, Brain,
 } from 'lucide-react';
 
 // --- Types ---
@@ -97,7 +97,7 @@ const getSafeAreaInstruction = (layoutTarget: string): string => {
   return ' Respect modern phone safe areas: include a viewport meta tag with viewport-fit=cover and pad edge-aligned headers, footers, and fixed controls with env(safe-area-inset-top/right/bottom/left) so nothing is hidden by a notch or home indicator.';
 };
 
-type ProviderId = 'zai' | 'openrouter' | 'custom';
+type ProviderId = 'zai' | 'gemini' | 'openrouter' | 'custom' | 'mittenai';
 
 interface ProviderOption {
   id: ProviderId;
@@ -107,7 +107,9 @@ interface ProviderOption {
 }
 
 const PROVIDER_OPTIONS: ProviderOption[] = [
+  { id: 'mittenai', label: 'MittenAI', description: 'DeepSeek Coding Assistant', icon: Wand2 },
   { id: 'zai', label: 'Orion AI', description: 'High-performance generation', icon: Code2 },
+  { id: 'gemini', label: 'Gemini', description: 'Google Gemini API', icon: Brain },
   { id: 'openrouter', label: 'OpenRouter', description: 'Universal model access', icon: Sparkles },
   { id: 'custom', label: 'Custom', description: 'OpenAI-compatible endpoint', icon: TerminalSquare },
 ];
@@ -230,6 +232,14 @@ const requestModelText = async (params: RequestModelTextParams): Promise<{ conte
     apiKey = getStorageItem('mittenOS_openrouter_api_key') || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY;
     model = getStorageItem('mittenOS_openrouter_model') || process.env.NEXT_PUBLIC_OPENROUTER_MODEL || 'anthropic/claude-3.5-sonnet';
     baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
+  } else if (provider === 'gemini') {
+    apiKey = getStorageItem('mittenOS_gemini_api_key') || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    model = getStorageItem('mittenOS_gemini_model') || process.env.NEXT_PUBLIC_GEMINI_MODEL || 'gemini-2.5-flash';
+    baseUrl = 'https://generativelanguage.googleapis.com/v1beta/chat/completions';
+  } else if (provider === 'mittenai') {
+    apiKey = getStorageItem('mittenOS_coding_assistant_key') || process.env.NEXT_PUBLIC_CODING_ASSISTANT_KEY;
+    model = getStorageItem('mittenOS_coding_assistant_model') || 'deepseek-v4-pro';
+    baseUrl = 'https://api.deepseek.com/chat/completions';
   } else if (provider === 'custom') {
     apiKey = getStorageItem('mittenOS_custom_api_key') || process.env.NEXT_PUBLIC_CUSTOM_API_KEY;
     model = getStorageItem('mittenOS_custom_model') || process.env.NEXT_PUBLIC_CUSTOM_MODEL || 'gpt-4o';
@@ -244,7 +254,7 @@ const requestModelText = async (params: RequestModelTextParams): Promise<{ conte
     };
   } else {
     apiKey = getStorageItem('mittenOS_zai_api_key') || process.env.NEXT_PUBLIC_ZAI_API_KEY;
-    model = process.env.NEXT_PUBLIC_ZAI_MODEL || 'glm-4-plus';
+    model = getStorageItem('mittenOS_zai_model') || process.env.NEXT_PUBLIC_ZAI_MODEL || 'glm-4-plus';
     baseUrl = 'https://api.z.ai/api/coding/paas/v4/chat/completions';
   }
 
@@ -257,6 +267,9 @@ const requestModelText = async (params: RequestModelTextParams): Promise<{ conte
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     };
+    if (provider === 'gemini') {
+      headers['x-goog-api-key'] = apiKey;
+    }
     if (provider === 'openrouter') {
       headers['HTTP-Referer'] = typeof window !== 'undefined' ? window.location.origin : '';
       headers['X-Title'] = 'Orion';
@@ -470,7 +483,13 @@ export function OrionAppBuilder() {
     return storedProvider && PROVIDER_OPTION_MAP[storedProvider] ? storedProvider : DEFAULT_PROVIDER;
   });
   const [zaiKey, setZaiKey] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_zai_api_key') || '' : ''));
+  const [zaiModel, setZaiModel] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_zai_model') || '' : ''));
   const [openrouterKey, setOpenrouterKey] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_openrouter_api_key') || '' : ''));
+  const [openrouterModel, setOpenrouterModel] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_openrouter_model') || '' : ''));
+  const [geminiKey, setGeminiKey] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_gemini_api_key') || '' : ''));
+  const [geminiModel, setGeminiModel] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_gemini_model') || '' : ''));
+  const [codingKey, setCodingKey] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_coding_assistant_key') || '' : ''));
+  const [codingModel, setCodingModel] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_coding_assistant_model') || '' : ''));
   const [customKey, setCustomKey] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_custom_api_key') || '' : ''));
   const [customBaseUrl, setCustomBaseUrl] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_custom_base_url') || '' : ''));
   const [customModel, setCustomModel] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_custom_model') || '' : ''));
@@ -482,7 +501,13 @@ export function OrionAppBuilder() {
   useEffect(() => {
     if (isSettingsOpen && typeof window !== 'undefined') {
       setZaiKey(localStorage.getItem('mittenOS_zai_api_key') || '');
+      setZaiModel(localStorage.getItem('mittenOS_zai_model') || '');
       setOpenrouterKey(localStorage.getItem('mittenOS_openrouter_api_key') || '');
+      setOpenrouterModel(localStorage.getItem('mittenOS_openrouter_model') || '');
+      setGeminiKey(localStorage.getItem('mittenOS_gemini_api_key') || '');
+      setGeminiModel(localStorage.getItem('mittenOS_gemini_model') || '');
+      setCodingKey(localStorage.getItem('mittenOS_coding_assistant_key') || '');
+      setCodingModel(localStorage.getItem('mittenOS_coding_assistant_model') || '');
       setCustomKey(localStorage.getItem('mittenOS_custom_api_key') || '');
       setCustomBaseUrl(localStorage.getItem('mittenOS_custom_base_url') || '');
       setCustomModel(localStorage.getItem('mittenOS_custom_model') || '');
@@ -900,7 +925,13 @@ export function OrionAppBuilder() {
   const handleSaveSettings = () => {
     localStorage.setItem('orion-api-provider', apiProvider);
     localStorage.setItem('mittenOS_zai_api_key', zaiKey.trim());
+    localStorage.setItem('mittenOS_zai_model', zaiModel.trim());
     localStorage.setItem('mittenOS_openrouter_api_key', openrouterKey.trim());
+    localStorage.setItem('mittenOS_openrouter_model', openrouterModel.trim());
+    localStorage.setItem('mittenOS_gemini_api_key', geminiKey.trim());
+    localStorage.setItem('mittenOS_gemini_model', geminiModel.trim());
+    localStorage.setItem('mittenOS_coding_assistant_key', codingKey.trim());
+    localStorage.setItem('mittenOS_coding_assistant_model', codingModel.trim());
     localStorage.setItem('mittenOS_custom_api_key', customKey.trim());
     localStorage.setItem('mittenOS_custom_base_url', customBaseUrl.trim());
     localStorage.setItem('mittenOS_custom_model', customModel.trim());
@@ -1196,31 +1227,107 @@ export function OrionAppBuilder() {
 
               {/* API Key Configuration depending on selected provider */}
               <div className="pt-4 border-t border-slate-100 space-y-4">
+                {apiProvider === 'mittenai' && (
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">DeepSeek API Key</label>
+                      <input
+                        type="password"
+                        value={codingKey}
+                        onChange={(e) => setCodingKey(e.target.value)}
+                        placeholder="sk-..."
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Model Name (Optional)</label>
+                      <input
+                        type="text"
+                        value={codingModel}
+                        onChange={(e) => setCodingModel(e.target.value)}
+                        placeholder="deepseek-v4-pro"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                      />
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-medium font-sans">These settings are saved locally in your browser's localStorage.</p>
+                  </div>
+                )}
+
                 {apiProvider === 'zai' && (
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Z.ai API Key</label>
-                    <input
-                      type="password"
-                      value={zaiKey}
-                      onChange={(e) => setZaiKey(e.target.value)}
-                      placeholder="Enter Z.ai API Key"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                    />
-                    <p className="text-[10px] text-slate-400 font-medium font-sans">This key is saved locally in your browser's localStorage.</p>
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Z.ai API Key</label>
+                      <input
+                        type="password"
+                        value={zaiKey}
+                        onChange={(e) => setZaiKey(e.target.value)}
+                        placeholder="Enter Z.ai API Key"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Z.ai Model Name (Optional)</label>
+                      <input
+                        type="text"
+                        value={zaiModel}
+                        onChange={(e) => setZaiModel(e.target.value)}
+                        placeholder="glm-4-plus"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                      />
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-medium font-sans">These settings are saved locally in your browser's localStorage.</p>
                   </div>
                 )}
 
                 {apiProvider === 'openrouter' && (
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">OpenRouter API Key</label>
-                    <input
-                      type="password"
-                      value={openrouterKey}
-                      onChange={(e) => setOpenrouterKey(e.target.value)}
-                      placeholder="sk-or-..."
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                    />
-                    <p className="text-[10px] text-slate-400 font-medium font-sans">This key is saved locally in your browser's localStorage.</p>
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">OpenRouter API Key</label>
+                      <input
+                        type="password"
+                        value={openrouterKey}
+                        onChange={(e) => setOpenrouterKey(e.target.value)}
+                        placeholder="sk-or-..."
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">OpenRouter Model Name (Optional)</label>
+                      <input
+                        type="text"
+                        value={openrouterModel}
+                        onChange={(e) => setOpenrouterModel(e.target.value)}
+                        placeholder="anthropic/claude-3.5-sonnet"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                      />
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-medium font-sans">These settings are saved locally in your browser's localStorage.</p>
+                  </div>
+                )}
+
+                {apiProvider === 'gemini' && (
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Gemini API Key</label>
+                      <input
+                        type="password"
+                        value={geminiKey}
+                        onChange={(e) => setGeminiKey(e.target.value)}
+                        placeholder="Enter Gemini API Key"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Gemini Model Name (Optional)</label>
+                      <input
+                        type="text"
+                        value={geminiModel}
+                        onChange={(e) => setGeminiModel(e.target.value)}
+                        placeholder="gemini-2.5-flash"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                      />
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-medium font-sans">These settings are saved locally in your browser's localStorage.</p>
                   </div>
                 )}
 

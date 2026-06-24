@@ -29,17 +29,33 @@ interface ChatMessage {
 export async function POST(request: NextRequest) {
   try {
     const userApiKey = request.headers.get('x-api-key');
-    const apiKeyToUse = userApiKey || process.env.CODING_ASSISTANT_DEEPSEEK_API_KEY;
+    const userModel = request.headers.get('x-model');
+    const userProvider = request.headers.get('x-provider') || 'mittenai';
+    const userBaseUrl = request.headers.get('x-base-url');
+
+    const body = await request.json();
+    const { messages = [], model, provider, baseUrl } = body as {
+      messages: ChatMessage[];
+      model?: string;
+      provider?: string;
+      baseUrl?: string;
+    };
+
+    const activeProvider = provider || userProvider;
+    const apiKeyToUse = userApiKey || (
+      activeProvider === 'zai' ? process.env.NEXT_PUBLIC_ZAI_API_KEY :
+      activeProvider === 'gemini' ? process.env.NEXT_PUBLIC_GEMINI_API_KEY :
+      activeProvider === 'openrouter' ? process.env.NEXT_PUBLIC_OPENROUTER_API_KEY :
+      activeProvider === 'custom' ? process.env.NEXT_PUBLIC_CUSTOM_API_KEY :
+      process.env.CODING_ASSISTANT_DEEPSEEK_API_KEY
+    );
 
     if (!apiKeyToUse) {
       return Response.json(
-        { error: 'API key is not configured. Please set it in Settings.' },
+        { error: `API key is not configured for provider '${activeProvider}'. Please set it in Settings.` },
         { status: 400 }
       );
     }
-
-    const body = await request.json();
-    const { messages = [] } = body as { messages: ChatMessage[] };
 
     if (!Array.isArray(messages) || messages.length === 0) {
       return Response.json({ error: 'messages array is required' }, { status: 400 });
@@ -50,14 +66,37 @@ export async function POST(request: NextRequest) {
       ...messages,
     ];
 
-    const response = await fetch(`${BASE_URL}/chat/completions`, {
+    let targetUrl = '';
+    let resolvedModel = userModel || model;
+    const fetchHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKeyToUse}`,
+    };
+
+    if (activeProvider === 'zai') {
+      targetUrl = 'https://api.z.ai/api/coding/paas/v4/chat/completions';
+      resolvedModel = resolvedModel || process.env.NEXT_PUBLIC_ZAI_MODEL || 'glm-4-plus';
+    } else if (activeProvider === 'gemini') {
+      targetUrl = 'https://generativelanguage.googleapis.com/v1beta/chat/completions';
+      resolvedModel = resolvedModel || process.env.NEXT_PUBLIC_GEMINI_MODEL || 'gemini-2.5-flash';
+      fetchHeaders['x-goog-api-key'] = apiKeyToUse;
+    } else if (activeProvider === 'openrouter') {
+      targetUrl = 'https://openrouter.ai/api/v1/chat/completions';
+      resolvedModel = resolvedModel || process.env.NEXT_PUBLIC_OPENROUTER_MODEL || 'anthropic/claude-3.5-sonnet';
+    } else if (activeProvider === 'custom') {
+      const customUrl = userBaseUrl || baseUrl || 'https://api.openai.com/v1/chat/completions';
+      targetUrl = customUrl.endsWith('/chat/completions') ? customUrl : `${customUrl.replace(/\/$/, '')}/chat/completions`;
+      resolvedModel = resolvedModel || 'gpt-4o';
+    } else {
+      targetUrl = 'https://api.deepseek.com/chat/completions';
+      resolvedModel = resolvedModel || MODEL;
+    }
+
+    const response = await fetch(targetUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKeyToUse}`,
-      },
+      headers: fetchHeaders,
       body: JSON.stringify({
-        model: MODEL,
+        model: resolvedModel,
         messages: allMessages,
         stream: true,
       }),

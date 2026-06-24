@@ -169,7 +169,7 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
           {copied ? 'Copied' : 'Copy'}
         </button>
       </div>
-      <pre className="bg-zinc-950 dark:bg-zinc-950 p-3 overflow-x-auto text-sm font-mono text-zinc-100 leading-relaxed">
+      <pre className="bg-zinc-950 dark:bg-zinc-950 p-3 overflow-x-auto text-sm font-mono text-zinc-100 leading-relaxed os-scrollbar">
         <code>{code}</code>
       </pre>
     </div>
@@ -318,7 +318,7 @@ export function CodingAssistant() {
             New Chat
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+        <div className="flex-1 overflow-y-auto p-2 space-y-1 os-scrollbar">
           {sessions.map((session) => (
             <div
               key={session.id}
@@ -384,7 +384,7 @@ export function CodingAssistant() {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-4">
+        <div className="flex-1 overflow-y-auto px-4 py-4 os-scrollbar">
           {!hasMessages && !isStreaming ? (
             <div className="flex flex-col items-center justify-center h-full text-center px-4">
               <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center mb-4">
@@ -458,7 +458,7 @@ export function CodingAssistant() {
               placeholder={activeSessionId ? 'Ask a coding question...' : 'Create a new chat to start'}
               disabled={isStreaming}
               rows={1}
-              className="flex-1 resize-none rounded-xl border border-border dark:border-zinc-700 bg-muted/50 dark:bg-zinc-800 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 disabled:opacity-50 max-h-32"
+              className="flex-1 resize-none rounded-xl border border-border dark:border-zinc-700 bg-muted/50 dark:bg-zinc-800 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 disabled:opacity-50 max-h-32 os-scrollbar"
               style={{ minHeight: '40px' }}
               onInput={(e) => {
                 const target = e.target as HTMLTextAreaElement;

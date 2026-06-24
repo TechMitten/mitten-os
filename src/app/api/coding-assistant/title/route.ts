@@ -4,15 +4,38 @@ const API_KEY = process.env.CODING_ASSISTANT_DEEPSEEK_API_KEY;
 const MODEL = process.env.CODING_ASSISTANT_DEEPSEEK_MODEL || 'deepseek-v4-pro';
 const BASE_URL = 'https://api.deepseek.com';
 
-async function fetchTitleFromStream(message: string, apiKey: string): Promise<string | null> {
-  const response = await fetch(`${BASE_URL}/chat/completions`, {
+async function fetchTitleFromStream(
+  message: string,
+  apiKey: string,
+  modelToUse: string,
+  provider: string,
+  customBaseUrl?: string
+): Promise<string | null> {
+  let targetUrl = '';
+  const fetchHeaders: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${apiKey}`,
+  };
+
+  if (provider === 'zai') {
+    targetUrl = 'https://api.z.ai/api/coding/paas/v4/chat/completions';
+  } else if (provider === 'gemini') {
+    targetUrl = 'https://generativelanguage.googleapis.com/v1beta/chat/completions';
+    fetchHeaders['x-goog-api-key'] = apiKey;
+  } else if (provider === 'openrouter') {
+    targetUrl = 'https://openrouter.ai/api/v1/chat/completions';
+  } else if (provider === 'custom') {
+    const customUrl = customBaseUrl || 'https://api.openai.com/v1/chat/completions';
+    targetUrl = customUrl.endsWith('/chat/completions') ? customUrl : `${customUrl.replace(/\/$/, '')}/chat/completions`;
+  } else {
+    targetUrl = 'https://api.deepseek.com/chat/completions';
+  }
+
+  const response = await fetch(targetUrl, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
+    headers: fetchHeaders,
     body: JSON.stringify({
-      model: MODEL,
+      model: modelToUse,
       messages: [
         {
           role: 'system',
@@ -87,21 +110,50 @@ async function fetchTitleFromStream(message: string, apiKey: string): Promise<st
 export async function POST(request: NextRequest) {
   try {
     const userApiKey = request.headers.get('x-api-key');
-    const apiKeyToUse = userApiKey || process.env.CODING_ASSISTANT_DEEPSEEK_API_KEY;
+    const userModel = request.headers.get('x-model');
+    const userProvider = request.headers.get('x-provider') || 'mittenai';
+    const userBaseUrl = request.headers.get('x-base-url');
+
+    const body = await request.json();
+    const { message, model, provider, baseUrl } = body as {
+      message: string;
+      model?: string;
+      provider?: string;
+      baseUrl?: string;
+    };
+
+    if (!message || typeof message !== 'string') {
+      return Response.json({ error: 'message is required' }, { status: 400 });
+    }
+
+    const activeProvider = provider || userProvider;
+    const apiKeyToUse = userApiKey || (
+      activeProvider === 'zai' ? process.env.NEXT_PUBLIC_ZAI_API_KEY :
+      activeProvider === 'gemini' ? process.env.NEXT_PUBLIC_GEMINI_API_KEY :
+      activeProvider === 'openrouter' ? process.env.NEXT_PUBLIC_OPENROUTER_API_KEY :
+      activeProvider === 'custom' ? process.env.NEXT_PUBLIC_CUSTOM_API_KEY :
+      process.env.CODING_ASSISTANT_DEEPSEEK_API_KEY
+    );
 
     if (!apiKeyToUse) {
       console.warn('[title] API key not configured');
       return Response.json({ error: 'API key not configured' }, { status: 400 });
     }
 
-    const body = await request.json();
-    const { message } = body as { message: string };
-
-    if (!message || typeof message !== 'string') {
-      return Response.json({ error: 'message is required' }, { status: 400 });
+    let resolvedModel = userModel || model;
+    if (activeProvider === 'zai') {
+      resolvedModel = resolvedModel || process.env.NEXT_PUBLIC_ZAI_MODEL || 'glm-4-plus';
+    } else if (activeProvider === 'gemini') {
+      resolvedModel = resolvedModel || process.env.NEXT_PUBLIC_GEMINI_MODEL || 'gemini-2.5-flash';
+    } else if (activeProvider === 'openrouter') {
+      resolvedModel = resolvedModel || process.env.NEXT_PUBLIC_OPENROUTER_MODEL || 'anthropic/claude-3.5-sonnet';
+    } else if (activeProvider === 'custom') {
+      resolvedModel = resolvedModel || 'gpt-4o';
+    } else {
+      resolvedModel = resolvedModel || MODEL;
     }
 
-    const raw = await fetchTitleFromStream(message, apiKeyToUse);
+    const raw = await fetchTitleFromStream(message, apiKeyToUse, resolvedModel, activeProvider, userBaseUrl || baseUrl);
 
     if (!raw) {
       return Response.json({ title: 'New Chat' });

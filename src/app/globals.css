@@ -120,3 +120,51 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom Scrollbar for Settings Menu and other OS containers */
+.settings-scrollbar,
+.os-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+
+.dark .settings-scrollbar,
+.dark .os-scrollbar {
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+/* Chrome, Edge, and Safari */
+.settings-scrollbar::-webkit-scrollbar,
+.os-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.settings-scrollbar::-webkit-scrollbar-track,
+.os-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.settings-scrollbar::-webkit-scrollbar-thumb,
+.os-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.15);
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+.settings-scrollbar::-webkit-scrollbar-thumb:hover,
+.os-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+.dark .settings-scrollbar::-webkit-scrollbar-thumb,
+.dark .os-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.dark .settings-scrollbar::-webkit-scrollbar-thumb:hover,
+.dark .os-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+

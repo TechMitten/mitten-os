@@ -335,7 +335,7 @@ export function TextEditor() {
       </div>
 
       {/* Tab Bar */}
-      <div className="h-8 bg-muted dark:bg-zinc-800/30 border-b border-border flex items-center px-1 gap-0.5 overflow-x-auto">
+      <div className="h-8 bg-muted dark:bg-zinc-800/30 border-b border-border flex items-center px-1 gap-0.5 overflow-x-auto os-scrollbar">
         {tabs.map((tab) => (
           <div
             key={tab.id}
@@ -399,7 +399,7 @@ export function TextEditor() {
       {/* Editor Area */}
       <textarea
         ref={textareaRef}
-        className="flex-1 bg-card dark:bg-[#1e1e2e] text-foreground dark:text-[#cdd6f4] font-mono text-sm p-4 resize-none outline-none leading-relaxed"
+        className="flex-1 bg-card dark:bg-[#1e1e2e] text-foreground dark:text-[#cdd6f4] font-mono text-sm p-4 resize-none outline-none leading-relaxed os-scrollbar"
         value={activeTab.content}
         onChange={handleContentChange}
         spellCheck={false}

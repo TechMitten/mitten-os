@@ -103,7 +103,7 @@ export default function SettingsApp() {
   return (
     <div className="flex h-full bg-card dark:bg-zinc-900 text-card-foreground select-none overflow-hidden">
       {/* Sidebar */}
-      <div className="w-52 bg-muted dark:bg-zinc-800/40 border-r border-border p-3 flex flex-col gap-1 shrink-0">
+      <div className="w-52 bg-muted dark:bg-zinc-800/40 border-r border-border p-3 flex flex-col gap-1 shrink-0 overflow-y-auto settings-scrollbar">
         <h2 className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60 mb-1">
           Settings
         </h2>
@@ -124,7 +124,7 @@ export default function SettingsApp() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 p-6 overflow-y-auto">
+      <div className="flex-1 p-6 overflow-y-auto settings-scrollbar">
         {activeSection === 'appearance' && (
           <AppearanceSection
             isDark={isDark}
@@ -466,24 +466,37 @@ function AboutSection() {
 function AiKeysSection() {
   const { toast } = useToast();
   const [codingKey, setCodingKey] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_coding_assistant_key') || '' : ''));
+  const [codingModel, setCodingModel] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_coding_assistant_model') || '' : ''));
   const [zaiKey, setZaiKey] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_zai_api_key') || '' : ''));
+  const [zaiModel, setZaiModel] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_zai_model') || '' : ''));
   const [openrouterKey, setOpenrouterKey] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_openrouter_api_key') || '' : ''));
+  const [openrouterModel, setOpenrouterModel] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_openrouter_model') || '' : ''));
+  const [geminiKey, setGeminiKey] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_gemini_api_key') || '' : ''));
+  const [geminiModel, setGeminiModel] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_gemini_model') || '' : ''));
   const [customKey, setCustomKey] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_custom_api_key') || '' : ''));
   const [customBaseUrl, setCustomBaseUrl] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_custom_base_url') || '' : ''));
   const [customModel, setCustomModel] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_custom_model') || '' : ''));
+  const [activeProvider, setActiveProvider] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('orion-api-provider') || 'mittenai' : 'mittenai'));
 
   const [showCodingKey, setShowCodingKey] = useState(false);
   const [showZaiKey, setShowZaiKey] = useState(false);
   const [showOpenrouterKey, setShowOpenrouterKey] = useState(false);
+  const [showGeminiKey, setShowGeminiKey] = useState(false);
   const [showCustomKey, setShowCustomKey] = useState(false);
 
   const handleSave = () => {
     localStorage.setItem('mittenOS_coding_assistant_key', codingKey.trim());
+    localStorage.setItem('mittenOS_coding_assistant_model', codingModel.trim());
     localStorage.setItem('mittenOS_zai_api_key', zaiKey.trim());
+    localStorage.setItem('mittenOS_zai_model', zaiModel.trim());
     localStorage.setItem('mittenOS_openrouter_api_key', openrouterKey.trim());
+    localStorage.setItem('mittenOS_openrouter_model', openrouterModel.trim());
+    localStorage.setItem('mittenOS_gemini_api_key', geminiKey.trim());
+    localStorage.setItem('mittenOS_gemini_model', geminiModel.trim());
     localStorage.setItem('mittenOS_custom_api_key', customKey.trim());
     localStorage.setItem('mittenOS_custom_base_url', customBaseUrl.trim());
     localStorage.setItem('mittenOS_custom_model', customModel.trim());
+    localStorage.setItem('orion-api-provider', activeProvider);
 
     toast({
       title: 'Settings Saved',
@@ -500,85 +513,207 @@ function AiKeysSection() {
         </p>
       </div>
 
+      {/* Active AI Endpoint Selector */}
+      <div className="p-4 rounded-xl border border-border bg-muted/20 space-y-3">
+        <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider">
+          Active AI Endpoint / Provider
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {[
+            { id: 'mittenai', label: 'MittenAI', desc: 'DeepSeek' },
+            { id: 'zai', label: 'Orion AI', desc: 'Z.ai GLM' },
+            { id: 'gemini', label: 'Gemini', desc: 'Google API' },
+            { id: 'openrouter', label: 'OpenRouter', desc: 'Universal' },
+            { id: 'custom', label: 'Custom', desc: 'OpenAI Dev' },
+          ].map((provider) => (
+            <button
+              key={provider.id}
+              onClick={() => setActiveProvider(provider.id)}
+              className={`flex flex-col items-start p-2.5 rounded-lg border-2 transition-all text-left flex-1 min-w-[92px] ${
+                activeProvider === provider.id
+                  ? 'border-amber-500 bg-amber-500/10 dark:bg-amber-500/20 shadow-sm font-semibold'
+                  : 'border-border hover:border-foreground/20 bg-muted/30 dark:bg-zinc-800/30'
+              }`}
+            >
+              <span className={`text-[11px] leading-tight ${activeProvider === provider.id ? 'text-amber-500' : 'text-foreground/85'}`}>
+                {provider.label}
+              </span>
+              <span className="text-[9px] text-muted-foreground mt-0.5 leading-none">{provider.desc}</span>
+            </button>
+          ))}
+        </div>
+        <p className="text-[10px] text-muted-foreground/60 leading-normal">
+          Determines the global active API provider used by both the MittenAI System Chat and Orion App Builder.
+        </p>
+      </div>
+
       <div className="space-y-4">
         {/* Coding Assistant */}
-        <div className="space-y-1.5">
-          <div className="flex justify-between items-center">
-            <label className="text-xs font-semibold text-foreground/80">
-              MittenAI (Coding Assistant) DeepSeek API Key
+        <div className="p-4 rounded-xl border border-border bg-muted/20 space-y-4">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            MittenAI (Coding Assistant)
+          </h4>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground/80">
+              DeepSeek API Key
             </label>
+            <div className="relative">
+              <input
+                type={showCodingKey ? 'text' : 'password'}
+                value={codingKey}
+                onChange={(e) => setCodingKey(e.target.value)}
+                placeholder="sk-..."
+                className="w-full bg-muted dark:bg-zinc-800/60 border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500 pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowCodingKey(!showCodingKey)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showCodingKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
-          <div className="relative">
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground/80">
+              Model Name (Optional)
+            </label>
             <input
-              type={showCodingKey ? 'text' : 'password'}
-              value={codingKey}
-              onChange={(e) => setCodingKey(e.target.value)}
-              placeholder="sk-..."
-              className="w-full bg-muted dark:bg-zinc-800/60 border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500 pr-10"
+              type="text"
+              value={codingModel}
+              onChange={(e) => setCodingModel(e.target.value)}
+              placeholder="deepseek-v4-pro"
+              className="w-full bg-muted dark:bg-zinc-800/60 border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500"
             />
-            <button
-              type="button"
-              onClick={() => setShowCodingKey(!showCodingKey)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              {showCodingKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
           </div>
-          <p className="text-[10px] text-muted-foreground">
-            API key for the deepseek-v4-pro model used by the MittenAI chat.
-          </p>
         </div>
 
         {/* Zai Key */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-foreground/80">
-            Orion Z.ai API Key
-          </label>
-          <div className="relative">
-            <input
-              type={showZaiKey ? 'text' : 'password'}
-              value={zaiKey}
-              onChange={(e) => setZaiKey(e.target.value)}
-              placeholder="Enter Z.ai API Key"
-              className="w-full bg-muted dark:bg-zinc-800/60 border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500 pr-10"
-            />
-            <button
-              type="button"
-              onClick={() => setShowZaiKey(!showZaiKey)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              {showZaiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
+        <div className="p-4 rounded-xl border border-border bg-muted/20 space-y-4">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Orion Z.ai Provider
+          </h4>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground/80">
+              Z.ai API Key
+            </label>
+            <div className="relative">
+              <input
+                type={showZaiKey ? 'text' : 'password'}
+                value={zaiKey}
+                onChange={(e) => setZaiKey(e.target.value)}
+                placeholder="Enter Z.ai API Key"
+                className="w-full bg-muted dark:bg-zinc-800/60 border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500 pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowZaiKey(!showZaiKey)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showZaiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
-          <p className="text-[10px] text-muted-foreground">
-            Used by Orion App Builder with the Z.ai GLM provider.
-          </p>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground/80">
+              Model Name (Optional)
+            </label>
+            <input
+              type="text"
+              value={zaiModel}
+              onChange={(e) => setZaiModel(e.target.value)}
+              placeholder="glm-4-plus"
+              className="w-full bg-muted dark:bg-zinc-800/60 border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500"
+            />
+          </div>
         </div>
 
         {/* OpenRouter Key */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-foreground/80">
-            Orion OpenRouter API Key
-          </label>
-          <div className="relative">
-            <input
-              type={showOpenrouterKey ? 'text' : 'password'}
-              value={openrouterKey}
-              onChange={(e) => setOpenrouterKey(e.target.value)}
-              placeholder="sk-or-..."
-              className="w-full bg-muted dark:bg-zinc-800/60 border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500 pr-10"
-            />
-            <button
-              type="button"
-              onClick={() => setShowOpenrouterKey(!showOpenrouterKey)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              {showOpenrouterKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
+        <div className="p-4 rounded-xl border border-border bg-muted/20 space-y-4">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Orion OpenRouter Provider
+          </h4>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground/80">
+              OpenRouter API Key
+            </label>
+            <div className="relative">
+              <input
+                type={showOpenrouterKey ? 'text' : 'password'}
+                value={openrouterKey}
+                onChange={(e) => setOpenrouterKey(e.target.value)}
+                placeholder="sk-or-..."
+                className="w-full bg-muted dark:bg-zinc-800/60 border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500 pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowOpenrouterKey(!showOpenrouterKey)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showOpenrouterKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
-          <p className="text-[10px] text-muted-foreground">
-            Used by Orion App Builder with the OpenRouter provider.
-          </p>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground/80">
+              Model Name (Optional)
+            </label>
+            <input
+              type="text"
+              value={openrouterModel}
+              onChange={(e) => setOpenrouterModel(e.target.value)}
+              placeholder="anthropic/claude-3.5-sonnet"
+              className="w-full bg-muted dark:bg-zinc-800/60 border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500"
+            />
+          </div>
+        </div>
+
+        {/* Gemini Key */}
+        <div className="p-4 rounded-xl border border-border bg-muted/20 space-y-4">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Google Gemini Provider
+          </h4>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground/80">
+              Gemini API Key
+            </label>
+            <div className="relative">
+              <input
+                type={showGeminiKey ? 'text' : 'password'}
+                value={geminiKey}
+                onChange={(e) => setGeminiKey(e.target.value)}
+                placeholder="Enter Gemini API Key"
+                className="w-full bg-muted dark:bg-zinc-800/60 border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500 pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowGeminiKey(!showGeminiKey)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showGeminiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground/80">
+              Model Name (Optional)
+            </label>
+            <input
+              type="text"
+              value={geminiModel}
+              onChange={(e) => setGeminiModel(e.target.value)}
+              placeholder="gemini-2.5-flash"
+              className="w-full bg-muted dark:bg-zinc-800/60 border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500"
+            />
+          </div>
         </div>
 
         {/* Custom API */}

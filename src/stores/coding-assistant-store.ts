@@ -1,6 +1,34 @@
 import { create } from 'zustand';
 import { createClient } from '@/lib/supabase/client';
 
+const getActiveProviderDetails = () => {
+  if (typeof window === 'undefined') return { provider: 'mittenai', apiKey: '', model: '', baseUrl: '' };
+  const provider = localStorage.getItem('orion-api-provider') || 'mittenai';
+  let apiKey = '';
+  let model = '';
+  let baseUrl = '';
+
+  if (provider === 'zai') {
+    apiKey = localStorage.getItem('mittenOS_zai_api_key') || '';
+    model = localStorage.getItem('mittenOS_zai_model') || '';
+  } else if (provider === 'gemini') {
+    apiKey = localStorage.getItem('mittenOS_gemini_api_key') || '';
+    model = localStorage.getItem('mittenOS_gemini_model') || '';
+  } else if (provider === 'openrouter') {
+    apiKey = localStorage.getItem('mittenOS_openrouter_api_key') || '';
+    model = localStorage.getItem('mittenOS_openrouter_model') || '';
+  } else if (provider === 'custom') {
+    apiKey = localStorage.getItem('mittenOS_custom_api_key') || '';
+    model = localStorage.getItem('mittenOS_custom_model') || '';
+    baseUrl = localStorage.getItem('mittenOS_custom_base_url') || '';
+  } else {
+    // mittenai / deepseek
+    apiKey = localStorage.getItem('mittenOS_coding_assistant_key') || '';
+    model = localStorage.getItem('mittenOS_coding_assistant_model') || '';
+  }
+  return { provider, apiKey, model, baseUrl };
+};
+
 export interface CodingSession {
   id: string;
   title: string;
@@ -223,14 +251,17 @@ export const useCodingAssistantStore = create<CodingAssistantState>((set, get) =
 
     try {
       const apiMessages = updatedMessages.map((m) => ({ role: m.role, content: m.content }));
-      const codingKey = typeof window !== 'undefined' ? localStorage.getItem('mittenOS_coding_assistant_key') || '' : '';
+      const { provider, apiKey, model, baseUrl } = getActiveProviderDetails();
       const response = await fetch('/api/coding-assistant/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': codingKey,
+          'x-api-key': apiKey,
+          'x-model': model,
+          'x-provider': provider,
+          'x-base-url': baseUrl,
         },
-        body: JSON.stringify({ messages: apiMessages }),
+        body: JSON.stringify({ messages: apiMessages, model, provider, baseUrl }),
       });
 
       if (!response.ok) {
@@ -302,14 +333,17 @@ export const useCodingAssistantStore = create<CodingAssistantState>((set, get) =
         if (isFirstMessage) {
           let generatedTitle: string | null = null;
           try {
-            const codingKey = typeof window !== 'undefined' ? localStorage.getItem('mittenOS_coding_assistant_key') || '' : '';
+            const { provider, apiKey, model, baseUrl } = getActiveProviderDetails();
             const titleRes = await fetch('/api/coding-assistant/title', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': codingKey,
+                'x-api-key': apiKey,
+                'x-model': model,
+                'x-provider': provider,
+                'x-base-url': baseUrl,
               },
-              body: JSON.stringify({ message: content }),
+              body: JSON.stringify({ message: content, model, provider, baseUrl }),
             });
             if (titleRes.ok) {
               const json = await titleRes.json();
