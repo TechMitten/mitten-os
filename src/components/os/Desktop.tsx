@@ -67,6 +67,8 @@ export function Desktop() {
   const loadIconPositions = useDesktopStore((s) => s.loadIconPositions);
   const renameDesktopIcon = useDesktopStore((s) => s.renameDesktopIcon);
   const deleteDesktopIcon = useDesktopStore((s) => s.deleteDesktopIcon);
+  const customDesktopIcons = useDesktopStore((s) => s.customDesktopIcons);
+  const removeCustomDesktopIcon = useDesktopStore((s) => s.removeCustomDesktopIcon);
 
   const windows = useWindowStore((s) => s.windows);
   const activeWindowId = useWindowStore((s) => s.activeWindowId);
@@ -438,7 +440,12 @@ export function Desktop() {
           label: 'Delete',
           icon: 'Trash2',
           action: () => {
-            deleteDesktopIcon(iconId);
+            const isCustom = customDesktopIcons.some((icon) => icon.id === iconId);
+            if (isCustom) {
+              removeCustomDesktopIcon(iconId);
+            } else {
+              deleteDesktopIcon(iconId);
+            }
           },
         },
       ];
@@ -449,7 +456,7 @@ export function Desktop() {
         items,
       });
     },
-    [desktopIcons, openWindowFn, setContextMenu, deleteDesktopIcon]
+    [desktopIcons, customDesktopIcons, openWindowFn, setContextMenu, deleteDesktopIcon, removeCustomDesktopIcon]
   );
 
   const handleIconMouseDown = useCallback(

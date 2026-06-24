@@ -10,6 +10,7 @@ interface DesktopStore {
   wallpaper: string;
   theme: "light" | "dark";
   desktopIcons: DesktopIcon[];
+  customDesktopIcons: DesktopIcon[];
   notifications: Notification[];
   startMenuOpen: boolean;
   contextMenu: ContextMenuState | null;
@@ -41,6 +42,8 @@ interface DesktopStore {
   reset: () => void;
   renameDesktopIcon: (id: string, label: string) => void;
   deleteDesktopIcon: (id: string) => void;
+  addDesktopIcon: (icon: Omit<DesktopIcon, "id" | "position">) => void;
+  removeCustomDesktopIcon: (id: string) => void;
 }
 
 export interface ContextMenuState {
@@ -84,6 +87,7 @@ function getSettingsJson(state: DesktopStore) {
     iconSize: state.iconSize,
     deletedIconIds: state.deletedIconIds || [],
     renamedIconLabels: state.renamedIconLabels || {},
+    customDesktopIcons: state.customDesktopIcons || [],
   };
 }
 
@@ -91,6 +95,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   wallpaper: "linear-gradient(135deg, #030b20, #0d2b63, #071730)",
   theme: "dark",
   desktopIcons: defaultIcons,
+  customDesktopIcons: [],
   notifications: [],
   startMenuOpen: false,
   contextMenu: null,
@@ -132,6 +137,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
 
     const deletedIconIds = data.settings_json?.deletedIconIds || [];
     const renamedIconLabels = data.settings_json?.renamedIconLabels || {};
+    const customDesktopIcons: DesktopIcon[] = data.settings_json?.customDesktopIcons || [];
     const updatedIcons = defaultIcons
       .filter((icon) => !deletedIconIds.includes(icon.id))
       .map((icon) => ({
@@ -149,7 +155,8 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
       loaded: true,
       deletedIconIds,
       renamedIconLabels,
-      desktopIcons: updatedIcons,
+      customDesktopIcons,
+      desktopIcons: [...updatedIcons, ...customDesktopIcons],
     });
   },
 
@@ -298,6 +305,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
       wallpaper,
       theme,
       desktopIcons: defaultIcons,
+      customDesktopIcons: [],
       notifications: [],
       startMenuOpen: false,
       contextMenu: null,
@@ -359,6 +367,76 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
       }
 
       return { deletedIconIds, desktopIcons };
+    });
+  },
+
+  addDesktopIcon: (iconDef: Omit<DesktopIcon, "id" | "position">) => {
+    set((state) => {
+      // Prevent duplicate shortcuts for the same app
+      const alreadyExists = state.desktopIcons.some((icon) => icon.appId === iconDef.appId);
+      if (alreadyExists) return state;
+
+      // Find next free grid position (column 0, scanning rows)
+      const occupiedRows = new Set(
+        state.desktopIcons
+          .filter((icon) => icon.position.x < DESKTOP_GRID_CELL * 2)
+          .map((icon) => Math.round((icon.position.y - DESKTOP_GRID_OFFSET_Y) / DESKTOP_GRID_CELL))
+      );
+      let row = 0;
+      while (occupiedRows.has(row)) row++;
+
+      const newIcon: DesktopIcon = {
+        ...iconDef,
+        id: `custom-icon-${Date.now()}`,
+        position: {
+          x: DESKTOP_GRID_OFFSET_X,
+          y: row * DESKTOP_GRID_CELL + DESKTOP_GRID_OFFSET_Y,
+        },
+      };
+
+      const customDesktopIcons = [...state.customDesktopIcons, newIcon];
+      const desktopIcons = [...state.desktopIcons, newIcon];
+
+      const { userId, theme, wallpaper } = state;
+      if (userId && !isGuest(userId)) {
+        const supabase = createClient();
+        supabase
+          .from("user_settings")
+          .upsert({
+            user_id: userId,
+            theme,
+            wallpaper,
+            settings_json: getSettingsJson({ ...state, customDesktopIcons }),
+            updated_at: new Date().toISOString(),
+          })
+          .then(({ error }) => { if (error) console.error("Failed to save custom desktop icon:", error); });
+      }
+
+      return { customDesktopIcons, desktopIcons };
+    });
+  },
+
+  removeCustomDesktopIcon: (id: string) => {
+    set((state) => {
+      const customDesktopIcons = state.customDesktopIcons.filter((icon) => icon.id !== id);
+      const desktopIcons = state.desktopIcons.filter((icon) => icon.id !== id);
+
+      const { userId, theme, wallpaper } = state;
+      if (userId && !isGuest(userId)) {
+        const supabase = createClient();
+        supabase
+          .from("user_settings")
+          .upsert({
+            user_id: userId,
+            theme,
+            wallpaper,
+            settings_json: getSettingsJson({ ...state, customDesktopIcons }),
+            updated_at: new Date().toISOString(),
+          })
+          .then(({ error }) => { if (error) console.error("Failed to remove custom desktop icon:", error); });
+      }
+
+      return { customDesktopIcons, desktopIcons };
     });
   },
 }));
