@@ -3,10 +3,15 @@
 ## Quick commands
 
 ```bash
-npm run dev      # start dev server on port 3000, output logged to dev.log
-npm run build    # production build (standalone output)
-npm run lint     # eslint
-npm run start    # production server (uses bun)
+npm run dev        # start dev server on port 3000, output logged to dev.log
+npm run build      # production build (standalone output)
+npm run lint       # eslint
+npm run start      # production server (uses bun)
+
+npm run build:cf   # build via OpenNext for Cloudflare (.open-next/)
+npm run preview    # build:cf + wrangler dev (local Workers runtime preview)
+npm run deploy     # build:cf + wrangler deploy (deploys to Cloudflare)
+npm run cf-typegen # regenerate cloudflare-env.d.ts from wrangler.jsonc bindings
 ```
 
 There are no typecheck or test scripts. `next.config.ts` sets `ignoreBuildErrors: true` and `reactStrictMode: false`. The ESLint config disables nearly all rules — `npm run lint` is a soft check.
@@ -52,6 +57,14 @@ DEEPSEEK_MODEL=<optional, defaults to deepseek-v4-pro>
 ZAI_API_KEY=<set to use Z.ai GLM (mutually exclusive with DEEPSEEK_API_KEY)>
 ZAI_MODEL=<optional, defaults to glm-5.1>
 ```
+
+## Cloudflare deployment
+
+The app deploys to Cloudflare Workers via [OpenNext for Cloudflare](https://opennext.js.org/cloudflare) (`@opennextjs/cloudflare` + `wrangler`, configured in `wrangler.jsonc` / `open-next.config.ts`), bound to the custom domain `mittenai.dev` (and `www.mittenai.dev`).
+
+- **`NEXT_PUBLIC_*` vars are build-time.** They get inlined into the client bundle when `next build` runs (inside `npm run build:cf`), so they must be set wherever the build runs (local `.env.local`, or as build variables in the Cloudflare dashboard if using Git-connected builds) — not as Worker secrets.
+- **Non-public vars are runtime.** `DEEPSEEK_API_KEY`, `DEEPSEEK_MODEL`, `DEEPSEEK_BASE_URL`, `CODING_ASSISTANT_DEEPSEEK_API_KEY`, `CODING_ASSISTANT_DEEPSEEK_MODEL` are read from `process.env` inside Route Handlers at request time. Set them with `wrangler secret put <NAME>` for production, or in a local `.dev.vars` (copy from `.dev.vars.example`) for `npm run preview`.
+- **`npm run cf-typegen`** regenerates `cloudflare-env.d.ts` after editing `wrangler.jsonc` bindings.
 
 ## Gotchas
 

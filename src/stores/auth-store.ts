@@ -41,6 +41,7 @@ interface AuthStore {
   signInAsGuest: () => void
   sendOtp: (email: string) => Promise<{ error: string | null }>
   verifyOtp: (email: string, token: string) => Promise<{ error: string | null }>
+  signInWithGithub: () => Promise<{ error: string | null }>
   signOut: () => Promise<void>
 }
 
@@ -105,6 +106,18 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       email,
       token,
       type: 'email',
+    })
+    if (error) return { error: error.message }
+    return { error: null }
+  },
+
+  signInWithGithub: async () => {
+    const supabase = createClient()
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'github',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
     })
     if (error) return { error: error.message }
     return { error: null }

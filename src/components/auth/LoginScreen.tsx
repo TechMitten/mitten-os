@@ -1,9 +1,9 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useAuthStore } from '@/stores/auth-store'
 import { useDesktopStore } from '@/stores/desktop-store'
-import { Cpu, Mail, Loader2, ArrowLeft, CheckCircle, Send } from 'lucide-react'
+import { Cpu, Mail, Loader2, ArrowLeft, CheckCircle, Send, Github } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 type Step = 'email' | 'sent'
@@ -14,10 +14,32 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [githubBusy, setGithubBusy] = useState(false)
   const [linkSent, setLinkSent] = useState(false)
 
   const sendOtp = useAuthStore((s) => s.sendOtp)
   const signInAsGuest = useAuthStore((s) => s.signInAsGuest)
+  const signInWithGithub = useAuthStore((s) => s.signInWithGithub)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('auth_error')) {
+      setError('Sign-in failed. Please try again.')
+      params.delete('auth_error')
+      const query = params.toString()
+      window.history.replaceState({}, '', `${window.location.pathname}${query ? `?${query}` : ''}`)
+    }
+  }, [])
+
+  const handleGithubSignIn = async () => {
+    setError(null)
+    setGithubBusy(true)
+    const result = await signInWithGithub()
+    if (result.error) {
+      setError(result.error)
+      setGithubBusy(false)
+    }
+  }
 
   const backToEmail = () => {
     setStep('email')
@@ -144,6 +166,27 @@ export default function LoginScreen() {
                 onSubmit={handleSendLink}
                 className="px-6 pb-6 space-y-4"
               >
+                <button
+                  type="button"
+                  onClick={handleGithubSignIn}
+                  disabled={busy || githubBusy}
+                  className="w-full py-2.5 rounded-xl bg-[#24292e] hover:bg-[#1b1f23] text-white font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                >
+                  {githubBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Github className="w-4 h-4" />}
+                  Continue with GitHub
+                </button>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-black/[0.06] dark:border-white/[0.08]" />
+                  </div>
+                  <div className="relative flex justify-center text-xs">
+                    <span className="px-2 text-muted-foreground/40 dark:text-white/20" style={{ background: theme === 'dark' ? '#1c1c26' : '#ffffff' }}>
+                      or
+                    </span>
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-xs text-muted-foreground dark:text-white/40 mb-1.5 ml-1">Email address</label>
                   <div className="relative">
@@ -173,28 +216,17 @@ export default function LoginScreen() {
 
                 <button
                   type="submit"
-                  disabled={busy}
+                  disabled={busy || githubBusy}
                   className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-medium text-sm hover:from-amber-400 hover:to-orange-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                 >
                   {busy && <Loader2 className="w-4 h-4 animate-spin" />}
                   Send Link
                 </button>
 
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-black/[0.06] dark:border-white/[0.08]" />
-                  </div>
-                  <div className="relative flex justify-center text-xs">
-                    <span className="px-2 text-muted-foreground/40 dark:text-white/20" style={{ background: theme === 'dark' ? '#1c1c26' : '#ffffff' }}>
-                      or
-                    </span>
-                  </div>
-                </div>
-
                 <button
                   type="button"
                   onClick={signInAsGuest}
-                  disabled={busy}
+                  disabled={busy || githubBusy}
                   className="w-full py-2.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.05] border border-black/[0.06] dark:border-white/[0.08] text-sm text-muted-foreground dark:text-white/50 hover:bg-black/[0.06] dark:hover:bg-white/[0.08] hover:text-foreground/70 dark:hover:text-white/70 transition-all"
                 >
                   Continue as Guest
