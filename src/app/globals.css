@@ -168,3 +168,30 @@
   background-color: rgba(255, 255, 255, 0.3);
 }
 
+/* Weather App Scrollbar (always uses light/semi-transparent styling because of the dark gradient backgrounds) */
+.weather-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+.weather-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.weather-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.weather-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+.weather-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+
