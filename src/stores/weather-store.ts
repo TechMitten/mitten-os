@@ -28,6 +28,7 @@ export interface WeatherStore {
     longitude: number;
   };
   tempUnit: 'celsius' | 'fahrenheit';
+  windVisibilityUnit: 'metric' | 'imperial';
   isLoading: boolean;
   error: string | null;
   lastUpdated: string | null; // ISO string
@@ -37,6 +38,7 @@ export interface WeatherStore {
   setRefreshInterval: (interval: number) => void;
   setWeatherLocation: (name: string, lat: number, lon: number) => void;
   setTempUnit: (unit: 'celsius' | 'fahrenheit') => void;
+  setWindVisibilityUnit: (unit: 'metric' | 'imperial') => void;
   fetchWeather: (
     lat: number,
     lon: number,
@@ -109,6 +111,7 @@ export const useWeatherStore = create<WeatherStore>((set, get) => ({
     longitude: -122.4194,
   },
   tempUnit: 'celsius',
+  windVisibilityUnit: 'metric',
   isLoading: false,
   error: null,
   lastUpdated: null,
@@ -138,11 +141,18 @@ export const useWeatherStore = create<WeatherStore>((set, get) => ({
       unit = storedUnit;
     }
 
+    let windVisibilityUnit: 'metric' | 'imperial' = 'metric';
+    const storedWindVisibilityUnit = localStorage.getItem('mittenOS_weather_windVisibilityUnit');
+    if (storedWindVisibilityUnit === 'imperial' || storedWindVisibilityUnit === 'metric') {
+      windVisibilityUnit = storedWindVisibilityUnit;
+    }
+
     set({
       showInTaskbar,
       refreshInterval,
       savedLoc: loc,
       tempUnit: unit,
+      windVisibilityUnit,
       initialized: true,
     });
   },
@@ -177,6 +187,13 @@ export const useWeatherStore = create<WeatherStore>((set, get) => ({
     set({ tempUnit: unit });
     const { savedLoc } = get();
     get().fetchWeather(savedLoc.latitude, savedLoc.longitude, savedLoc.name, unit);
+  },
+
+  setWindVisibilityUnit: (unit: 'metric' | 'imperial') => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('mittenOS_weather_windVisibilityUnit', unit);
+    }
+    set({ windVisibilityUnit: unit });
   },
 
   fetchWeather: async (

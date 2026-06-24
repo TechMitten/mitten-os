@@ -289,6 +289,7 @@ export default function Weather() {
   const data = useWeatherStore((s) => s.data);
   const savedLoc = useWeatherStore((s) => s.savedLoc);
   const tempUnit = useWeatherStore((s) => s.tempUnit);
+  const windVisibilityUnit = useWeatherStore((s) => s.windVisibilityUnit);
   const isLoading = useWeatherStore((s) => s.isLoading);
   const error = useWeatherStore((s) => s.error);
   const lastUpdatedRaw = useWeatherStore((s) => s.lastUpdated);
@@ -300,6 +301,7 @@ export default function Weather() {
   const setRefreshInterval = useWeatherStore((s) => s.setRefreshInterval);
   const setWeatherLocation = useWeatherStore((s) => s.setWeatherLocation);
   const setTempUnit = useWeatherStore((s) => s.setTempUnit);
+  const setWindVisibilityUnit = useWeatherStore((s) => s.setWindVisibilityUnit);
   const fetchWeather = useWeatherStore((s) => s.fetchWeather);
 
   const [isSearching, setIsSearching] = useState(false);
@@ -324,6 +326,10 @@ export default function Weather() {
 
   const changeUnit = (newUnit: 'celsius' | 'fahrenheit') => {
     setTempUnit(newUnit);
+  };
+
+  const changeWindVisibilityUnit = (newUnit: 'metric' | 'imperial') => {
+    setWindVisibilityUnit(newUnit);
   };
 
   // Debounced search for geocoding
@@ -427,6 +433,33 @@ export default function Weather() {
               }`}
             >
               °F
+            </button>
+          </div>
+        </div>
+
+        {/* Wind & Visibility Unit Toggle */}
+        <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl p-3 mb-3 shrink-0">
+          <span className="text-xs font-semibold opacity-80">Wind & Visibility</span>
+          <div className="flex bg-white/10 p-0.5 rounded-lg border border-white/5">
+            <button
+              onClick={() => changeWindVisibilityUnit('metric')}
+              className={`px-3 py-1 text-xs font-medium rounded-md transition-all active:scale-95 ${
+                windVisibilityUnit === 'metric'
+                  ? 'bg-white/20 text-white shadow-sm'
+                  : 'text-white/60 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              Metric
+            </button>
+            <button
+              onClick={() => changeWindVisibilityUnit('imperial')}
+              className={`px-3 py-1 text-xs font-medium rounded-md transition-all active:scale-95 ${
+                windVisibilityUnit === 'imperial'
+                  ? 'bg-white/20 text-white shadow-sm'
+                  : 'text-white/60 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              Imperial
             </button>
           </div>
         </div>
@@ -646,7 +679,11 @@ export default function Weather() {
                   <Wind className="w-4 h-4 text-teal-200 opacity-90" />
                   <span className="text-[10px] uppercase tracking-wider opacity-50 font-medium">Wind</span>
                 </div>
-                <div className="text-lg font-medium">{data.windSpeed} km/h</div>
+                <div className="text-lg font-medium">
+                  {windVisibilityUnit === 'imperial'
+                    ? `${Math.round(data.windSpeed * 0.621371)} mph`
+                    : `${data.windSpeed} km/h`}
+                </div>
               </div>
               <div className="bg-black/10 dark:bg-white/10 rounded-xl p-3">
                 <div className="flex items-center gap-1.5 mb-1">
@@ -660,7 +697,11 @@ export default function Weather() {
                   <Eye className="w-4 h-4 text-indigo-200 opacity-90" />
                   <span className="text-[10px] uppercase tracking-wider opacity-50 font-medium">Visibility</span>
                 </div>
-                <div className="text-lg font-medium">{data.visibility} km</div>
+                <div className="text-lg font-medium">
+                  {windVisibilityUnit === 'imperial'
+                    ? `${Math.round(data.visibility * 0.621371)} miles`
+                    : `${data.visibility} km`}
+                </div>
               </div>
             </div>
           </div>

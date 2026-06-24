@@ -22,6 +22,7 @@ export function Window({ window: win, children, isActive }: WindowProps) {
     toggleMaximize,
     updateWindowPosition,
     updateWindowSize,
+    unmaximizeWindow,
   } = useWindowStore();
 
   // Track whether we're actively dragging/resizing
@@ -35,6 +36,10 @@ export function Window({ window: win, children, isActive }: WindowProps) {
   const isMinimizingRef = useRef(false);
   const [minimizeTarget, setMinimizeTarget] = useState({ x: 0, y: 0, scale: 0.15 });
   const windowRef = useRef<HTMLDivElement>(null);
+  const [isMaximizing, setIsMaximizing] = useState(false);
+  const [isUnmaximizing, setIsUnmaximizing] = useState(false);
+  const maximizingTimeoutRef = useRef<any>(null);
+  const unmaximizeTimeoutRef = useRef<any>(null);
 
   // Refs to always have the latest position/size available in mouseup
   // without reading them from setState callbacks (which run during render).
@@ -44,6 +49,44 @@ export function Window({ window: win, children, isActive }: WindowProps) {
   const isMaximized = win.state === 'maximized';
   const isMinimized = win.state === 'minimized';
 
+  const prevIsMaximizedRef = useRef(isMaximized);
+
+  React.useEffect(() => {
+    if (isMaximized !== prevIsMaximizedRef.current) {
+      if (isMaximized) {
+        setIsMaximizing(true);
+        if (maximizingTimeoutRef.current) {
+          clearTimeout(maximizingTimeoutRef.current);
+        }
+        maximizingTimeoutRef.current = setTimeout(() => {
+          setIsMaximizing(false);
+        }, 200);
+      } else {
+        if (!isInteracting) {
+          setIsUnmaximizing(true);
+          if (unmaximizeTimeoutRef.current) {
+            clearTimeout(unmaximizeTimeoutRef.current);
+          }
+          unmaximizeTimeoutRef.current = setTimeout(() => {
+            setIsUnmaximizing(false);
+          }, 200);
+        }
+      }
+      prevIsMaximizedRef.current = isMaximized;
+    }
+  }, [isMaximized, isInteracting]);
+
+  React.useEffect(() => {
+    return () => {
+      if (maximizingTimeoutRef.current) {
+        clearTimeout(maximizingTimeoutRef.current);
+      }
+      if (unmaximizeTimeoutRef.current) {
+        clearTimeout(unmaximizeTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Computed position: use live values during interaction, store values otherwise
   const currentPos = isInteracting ? livePos : win.position;
   const currentSize = isInteracting ? liveSize : win.size;
@@ -51,26 +94,56 @@ export function Window({ window: win, children, isActive }: WindowProps) {
   // --- DRAG HANDLERS ---
   const handleDragStart = useCallback(
     (e: React.MouseEvent) => {
-      if (isMaximized || e.button !== 0) return;
+      if (e.button !== 0) return;
       e.preventDefault();
 
       focusWindow(win.id);
 
-      const startPos = { x: win.position.x, y: win.position.y };
-      const startSize = { width: win.size.width, height: win.size.height };
-
-      setIsInteracting(true);
-      setLivePos(startPos);
-      setLiveSize(startSize);
-      livePosRef.current = startPos;
-      liveSizeRef.current = startSize;
-
       const startX = e.clientX;
       const startY = e.clientY;
-      const originX = win.position.x;
-      const originY = win.position.y;
+
+      let dragStarted = !isMaximized;
+      let originX = win.position.x;
+      let originY = win.position.y;
+
+      if (!isMaximized) {
+        const startPos = { x: win.position.x, y: win.position.y };
+        const startSize = { width: win.size.width, height: win.size.height };
+
+        setIsInteracting(true);
+        setLivePos(startPos);
+        setLiveSize(startSize);
+        livePosRef.current = startPos;
+        liveSizeRef.current = startSize;
+      }
 
       const handleMove = (ev: MouseEvent) => {
+        if (!dragStarted) {
+          dragStarted = true;
+          const restoreW = win.preMaximizeSize?.width ?? win.size.width;
+          const restoreH = win.preMaximizeSize?.height ?? win.size.height;
+          const clickRatio = startX / window.innerWidth;
+          originX = startX - restoreW * clickRatio;
+          originY = Math.max(0, startY - 18);
+
+          unmaximizeWindow(win.id);
+          setIsInteracting(true);
+          setIsUnmaximizing(true);
+          if (unmaximizeTimeoutRef.current) {
+            clearTimeout(unmaximizeTimeoutRef.current);
+          }
+          unmaximizeTimeoutRef.current = setTimeout(() => {
+            setIsUnmaximizing(false);
+          }, 200);
+
+          const initialPos = { x: originX, y: originY };
+          const initialSize = { width: restoreW, height: restoreH };
+          setLivePos(initialPos);
+          setLiveSize(initialSize);
+          livePosRef.current = initialPos;
+          liveSizeRef.current = initialSize;
+        }
+
         const dx = ev.clientX - startX;
         const dy = ev.clientY - startY;
         const newPos = {
@@ -82,11 +155,15 @@ export function Window({ window: win, children, isActive }: WindowProps) {
       };
 
       const handleUp = () => {
-        // Read the final position from the ref and commit to the store directly.
-        // Do NOT call store updates inside a setState callback — that triggers
-        // "Cannot update a component while rendering a different component".
-        updateWindowPosition(win.id, livePosRef.current);
-        setIsInteracting(false);
+        if (dragStarted) {
+          updateWindowPosition(win.id, livePosRef.current);
+          setIsInteracting(false);
+        }
+        setIsUnmaximizing(false);
+        if (unmaximizeTimeoutRef.current) {
+          clearTimeout(unmaximizeTimeoutRef.current);
+          unmaximizeTimeoutRef.current = null;
+        }
         document.removeEventListener('mousemove', handleMove);
         document.removeEventListener('mouseup', handleUp);
       };
@@ -94,7 +171,19 @@ export function Window({ window: win, children, isActive }: WindowProps) {
       document.addEventListener('mousemove', handleMove);
       document.addEventListener('mouseup', handleUp);
     },
-    [win.id, win.position.x, win.position.y, win.size.width, win.size.height, isMaximized, focusWindow, updateWindowPosition]
+    [
+      win.id,
+      win.position.x,
+      win.position.y,
+      win.size.width,
+      win.size.height,
+      win.preMaximizePosition,
+      win.preMaximizeSize,
+      isMaximized,
+      focusWindow,
+      unmaximizeWindow,
+      updateWindowPosition,
+    ]
   );
 
   // --- RESIZE HANDLERS ---
@@ -249,6 +338,12 @@ export function Window({ window: win, children, isActive }: WindowProps) {
         width: currentSize.width,
         height: currentSize.height,
         zIndex: win.zIndex,
+        ...(isUnmaximizing
+          ? {
+              transition:
+                'width 200ms cubic-bezier(0.16, 1, 0.3, 1), height 200ms cubic-bezier(0.16, 1, 0.3, 1), left 200ms cubic-bezier(0.16, 1, 0.3, 1), top 200ms cubic-bezier(0.16, 1, 0.3, 1), border-radius 200ms cubic-bezier(0.16, 1, 0.3, 1)',
+            }
+          : {}),
       };
 
   // --- RESIZE HANDLES CONFIG ---
@@ -302,7 +397,7 @@ export function Window({ window: win, children, isActive }: WindowProps) {
           }}
           className={`
             flex flex-col
-            ${isMaximized ? '' : 'rounded-lg'}
+            ${isMaximized ? 'rounded-none' : 'rounded-lg'}
             overflow-hidden
             bg-white/80 dark:bg-gray-900/80
             backdrop-blur-xl
