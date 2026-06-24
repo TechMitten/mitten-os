@@ -34,6 +34,7 @@ import {
   CodingAssistant,
 } from '@/components/apps';
 import { useAppRegistryStore } from '@/stores/app-registry-store';
+import { useWeatherPoller } from '@/hooks/use-weather-poller';
 
 const APP_COMPONENT_MAP: Record<string, React.ComponentType> = {
   'file-explorer': FileExplorer,
@@ -51,6 +52,7 @@ const APP_COMPONENT_MAP: Record<string, React.ComponentType> = {
 };
 
 export function Desktop() {
+  useWeatherPoller();
   const wallpaper = useDesktopStore((s) => s.wallpaper);
   const theme = useDesktopStore((s) => s.theme);
   const desktopIcons = useDesktopStore((s) => s.desktopIcons);

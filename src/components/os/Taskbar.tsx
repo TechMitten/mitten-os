@@ -18,10 +18,15 @@ import {
   Info,
   User,
   Bot,
+  Cloud,
+  CloudRain,
+  Snowflake,
+  Loader2,
 } from 'lucide-react';
 import { useWindowStore } from '@/stores/window-store';
 import { useDesktopStore } from '@/stores/desktop-store';
 import { useAuthStore } from '@/stores/auth-store';
+import { useWeatherStore } from '@/stores/weather-store';
 import { APP_REGISTRY } from '@/types/os';
 import {
   Tooltip,
@@ -92,6 +97,59 @@ function Clock() {
       <span className="font-medium text-foreground/80">{timeStr}</span>
       <span className="text-[10px] text-foreground/50">{dateStr}</span>
     </div>
+  );
+}
+
+function TaskbarWeather() {
+  const showInTaskbar = useWeatherStore((s) => s.showInTaskbar);
+  const data = useWeatherStore((s) => s.data);
+  const isLoading = useWeatherStore((s) => s.isLoading);
+  const openWindow = useWindowStore((s) => s.openWindow);
+
+  if (!showInTaskbar) return null;
+
+  const handleWeatherClick = () => {
+    openWindow('weather');
+  };
+
+  const getWeatherIcon = (cond: string | undefined) => {
+    switch (cond) {
+      case 'sunny':
+        return <Sun className="w-4 h-4 text-amber-500" />;
+      case 'partly-cloudy':
+        return <CloudSun className="w-4 h-4 text-sky-400" />;
+      case 'cloudy':
+        return <Cloud className="w-4 h-4 text-slate-400" />;
+      case 'rainy':
+        return <CloudRain className="w-4 h-4 text-blue-400" />;
+      case 'snowy':
+        return <Snowflake className="w-4 h-4 text-blue-200" />;
+      default:
+        return <CloudSun className="w-4 h-4 text-foreground/50" />;
+    }
+  };
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          onClick={handleWeatherClick}
+          className="flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition-colors duration-150 text-[11px] font-medium text-foreground/80 active:scale-95 cursor-pointer"
+        >
+          {isLoading && !data ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin opacity-50" />
+          ) : (
+            <>
+              {getWeatherIcon(data?.condition)}
+              <span>{data ? `${data.temperature}°` : '--°'}</span>
+            </>
+          )}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top">
+        {data ? `${data.location}: ${data.description}` : 'Loading Weather...'}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -298,6 +356,9 @@ export default function Taskbar() {
               <TooltipContent side="top">{user.email}</TooltipContent>
             </Tooltip>
           )}
+
+          {/* Weather */}
+          <TaskbarWeather />
 
           {/* Clock */}
           <Clock />

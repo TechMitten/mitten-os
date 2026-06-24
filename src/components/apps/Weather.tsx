@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { useWeatherStore } from '@/stores/weather-store';
 import {
   Wind,
   Droplets,
@@ -285,25 +286,26 @@ function formatTime(date: Date | null): string {
 }
 
 export default function Weather() {
-  const [data, setData] = useState<WeatherData | null>(null);
-  const [savedLoc, setSavedLoc] = useState<{
-    name: string;
-    latitude: number;
-    longitude: number;
-  }>({
-    name: 'San Francisco, CA',
-    latitude: 37.7749,
-    longitude: -122.4194,
-  });
+  const data = useWeatherStore((s) => s.data);
+  const savedLoc = useWeatherStore((s) => s.savedLoc);
+  const tempUnit = useWeatherStore((s) => s.tempUnit);
+  const isLoading = useWeatherStore((s) => s.isLoading);
+  const error = useWeatherStore((s) => s.error);
+  const lastUpdatedRaw = useWeatherStore((s) => s.lastUpdated);
+  const lastUpdated = lastUpdatedRaw ? new Date(lastUpdatedRaw) : null;
+  const showInTaskbar = useWeatherStore((s) => s.showInTaskbar);
+  const refreshInterval = useWeatherStore((s) => s.refreshInterval);
+
+  const setShowInTaskbar = useWeatherStore((s) => s.setShowInTaskbar);
+  const setRefreshInterval = useWeatherStore((s) => s.setRefreshInterval);
+  const setWeatherLocation = useWeatherStore((s) => s.setWeatherLocation);
+  const setTempUnit = useWeatherStore((s) => s.setTempUnit);
+  const fetchWeather = useWeatherStore((s) => s.fetchWeather);
 
   const [isSearching, setIsSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isGeocodingLoading, setIsGeocodingLoading] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [tempUnit, setTempUnit] = useState<'celsius' | 'fahrenheit'>('celsius');
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -316,142 +318,12 @@ export default function Weather() {
     }
   }, [isSearching]);
 
-  const fetchWeather = useCallback(async (
-    lat: number,
-    lon: number,
-    locationName: string,
-    unit: 'celsius' | 'fahrenheit' = 'celsius'
-  ) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const unitParam = unit === 'fahrenheit' ? '&temperature_unit=fahrenheit' : '';
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code,visibility,uv_index&daily=weather_code,temperature_2m_max,temperature_2m_min,uv_index_max${unitParam}&timezone=auto`;
-      const res = await fetch(url);
-      if (!res.ok) {
-        throw new Error('Failed to fetch weather data');
-      }
-      const apiData = await res.json();
-      
-      const current = apiData.current;
-      const hourly = apiData.hourly;
-      const daily = apiData.daily;
-      
-      if (!current || !hourly || !daily) {
-        throw new Error('Invalid response data from weather service');
-      }
-
-      const currentWmo = current.weather_code;
-      const condition = getConditionFromWmo(currentWmo);
-      const description = getDescriptionFromWmo(currentWmo);
-      
-      // Find current hour index
-      const currentHourTimeStr = current.time.slice(0, 13) + ':00';
-      let currentHourIndex = hourly.time.findIndex((t: string) => t.startsWith(currentHourTimeStr));
-      if (currentHourIndex === -1) {
-        currentHourIndex = hourly.time.findIndex((t: string) => t >= current.time);
-      }
-      if (currentHourIndex === -1) currentHourIndex = 0;
-      
-      // Process hourly (next 8 hours)
-      const hourlyForecasts = [];
-      for (let i = 0; i < 8; i++) {
-        const idx = currentHourIndex + i;
-        if (idx < hourly.time.length) {
-          const timeStr = hourly.time[idx];
-          const hourNum = parseInt(timeStr.slice(11, 13), 10);
-          const ampm = hourNum >= 12 ? 'PM' : 'AM';
-          const displayHour = hourNum % 12 === 0 ? 12 : hourNum % 12;
-          const displayTime = i === 0 ? 'Now' : `${displayHour}${ampm}`;
-          hourlyForecasts.push({
-            time: displayTime,
-            temp: Math.round(hourly.temperature_2m[idx]),
-            condition: getConditionFromWmo(hourly.weather_code[idx]),
-          });
-        }
-      }
-      
-      // Process daily (next 5 days, starting from tomorrow as index 1)
-      const dailyForecasts = [];
-      const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      for (let i = 1; i <= 5; i++) {
-        const idx = i;
-        if (idx < daily.time.length) {
-          const date = new Date(daily.time[idx] + 'T00:00:00');
-          const dayName = daysOfWeek[date.getDay()];
-          dailyForecasts.push({
-            day: dayName,
-            high: Math.round(daily.temperature_2m_max[idx]),
-            low: Math.round(daily.temperature_2m_min[idx]),
-            condition: getConditionFromWmo(daily.weather_code[idx]),
-          });
-        }
-      }
-      
-      const visibilityKm = Math.round((hourly.visibility[currentHourIndex] || 10000) / 1000);
-      const uvIndex = Math.round(daily.uv_index_max[0] || 0);
-      
-      setData({
-        condition,
-        temperature: Math.round(current.temperature_2m),
-        high: Math.round(daily.temperature_2m_max[0]),
-        low: Math.round(daily.temperature_2m_min[0]),
-        location: locationName,
-        description,
-        humidity: Math.round(current.relative_humidity_2m),
-        windSpeed: Math.round(current.wind_speed_10m),
-        uvIndex,
-        visibility: visibilityKm,
-        hourly: hourlyForecasts,
-        daily: dailyForecasts,
-      });
-      setLastUpdated(new Date());
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Error fetching weather');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  // Load location and unit from localStorage on mount
-  useEffect(() => {
-    let loc = { name: 'San Francisco, CA', latitude: 37.7749, longitude: -122.4194 };
-    let unit: 'celsius' | 'fahrenheit' = 'celsius';
-    
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('mittenOS_weather_location');
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          if (parsed && parsed.name && typeof parsed.latitude === 'number') {
-            loc = parsed;
-          }
-        } catch (e) {
-          console.error(e);
-        }
-      }
-      
-      const storedUnit = localStorage.getItem('mittenOS_weather_unit');
-      if (storedUnit === 'fahrenheit' || storedUnit === 'celsius') {
-        unit = storedUnit;
-      }
-    }
-    setSavedLoc(loc);
-    setTempUnit(unit);
-    fetchWeather(loc.latitude, loc.longitude, loc.name, unit);
-  }, [fetchWeather]);
-
   const refresh = useCallback(() => {
     fetchWeather(savedLoc.latitude, savedLoc.longitude, savedLoc.name, tempUnit);
   }, [fetchWeather, savedLoc, tempUnit]);
 
   const changeUnit = (newUnit: 'celsius' | 'fahrenheit') => {
     setTempUnit(newUnit);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('mittenOS_weather_unit', newUnit);
-    }
-    fetchWeather(savedLoc.latitude, savedLoc.longitude, savedLoc.name, newUnit);
   };
 
   // Debounced search for geocoding
@@ -485,19 +357,10 @@ export default function Weather() {
 
   const selectLocation = (result: any) => {
     const locName = `${result.name}${result.admin1 ? `, ${result.admin1}` : result.country ? `, ${result.country}` : ''}`;
-    const newLoc = {
-      name: locName,
-      latitude: result.latitude,
-      longitude: result.longitude,
-    };
-    setSavedLoc(newLoc);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('mittenOS_weather_location', JSON.stringify(newLoc));
-    }
+    setWeatherLocation(locName, result.latitude, result.longitude);
     setIsSearching(false);
     setSearchQuery('');
     setSearchResults([]);
-    fetchWeather(newLoc.latitude, newLoc.longitude, newLoc.name, tempUnit);
   };
 
   return (
@@ -524,7 +387,7 @@ export default function Weather() {
             <input
               ref={searchInputRef}
               type="text"
-              placeholder="Search city..."
+              placeholder="Search city or zip code..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-white/10 border border-white/20 rounded-lg py-1.5 pl-8 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-white/50"
@@ -542,7 +405,7 @@ export default function Weather() {
         </div>
         
         {/* Temperature Unit Settings Toggle */}
-        <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl p-3 mb-4 shrink-0">
+        <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl p-3 mb-3 shrink-0">
           <span className="text-xs font-semibold opacity-80">Temperature Unit</span>
           <div className="flex bg-white/10 p-0.5 rounded-lg border border-white/5">
             <button
@@ -566,6 +429,40 @@ export default function Weather() {
               °F
             </button>
           </div>
+        </div>
+
+        {/* Taskbar Temp Toggle */}
+        <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl p-3 mb-3 shrink-0">
+          <span className="text-xs font-semibold opacity-80">Show Temp in Taskbar</span>
+          <button
+            onClick={() => setShowInTaskbar(!showInTaskbar)}
+            className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+              showInTaskbar ? 'bg-blue-500' : 'bg-white/15'
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                showInTaskbar ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* Polling Interval Setting */}
+        <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl p-3 mb-4 shrink-0">
+          <span className="text-xs font-semibold opacity-80">Auto Refresh</span>
+          <select
+            value={refreshInterval}
+            onChange={(e) => setRefreshInterval(Number(e.target.value))}
+            className="bg-white/10 border border-white/20 text-white rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer max-w-[120px]"
+          >
+            <option value={0} className="bg-slate-800 text-white">Manual</option>
+            <option value={5} className="bg-slate-800 text-white">Every 5 min</option>
+            <option value={15} className="bg-slate-800 text-white">Every 15 min</option>
+            <option value={30} className="bg-slate-800 text-white">Every 30 min</option>
+            <option value={60} className="bg-slate-800 text-white">Every 1 hour</option>
+            <option value={120} className="bg-slate-800 text-white">Every 2 hours</option>
+          </select>
         </div>
 
         <div className="flex-1 overflow-y-auto space-y-2 weather-scrollbar pr-1">
@@ -595,7 +492,7 @@ export default function Weather() {
           ) : (
             <div className="text-center py-10 text-xs opacity-50 flex flex-col items-center gap-2">
               <MapPin className="w-8 h-8 opacity-30" />
-              <span>Type city name to search.</span>
+              <span>Type city name or zip code to search.</span>
             </div>
           )}
         </div>
