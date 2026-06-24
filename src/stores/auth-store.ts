@@ -39,7 +39,7 @@ interface AuthStore {
 
   initialize: () => Promise<void>
   signInAsGuest: () => void
-  sendOtp: (email: string, captchaToken?: string) => Promise<{ error: string | null }>
+  sendOtp: (email: string) => Promise<{ error: string | null }>
   verifyOtp: (email: string, token: string) => Promise<{ error: string | null }>
   signInWithGithub: () => Promise<{ error: string | null }>
   signOut: () => Promise<void>
@@ -88,13 +88,12 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     set({ user: guestUser, session: null, loading: false, isGuest: true })
   },
 
-  sendOtp: async (email: string, captchaToken?: string) => {
+  sendOtp: async (email: string) => {
     const supabase = createClient()
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
         shouldCreateUser: true,
-        captchaToken,
       },
     })
     if (error) return { error: error.message }

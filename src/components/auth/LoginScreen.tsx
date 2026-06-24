@@ -1,14 +1,10 @@
 'use client'
 
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useAuthStore } from '@/stores/auth-store'
 import { useDesktopStore } from '@/stores/desktop-store'
 import { Cpu, Mail, Loader2, ArrowLeft, CheckCircle, Send, Github } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import Turnstile, { type TurnstileHandle } from '@/components/auth/Turnstile'
-
-const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
-
 type Step = 'options' | 'email' | 'sent'
 
 export default function LoginScreen() {
@@ -19,8 +15,6 @@ export default function LoginScreen() {
   const [busy, setBusy] = useState(false)
   const [githubBusy, setGithubBusy] = useState(false)
   const [linkSent, setLinkSent] = useState(false)
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
-  const turnstileRef = useRef<TurnstileHandle>(null)
 
   const sendOtp = useAuthStore((s) => s.sendOtp)
   const signInAsGuest = useAuthStore((s) => s.signInAsGuest)
@@ -61,16 +55,9 @@ export default function LoginScreen() {
       return
     }
 
-    if (TURNSTILE_SITE_KEY && !captchaToken) {
-      setError('Please complete the verification')
-      return
-    }
-
     setBusy(true)
-    const result = await sendOtp(email.trim(), captchaToken ?? undefined)
+    const result = await sendOtp(email.trim())
     setBusy(false)
-    turnstileRef.current?.reset()
-    setCaptchaToken(null)
 
     if (result.error) {
       setError(result.error)
@@ -82,18 +69,11 @@ export default function LoginScreen() {
   }
 
   const handleResend = async () => {
-    if (TURNSTILE_SITE_KEY && !captchaToken) {
-      setError('Please complete the verification')
-      return
-    }
-
     setError(null)
     setLinkSent(false)
     setBusy(true)
-    const result = await sendOtp(email, captchaToken ?? undefined)
+    const result = await sendOtp(email)
     setBusy(false)
-    turnstileRef.current?.reset()
-    setCaptchaToken(null)
 
     if (result.error) {
       setError(result.error)
@@ -269,17 +249,6 @@ export default function LoginScreen() {
                   </div>
                 </div>
 
-                {TURNSTILE_SITE_KEY && (
-                  <Turnstile
-                    ref={turnstileRef}
-                    siteKey={TURNSTILE_SITE_KEY}
-                    theme={theme === 'dark' ? 'dark' : 'light'}
-                    onVerify={setCaptchaToken}
-                    onExpire={() => setCaptchaToken(null)}
-                    onError={() => setCaptchaToken(null)}
-                  />
-                )}
-
                 {error && (
                   <motion.p
                     initial={{ opacity: 0, y: -4 }}
@@ -292,7 +261,7 @@ export default function LoginScreen() {
 
                 <button
                   type="submit"
-                  disabled={busy || githubBusy || (Boolean(TURNSTILE_SITE_KEY) && !captchaToken)}
+                  disabled={busy || githubBusy}
                   className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-medium text-sm hover:from-amber-400 hover:to-orange-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {busy && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -330,17 +299,6 @@ export default function LoginScreen() {
                   </motion.p>
                 )}
 
-                {TURNSTILE_SITE_KEY && (
-                  <Turnstile
-                    ref={turnstileRef}
-                    siteKey={TURNSTILE_SITE_KEY}
-                    theme={theme === 'dark' ? 'dark' : 'light'}
-                    onVerify={setCaptchaToken}
-                    onExpire={() => setCaptchaToken(null)}
-                    onError={() => setCaptchaToken(null)}
-                  />
-                )}
-
                 {error && (
                   <motion.p
                     initial={{ opacity: 0, y: -4 }}
@@ -354,7 +312,7 @@ export default function LoginScreen() {
                 <button
                   type="button"
                   onClick={handleResend}
-                  disabled={busy || (Boolean(TURNSTILE_SITE_KEY) && !captchaToken)}
+                  disabled={busy}
                   className="w-full py-2.5 rounded-xl bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] text-white/60 hover:bg-white/[0.10] hover:text-foreground/80 dark:hover:text-white/80 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-sm flex items-center justify-center gap-2"
                 >
                   {busy ? (
