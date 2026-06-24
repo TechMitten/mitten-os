@@ -9,6 +9,8 @@ import {
   Monitor,
   RefreshCw,
   Info,
+  Edit2,
+  Trash2,
   type LucideIcon,
 } from 'lucide-react';
 import { type ContextMenuState, type ContextMenuItem, useDesktopStore } from '@/stores/desktop-store';
@@ -21,6 +23,8 @@ const CONTEXT_ICON_MAP: Record<string, LucideIcon> = {
   Monitor,
   RefreshCw,
   Info,
+  Edit2,
+  Trash2,
 };
 
 interface ContextMenuProps {

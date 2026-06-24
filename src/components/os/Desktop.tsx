@@ -17,6 +17,7 @@ import WelcomeWindow from '@/components/os/WelcomeWindow';
 import { getSavedAccounts } from '@/lib/saved-accounts';
 import { Loader2 } from 'lucide-react';
 import { isWallpaperDark } from '@/lib/utils';
+import { DESKTOP_GRID_OFFSET_X, DESKTOP_GRID_OFFSET_Y, DRAG_THRESHOLD, type WindowPosition } from '@/types/os';
 import {
   FileExplorer,
   Terminal,
@@ -62,6 +63,8 @@ export function Desktop() {
   const setWelcomeDismissed = useDesktopStore((s) => s.setWelcomeDismissed);
   const updateIconPosition = useDesktopStore((s) => s.updateIconPosition);
   const loadIconPositions = useDesktopStore((s) => s.loadIconPositions);
+  const renameDesktopIcon = useDesktopStore((s) => s.renameDesktopIcon);
+  const deleteDesktopIcon = useDesktopStore((s) => s.deleteDesktopIcon);
 
   const windows = useWindowStore((s) => s.windows);
   const activeWindowId = useWindowStore((s) => s.activeWindowId);
@@ -77,7 +80,11 @@ export function Desktop() {
   const isGuest = useAuthStore((s) => s.isGuest);
   const initialize = useAuthStore((s) => s.initialize);
 
-  const [selectedIconId, setSelectedIconId] = useState<string | null>(null);
+  const [selectedIconIds, setSelectedIconIds] = useState<Set<string>>(new Set());
+  const [renamingIconId, setRenamingIconId] = useState<string | null>(null);
+  const [selectionBox, setSelectionBox] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
+  const [liveDragPositions, setLiveDragPositions] = useState<Record<string, WindowPosition>>({});
+  const [draggingIconIds, setDraggingIconIds] = useState<Set<string>>(new Set());
   const [dataLoaded, setDataLoaded] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const initializedRef = useRef(false);
@@ -215,10 +222,39 @@ export function Desktop() {
 
   // Save windows on close — use the interval above plus the logout handler in StartMenu
 
+  const iconSize = useDesktopStore((s) => s.iconSize) || 'medium';
+  const gridCellSize = {
+    small: 72,
+    medium: 84,
+    large: 96,
+  }[iconSize];
+
+  const iconWidthHeight = {
+    small: 64,
+    medium: 80,
+    large: 96,
+  }[iconSize];
+
+  const snapToGrid = useCallback((pos: WindowPosition): WindowPosition => {
+    return {
+      x: Math.round((pos.x - DESKTOP_GRID_OFFSET_X) / gridCellSize) * gridCellSize + DESKTOP_GRID_OFFSET_X,
+      y: Math.round((pos.y - DESKTOP_GRID_OFFSET_Y) / gridCellSize) * gridCellSize + DESKTOP_GRID_OFFSET_Y,
+    };
+  }, [gridCellSize]);
+
+  const draggedRef = useRef(false);
+
   const handleDesktopClick = useCallback(
     (e: React.MouseEvent) => {
-      if (e.target !== e.currentTarget) return;
-      setSelectedIconId(null);
+      const target = e.target as HTMLElement;
+      const isBg = target === e.currentTarget || target.id === 'desktop-background-container';
+      if (!isBg) return;
+
+      if (draggedRef.current) {
+        draggedRef.current = false;
+        return;
+      }
+      setSelectedIconIds(new Set());
       setStartMenuOpen(false);
       setContextMenu(null);
     },
@@ -228,7 +264,9 @@ export function Desktop() {
   const handleDesktopContextMenu = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
-      if (e.target !== e.currentTarget) return;
+      const target = e.target as HTMLElement;
+      const isBg = target === e.currentTarget || target.id === 'desktop-background-container';
+      if (!isBg) return;
 
       const items: ContextMenuItem[] = [
         {
@@ -284,11 +322,79 @@ export function Desktop() {
 
   const handleDesktopMouseDown = useCallback(
     (e: React.MouseEvent) => {
-      if (e.button === 0 && contextMenu) {
-        setContextMenu(null);
+      if (e.button !== 0) return;
+      const target = e.target as HTMLElement;
+      const isBg = target === e.currentTarget || target.id === 'desktop-background-container';
+      if (!isBg) return;
+
+      setContextMenu(null);
+      setStartMenuOpen(false);
+
+      const isModifier = e.ctrlKey || e.metaKey || e.shiftKey;
+      const initialSelection = new Set(isModifier ? selectedIconIds : []);
+      if (!isModifier) {
+        setSelectedIconIds(new Set());
       }
+
+      const startX = e.clientX;
+      const startY = e.clientY;
+      let dragStarted = false;
+      draggedRef.current = false;
+
+      const handleMouseMove = (ev: MouseEvent) => {
+        const dx = ev.clientX - startX;
+        const dy = ev.clientY - startY;
+
+        if (!dragStarted && Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return;
+
+        if (!dragStarted) {
+          dragStarted = true;
+          draggedRef.current = true;
+        }
+
+        const box = {
+          x1: startX,
+          y1: startY,
+          x2: ev.clientX,
+          y2: ev.clientY,
+        };
+        setSelectionBox(box);
+
+        const leftA = Math.min(box.x1, box.x2);
+        const topA = Math.min(box.y1, box.y2);
+        const rightA = Math.max(box.x1, box.x2);
+        const bottomA = Math.max(box.y1, box.y2);
+
+        const newSelected = new Set(initialSelection);
+
+        desktopIcons.forEach((icon) => {
+          const leftB = icon.position.x;
+          const topB = icon.position.y;
+          const rightB = icon.position.x + iconWidthHeight;
+          const bottomB = icon.position.y + iconWidthHeight;
+
+          const overlaps = !(leftA > rightB || rightA < leftB || topA > bottomB || bottomA < topB);
+
+          if (overlaps) {
+            newSelected.add(icon.id);
+          } else if (!isModifier) {
+            newSelected.delete(icon.id);
+          }
+        });
+
+        setSelectedIconIds(newSelected);
+      };
+
+      const handleMouseUp = () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        setSelectionBox(null);
+      };
+
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
     },
-    [contextMenu, setContextMenu]
+    [contextMenu, setContextMenu, setStartMenuOpen, selectedIconIds, desktopIcons, iconWidthHeight]
   );
 
   const handleIconDoubleClick = useCallback(
@@ -298,26 +404,151 @@ export function Desktop() {
     [openWindowFn]
   );
 
-  const handleIconClick = useCallback(
+  const handleIconContextMenu = useCallback(
     (iconId: string, e: React.MouseEvent) => {
+      e.preventDefault();
       e.stopPropagation();
-      setSelectedIconId(iconId);
-      setContextMenu(null);
+
+      const items: ContextMenuItem[] = [
+        {
+          label: 'Open',
+          icon: 'FolderOpen',
+          action: () => {
+            const icon = desktopIcons.find((i) => i.id === iconId);
+            if (icon) {
+              openWindowFn(icon.appId);
+            }
+          },
+        },
+        {
+          label: '',
+          separator: true,
+          action: () => { },
+        },
+        {
+          label: 'Rename',
+          icon: 'Edit2',
+          action: () => {
+            setRenamingIconId(iconId);
+          },
+        },
+        {
+          label: 'Delete',
+          icon: 'Trash2',
+          action: () => {
+            deleteDesktopIcon(iconId);
+          },
+        },
+      ];
+
+      setContextMenu({
+        x: e.clientX,
+        y: e.clientY,
+        items,
+      });
     },
-    [setContextMenu]
+    [desktopIcons, openWindowFn, setContextMenu, deleteDesktopIcon]
   );
 
-  const handleIconDragEnd = useCallback(
-    (iconId: string, position: { x: number; y: number }) => {
-      updateIconPosition(iconId, position);
-      const { userId } = useDesktopStore.getState();
-      if (userId) {
-        saveIconPositions(userId, useDesktopStore.getState().desktopIcons.map((icon) =>
-          icon.id === iconId ? { ...icon, position } : icon
-        ));
+  const handleIconMouseDown = useCallback(
+    (iconId: string, e: React.MouseEvent) => {
+      if (e.button !== 0) return;
+      e.stopPropagation();
+      setContextMenu(null);
+      setStartMenuOpen(false);
+
+      const isModifier = e.ctrlKey || e.metaKey || e.shiftKey;
+      let newSelection = new Set(selectedIconIds);
+      let toggleOnMouseUp = false;
+
+      if (isModifier) {
+        if (newSelection.has(iconId)) {
+          newSelection.delete(iconId);
+        } else {
+          newSelection.add(iconId);
+        }
+      } else {
+        if (!newSelection.has(iconId)) {
+          newSelection = new Set([iconId]);
+        } else {
+          toggleOnMouseUp = true;
+        }
       }
+
+      setSelectedIconIds(newSelection);
+
+      const startX = e.clientX;
+      const startY = e.clientY;
+      let moved = false;
+
+      const initialPositions: Record<string, WindowPosition> = {};
+      desktopIcons.forEach((icon) => {
+        if (newSelection.has(icon.id)) {
+          initialPositions[icon.id] = icon.position;
+        }
+      });
+
+      const handleMouseMove = (ev: MouseEvent) => {
+        const dx = ev.clientX - startX;
+        const dy = ev.clientY - startY;
+
+        if (!moved && Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return;
+
+        if (!moved) {
+          moved = true;
+          setDraggingIconIds(new Set(newSelection));
+        }
+
+        const newLivePositions: Record<string, WindowPosition> = {};
+        Object.entries(initialPositions).forEach(([id, initPos]) => {
+          newLivePositions[id] = {
+            x: initPos.x + dx,
+            y: Math.max(-DESKTOP_GRID_OFFSET_Y, initPos.y + dy),
+          };
+        });
+        setLiveDragPositions(newLivePositions);
+      };
+
+      const handleMouseUp = (ev: MouseEvent) => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+
+        if (moved) {
+          const dx = ev.clientX - startX;
+          const dy = ev.clientY - startY;
+
+          const updatedIcons = desktopIcons.map((icon) => {
+            if (newSelection.has(icon.id)) {
+              const initPos = initialPositions[icon.id];
+              const unsnapped = {
+                x: initPos.x + dx,
+                y: Math.max(-DESKTOP_GRID_OFFSET_Y, initPos.y + dy),
+              };
+              const snapped = snapToGrid(unsnapped);
+              updateIconPosition(icon.id, snapped);
+              return { ...icon, position: snapped };
+            }
+            return icon;
+          });
+
+          const { userId } = useDesktopStore.getState();
+          if (userId) {
+            saveIconPositions(userId, updatedIcons);
+          }
+        } else {
+          if (toggleOnMouseUp) {
+            setSelectedIconIds(new Set([iconId]));
+          }
+        }
+
+        setDraggingIconIds(new Set());
+        setLiveDragPositions({});
+      };
+
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
     },
-    [updateIconPosition]
+    [selectedIconIds, desktopIcons, snapToGrid, updateIconPosition, setContextMenu, setStartMenuOpen]
   );
 
   // --- Auth loading state ---
@@ -379,22 +610,41 @@ export function Desktop() {
           onContextMenu={handleDesktopContextMenu}
           onMouseDown={handleDesktopMouseDown}
         >
-          <div className="absolute top-0 left-0 w-full h-[calc(100vh-64px)]">
+          <div id="desktop-background-container" className="absolute top-0 left-0 w-full h-[calc(100vh-64px)]">
             {desktopIcons.map((icon) => (
               <DesktopIcon
                 key={icon.id}
                 icon={icon.icon}
                 label={icon.label}
-                selected={selectedIconId === icon.id}
+                selected={selectedIconIds.has(icon.id)}
+                isDragging={draggingIconIds.has(icon.id)}
                 onDoubleClick={() => handleIconDoubleClick(icon.appId)}
-                onClick={(e) => handleIconClick(icon.id, e)}
+                onMouseDown={(e) => handleIconMouseDown(icon.id, e)}
+                onContextMenu={(e) => handleIconContextMenu(icon.id, e)}
                 darkBg={isWallpaperDark(wallpaper)}
-                position={icon.position}
+                position={liveDragPositions[icon.id] ?? icon.position}
                 iconId={icon.id}
-                onDragEnd={handleIconDragEnd}
+                isRenaming={renamingIconId === icon.id}
+                onRenameComplete={(newLabel) => {
+                  renameDesktopIcon(icon.id, newLabel);
+                  setRenamingIconId(null);
+                }}
+                onRenameCancel={() => setRenamingIconId(null)}
               />
             ))}
           </div>
+
+          {selectionBox && (
+            <div
+              className="absolute border border-blue-500 bg-blue-500/20 pointer-events-none z-[9999]"
+              style={{
+                left: Math.min(selectionBox.x1, selectionBox.x2),
+                top: Math.min(selectionBox.y1, selectionBox.y2),
+                width: Math.abs(selectionBox.x2 - selectionBox.x1),
+                height: Math.abs(selectionBox.y2 - selectionBox.y1),
+              }}
+            />
+          )}
         </div>
 
         {windows.map((win) => {

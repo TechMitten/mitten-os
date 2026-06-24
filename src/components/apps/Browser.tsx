@@ -17,15 +17,17 @@ interface Tab {
   id: string;
   title: string;
   url: string;
+  history: string[];
+  historyIndex: number;
 }
 
 const QUICK_LINKS = [
-  { name: 'GitHub', url: 'https://github.com', icon: '🐙' },
-  { name: 'Wikipedia', url: 'https://www.wikipedia.org', icon: '📚' },
-  { name: 'MDN Docs', url: 'https://developer.mozilla.org', icon: '📖' },
-  { name: 'Reddit', url: 'https://www.reddit.com', icon: '🔴' },
-  { name: 'Hacker News', url: 'https://news.ycombinator.com', icon: '🟠' },
-  { name: 'DuckDuckGo', url: 'https://duckduckgo.com', icon: '🦆' },
+  { name: 'Internet Archive', url: 'https://archive.org', icon: '🏛️' },
+  { name: 'JSFiddle', url: 'https://jsfiddle.net', icon: '⚡' },
+  { name: 'OpenStreetMap', url: 'https://www.openstreetmap.org/export/embed.html', icon: '🗺️' },
+  { name: 'Project Gutenberg', url: 'https://www.gutenberg.org', icon: '📚' },
+  { name: 'JS13kGames', url: 'https://js13kgames.com', icon: '🎮' },
+  { name: 'LibriVox', url: 'https://librivox.org', icon: '🎙️' },
 ];
 
 function getGreeting(): string {
@@ -42,7 +44,7 @@ function formatTime(): string {
 
 export default function BrowserApp() {
   const [tabs, setTabs] = useState<Tab[]>([
-    { id: 'tab-1', title: 'New Tab', url: '' },
+    { id: 'tab-1', title: 'New Tab', url: '', history: [''], historyIndex: 0 },
   ]);
   const [activeTabId, setActiveTabId] = useState('tab-1');
   const [inputUrl, setInputUrl] = useState('');
@@ -88,17 +90,22 @@ export default function BrowserApp() {
 
       // Update tab
       setTabs((prev) =>
-        prev.map((t) =>
-          t.id === activeTabId
-            ? {
-                ...t,
-                url,
-                title: url
-                  .replace(/^https?:\/\//, '')
-                  .split('/')[0],
-              }
-            : t
-        )
+        prev.map((t) => {
+          if (t.id === activeTabId) {
+            const newHistory = t.history.slice(0, t.historyIndex + 1);
+            if (newHistory[newHistory.length - 1] !== url) {
+              newHistory.push(url);
+            }
+            return {
+              ...t,
+              url,
+              title: url.replace(/^https?:\/\//, '').split('/')[0],
+              history: newHistory,
+              historyIndex: newHistory.length - 1,
+            };
+          }
+          return t;
+        })
       );
       setInputUrl(url);
     },
@@ -122,24 +129,67 @@ export default function BrowserApp() {
   }, [activeTab.url]);
 
   const handleGoBack = useCallback(() => {
-    if (iframeRef.current) {
-      try {
-        iframeRef.current.contentWindow?.history.back();
-      } catch {
-        // Cross-origin
-      }
-    }
-  }, []);
+    setTabs((prev) =>
+      prev.map((t) => {
+        if (t.id === activeTabId && t.historyIndex > 0) {
+          const newIndex = t.historyIndex - 1;
+          const prevUrl = t.history[newIndex];
+          setInputUrl(prevUrl);
+          setIframeError(false);
+          return {
+            ...t,
+            url: prevUrl,
+            title: prevUrl ? prevUrl.replace(/^https?:\/\//, '').split('/')[0] : 'New Tab',
+            historyIndex: newIndex,
+          };
+        }
+        return t;
+      })
+    );
+  }, [activeTabId]);
 
   const handleGoForward = useCallback(() => {
-    if (iframeRef.current) {
-      try {
-        iframeRef.current.contentWindow?.history.forward();
-      } catch {
-        // Cross-origin
-      }
-    }
-  }, []);
+    setTabs((prev) =>
+      prev.map((t) => {
+        if (t.id === activeTabId && t.historyIndex < t.history.length - 1) {
+          const newIndex = t.historyIndex + 1;
+          const nextUrl = t.history[newIndex];
+          setInputUrl(nextUrl);
+          setIframeError(false);
+          return {
+            ...t,
+            url: nextUrl,
+            title: nextUrl ? nextUrl.replace(/^https?:\/\//, '').split('/')[0] : 'New Tab',
+            historyIndex: newIndex,
+          };
+        }
+        return t;
+      })
+    );
+  }, [activeTabId]);
+
+  const handleGoHome = useCallback(() => {
+    setTabs((prev) =>
+      prev.map((t) => {
+        if (t.id === activeTabId) {
+          const newHistory = t.history.slice(0, t.historyIndex + 1);
+          if (newHistory[newHistory.length - 1] !== '') {
+            newHistory.push('');
+          }
+          return {
+            ...t,
+            url: '',
+            title: 'New Tab',
+            history: newHistory,
+            historyIndex: newHistory.length - 1,
+          };
+        }
+        return t;
+      })
+    );
+    setInputUrl('');
+    setIframeError(false);
+  }, [activeTabId]);
 
   const handleNewTab = useCallback(() => {
     tabCounter.current++;
@@ -147,6 +197,8 @@ export default function BrowserApp() {
       id: `tab-${tabCounter.current}`,
       title: 'New Tab',
       url: '',
+      history: [''],
+      historyIndex: 0,
     };
     setTabs((prev) => [...prev, newTab]);
     setActiveTabId(newTab.id);
@@ -165,6 +217,8 @@ export default function BrowserApp() {
             id: `tab-${tabCounter.current}`,
             title: 'New Tab',
             url: '',
+            history: [''],
+            historyIndex: 0,
           };
           setActiveTabId(newTab.id);
           setInputUrl('');
@@ -243,14 +297,16 @@ export default function BrowserApp() {
         {/* Navigation buttons */}
         <button
           onClick={handleGoBack}
-          className="p-1.5 rounded hover:bg-accent dark:hover:bg-white/5 text-muted-foreground dark:text-white/50 hover:text-foreground/80 dark:hover:text-white/80 transition-colors"
+          disabled={activeTab.historyIndex === 0}
+          className="p-1.5 rounded hover:bg-accent dark:hover:bg-white/5 text-muted-foreground dark:text-white/50 hover:text-foreground/80 dark:hover:text-white/80 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors"
           title="Go Back"
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
         <button
           onClick={handleGoForward}
-          className="p-1.5 rounded hover:bg-accent dark:hover:bg-white/5 text-muted-foreground dark:text-white/50 hover:text-foreground/80 dark:hover:text-white/80 transition-colors"
+          disabled={activeTab.historyIndex === (activeTab.history?.length ?? 1) - 1}
+          className="p-1.5 rounded hover:bg-accent dark:hover:bg-white/5 text-muted-foreground dark:text-white/50 hover:text-foreground/80 dark:hover:text-white/80 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors"
           title="Go Forward"
         >
           <ArrowRight className="w-4 h-4" />
@@ -267,15 +323,7 @@ export default function BrowserApp() {
 
         {/* Home button */}
         <button
-          onClick={() => {
-            setTabs((prev) =>
-              prev.map((t) =>
-                t.id === activeTabId ? { ...t, url: '', title: 'New Tab' } : t
-              )
-            );
-            setInputUrl('');
-            setIframeError(false);
-          }}
+          onClick={handleGoHome}
           className="p-1.5 rounded hover:bg-accent dark:hover:bg-white/5 text-muted-foreground dark:text-white/50 hover:text-foreground/80 dark:hover:text-white/80 transition-colors"
           title="Home"
         >

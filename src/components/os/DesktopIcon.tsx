@@ -38,24 +38,32 @@ interface DesktopIconProps {
   icon: string;
   label: string;
   onDoubleClick: () => void;
-  onClick?: (e: React.MouseEvent) => void;
+  onMouseDown: (e: React.MouseEvent) => void;
+  onContextMenu: (e: React.MouseEvent) => void;
   selected: boolean;
+  isDragging?: boolean;
   darkBg: boolean;
   position: WindowPosition;
-  onDragEnd: (id: string, position: WindowPosition) => void;
   iconId: string;
+  isRenaming?: boolean;
+  onRenameComplete?: (newLabel: string) => void;
+  onRenameCancel?: () => void;
 }
 
 export function DesktopIcon({
   icon,
   label,
   onDoubleClick,
-  onClick,
+  onMouseDown,
+  onContextMenu,
   selected,
+  isDragging = false,
   darkBg,
   position,
-  onDragEnd,
   iconId,
+  isRenaming = false,
+  onRenameComplete,
+  onRenameCancel,
 }: DesktopIconProps) {
   const iconSize = useDesktopStore((s) => s.iconSize) || 'medium';
 
@@ -94,18 +102,33 @@ export function DesktopIcon({
   }[iconSize];
 
   const [hovered, setHovered] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const [livePos, setLivePos] = useState(position);
-  const livePosRef = useRef(position);
-  const draggingRef = useRef(false);
-  const prevPositionRef = useRef(position);
+  const [tempLabel, setTempLabel] = useState(label);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!isDragging) {
-      livePosRef.current = position;
+    if (isRenaming) {
+      setTempLabel(label);
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+          inputRef.current.select();
+        }
+      }, 50);
     }
-    prevPositionRef.current = position;
-  }, [position, isDragging]);
+  }, [isRenaming, label]);
+
+  const handleComplete = () => {
+    const trimmed = tempLabel.trim();
+    if (trimmed && trimmed !== label) {
+      onRenameComplete?.(trimmed);
+    } else {
+      onRenameCancel?.();
+    }
+  };
+
+  const handleCancel = () => {
+    onRenameCancel?.();
+  };
 
   const IconComponent = ICON_MAP[icon] || FileText;
 
@@ -122,72 +145,11 @@ export function DesktopIcon({
   const selBg = darkBg ? 'bg-white/15 ring-1 ring-white/20' : 'bg-black/10 ring-1 ring-black/10';
   const hovBg = darkBg ? 'bg-white/10' : 'bg-black/5';
 
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.button !== 0) return;
-
-      onClick?.(e);
-
-      const startX = e.clientX;
-      const startY = e.clientY;
-      const originX = position.x;
-      const originY = position.y;
-      let moved = false;
-
-      const handleMove = (ev: MouseEvent) => {
-        const dx = ev.clientX - startX;
-        const dy = ev.clientY - startY;
-
-        if (!moved && Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return;
-
-        if (!moved) {
-          moved = true;
-          e.preventDefault();
-          draggingRef.current = true;
-          setIsDragging(true);
-        }
-
-        const newPos = {
-          x: originX + dx,
-          y: Math.max(-DESKTOP_GRID_OFFSET_Y, originY + dy),
-        };
-        setLivePos(newPos);
-        livePosRef.current = newPos;
-      };
-
-      const handleUp = () => {
-        document.removeEventListener('mousemove', handleMove);
-        document.removeEventListener('mouseup', handleUp);
-
-        if (moved) {
-          const snapped = snapToGrid(livePosRef.current);
-          onDragEnd(iconId, snapped);
-          setIsDragging(false);
-          setTimeout(() => { draggingRef.current = false; }, 0);
-        }
-      };
-
-      document.addEventListener('mousemove', handleMove);
-      document.addEventListener('mouseup', handleUp);
-    },
-    [iconId, position.x, position.y, onClick, onDragEnd, snapToGrid]
-  );
-
-  const handleClick = useCallback(
-    (e: React.MouseEvent) => {
-      if (draggingRef.current) return;
-      e.stopPropagation();
-      onClick?.(e);
-    },
-    [onClick]
-  );
-
-  const currentPos = isDragging ? livePos : position;
-
   return (
     <div
       className="absolute"
-      style={{ left: currentPos.x, top: currentPos.y, zIndex: isDragging ? 9999 : 'auto' }}
+      style={{ left: position.x, top: position.y, zIndex: isDragging || isRenaming ? 9999 : 'auto' }}
+      onContextMenu={onContextMenu}
     >
       <div
         className={`
@@ -197,9 +159,9 @@ export function DesktopIcon({
           ${selected ? selBg : hovered ? hovBg : ''}
           ${isDragging ? 'opacity-70 scale-105' : ''}
         `}
-        onMouseDown={handleMouseDown}
-        onClick={handleClick}
+        onMouseDown={isRenaming ? undefined : onMouseDown}
         onDoubleClick={(e) => {
+          if (isRenaming) return;
           e.stopPropagation();
           onDoubleClick();
         }}
@@ -212,15 +174,33 @@ export function DesktopIcon({
             strokeWidth={1.5}
           />
         </div>
-        <span
-          className={`
-            ${sizeStyles.labelSize} text-center leading-tight truncate
-            px-1 ${labelShadow}
-            ${labelColor}
-          `}
-        >
-          {label}
-        </span>
+        {isRenaming ? (
+          <input
+            ref={inputRef}
+            type="text"
+            value={tempLabel}
+            onChange={(e) => setTempLabel(e.target.value)}
+            onBlur={handleComplete}
+            onKeyDown={(e) => {
+              e.stopPropagation();
+              if (e.key === 'Enter') handleComplete();
+              if (e.key === 'Escape') handleCancel();
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full text-center bg-black/60 text-white rounded px-1 py-0.5 border border-blue-500 outline-none text-[11px] font-normal z-50 select-text cursor-text"
+          />
+        ) : (
+          <span
+            className={`
+              ${sizeStyles.labelSize} text-center leading-tight truncate
+              px-1 ${labelShadow}
+              ${labelColor}
+            `}
+          >
+            {label}
+          </span>
+        )}
       </div>
     </div>
   );
