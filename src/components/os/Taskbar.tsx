@@ -207,8 +207,7 @@ export default function Taskbar() {
                     className={`
                       relative flex items-center justify-center w-9 h-9 rounded-lg
                       transition-colors duration-150 cursor-pointer
-                      hover:bg-black/10 dark:hover:bg-white/10
-                      ${isAnyActive ? 'bg-black/10 dark:bg-white/10' : ''}
+                      ${isAnyActive ? 'bg-primary' : 'hover:bg-black/10 dark:hover:bg-white/10'}
                       ${isAnyMinimized && !isAnyActive ? 'opacity-60' : ''}
                     `}
                     aria-label={APP_REGISTRY[group.appId]?.name || group.appId}
@@ -216,13 +215,13 @@ export default function Taskbar() {
                     <IconComponent
                       className={`w-5 h-5 ${
                         isAnyActive
-                          ? 'text-primary'
+                          ? 'text-white'
                           : 'text-foreground/80'
                       }`}
                     />
                     {/* Active window indicator dot */}
                     {isAnyActive && (
-                      <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
+                      <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-white" />
                     )}
                     {/* Multiple windows indicator */}
                     {group.windows.length > 1 && (

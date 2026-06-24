@@ -14,15 +14,20 @@ import {
   Layers,
   Box,
   LayoutPanelTop,
+  Key,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
-type Section = 'appearance' | 'wallpaper' | 'display' | 'general' | 'about';
+type Section = 'appearance' | 'wallpaper' | 'display' | 'general' | 'about' | 'ai-keys';
 
 const SIDEBAR_ITEMS: { id: Section; label: string; icon: React.ReactNode }[] = [
   { id: 'general', label: 'General', icon: <LayoutPanelTop className="w-4 h-4" /> },
   { id: 'appearance', label: 'Appearance', icon: <Palette className="w-4 h-4" /> },
   { id: 'wallpaper', label: 'Wallpaper', icon: <ImageIcon className="w-4 h-4" /> },
   { id: 'display', label: 'Display', icon: <Monitor className="w-4 h-4" /> },
+  { id: 'ai-keys', label: 'AI API Keys', icon: <Key className="w-4 h-4" /> },
   { id: 'about', label: 'About', icon: <Info className="w-4 h-4" /> },
 ];
 
@@ -30,7 +35,7 @@ const WALLPAPERS = [
   {
     id: 'wp-1',
     name: 'Deep Space',
-    gradient: 'linear-gradient(135deg, #0f0c29, #302b63, #24243e)',
+    gradient: 'linear-gradient(135deg, #030b20, #0d2b63, #071730)',
   },
   {
     id: 'wp-2',
@@ -83,7 +88,8 @@ const ACCENT_COLORS = [
 export default function SettingsApp() {
   const [activeSection, setActiveSection] = useState<Section>('general');
   const [selectedAccent, setSelectedAccent] = useState('Amber');
-  const [iconSize, setIconSize] = useState<'small' | 'medium' | 'large'>('medium');
+  const iconSize = useDesktopStore((s) => s.iconSize) || 'medium';
+  const setIconSize = useDesktopStore((s) => s.setIconSize);
 
   const theme = useDesktopStore((s) => s.theme);
   const toggleTheme = useDesktopStore((s) => s.toggleTheme);
@@ -142,6 +148,7 @@ export default function SettingsApp() {
             setPersistWindows={setPersistWindows}
           />
         )}
+        {activeSection === 'ai-keys' && <AiKeysSection />}
         {activeSection === 'about' && <AboutSection />}
       </div>
     </div>
@@ -449,6 +456,195 @@ function AboutSection() {
         <p className="text-[10px] text-muted-foreground/30 mt-8 text-center">
           © 2025 MittenOS. All rights reserved.
         </p>
+      </div>
+    </div>
+  );
+}
+
+/* ─── AI API Keys Section ──────────────────────────────────── */
+
+function AiKeysSection() {
+  const { toast } = useToast();
+  const [codingKey, setCodingKey] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_coding_assistant_key') || '' : ''));
+  const [zaiKey, setZaiKey] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_zai_api_key') || '' : ''));
+  const [openrouterKey, setOpenrouterKey] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_openrouter_api_key') || '' : ''));
+  const [customKey, setCustomKey] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_custom_api_key') || '' : ''));
+  const [customBaseUrl, setCustomBaseUrl] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_custom_base_url') || '' : ''));
+  const [customModel, setCustomModel] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_custom_model') || '' : ''));
+
+  const [showCodingKey, setShowCodingKey] = useState(false);
+  const [showZaiKey, setShowZaiKey] = useState(false);
+  const [showOpenrouterKey, setShowOpenrouterKey] = useState(false);
+  const [showCustomKey, setShowCustomKey] = useState(false);
+
+  const handleSave = () => {
+    localStorage.setItem('mittenOS_coding_assistant_key', codingKey.trim());
+    localStorage.setItem('mittenOS_zai_api_key', zaiKey.trim());
+    localStorage.setItem('mittenOS_openrouter_api_key', openrouterKey.trim());
+    localStorage.setItem('mittenOS_custom_api_key', customKey.trim());
+    localStorage.setItem('mittenOS_custom_base_url', customBaseUrl.trim());
+    localStorage.setItem('mittenOS_custom_model', customModel.trim());
+
+    toast({
+      title: 'Settings Saved',
+      description: 'AI API keys have been updated successfully.',
+    });
+  };
+
+  return (
+    <div className="space-y-6 max-w-xl">
+      <div>
+        <h3 className="text-lg font-medium mb-1">AI API Keys</h3>
+        <p className="text-xs text-muted-foreground">
+          Configure keys locally. They are stored safely in your browser's localStorage.
+        </p>
+      </div>
+
+      <div className="space-y-4">
+        {/* Coding Assistant */}
+        <div className="space-y-1.5">
+          <div className="flex justify-between items-center">
+            <label className="text-xs font-semibold text-foreground/80">
+              MittenAI (Coding Assistant) DeepSeek API Key
+            </label>
+          </div>
+          <div className="relative">
+            <input
+              type={showCodingKey ? 'text' : 'password'}
+              value={codingKey}
+              onChange={(e) => setCodingKey(e.target.value)}
+              placeholder="sk-..."
+              className="w-full bg-muted dark:bg-zinc-800/60 border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500 pr-10"
+            />
+            <button
+              type="button"
+              onClick={() => setShowCodingKey(!showCodingKey)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              {showCodingKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            API key for the deepseek-v4-pro model used by the MittenAI chat.
+          </p>
+        </div>
+
+        {/* Zai Key */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-foreground/80">
+            Orion Z.ai API Key
+          </label>
+          <div className="relative">
+            <input
+              type={showZaiKey ? 'text' : 'password'}
+              value={zaiKey}
+              onChange={(e) => setZaiKey(e.target.value)}
+              placeholder="Enter Z.ai API Key"
+              className="w-full bg-muted dark:bg-zinc-800/60 border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500 pr-10"
+            />
+            <button
+              type="button"
+              onClick={() => setShowZaiKey(!showZaiKey)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              {showZaiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            Used by Orion App Builder with the Z.ai GLM provider.
+          </p>
+        </div>
+
+        {/* OpenRouter Key */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-foreground/80">
+            Orion OpenRouter API Key
+          </label>
+          <div className="relative">
+            <input
+              type={showOpenrouterKey ? 'text' : 'password'}
+              value={openrouterKey}
+              onChange={(e) => setOpenrouterKey(e.target.value)}
+              placeholder="sk-or-..."
+              className="w-full bg-muted dark:bg-zinc-800/60 border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500 pr-10"
+            />
+            <button
+              type="button"
+              onClick={() => setShowOpenrouterKey(!showOpenrouterKey)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              {showOpenrouterKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            Used by Orion App Builder with the OpenRouter provider.
+          </p>
+        </div>
+
+        {/* Custom API */}
+        <div className="p-4 rounded-xl border border-border bg-muted/20 space-y-4">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Orion Custom OpenAI-Compatible Provider
+          </h4>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground/80">
+              Custom API Key
+            </label>
+            <div className="relative">
+              <input
+                type={showCustomKey ? 'text' : 'password'}
+                value={customKey}
+                onChange={(e) => setCustomKey(e.target.value)}
+                placeholder="sk-..."
+                className="w-full bg-muted dark:bg-zinc-800/60 border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500 pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowCustomKey(!showCustomKey)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showCustomKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-foreground/80">
+                Custom Base URL
+              </label>
+              <input
+                type="text"
+                value={customBaseUrl}
+                onChange={(e) => setCustomBaseUrl(e.target.value)}
+                placeholder="https://api.openai.com/v1"
+                className="w-full bg-muted dark:bg-zinc-800/60 border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-foreground/80">
+                Custom Model Name
+              </label>
+              <input
+                type="text"
+                value={customModel}
+                onChange={(e) => setCustomModel(e.target.value)}
+                placeholder="gpt-4o"
+                className="w-full bg-muted dark:bg-zinc-800/60 border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-end pt-2">
+        <button
+          onClick={handleSave}
+          className="px-5 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 font-semibold text-white transition-colors active:scale-[0.98]"
+        >
+          Save Keys
+        </button>
       </div>
     </div>
   );

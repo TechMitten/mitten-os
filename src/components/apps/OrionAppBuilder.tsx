@@ -221,14 +221,19 @@ const requestModelText = async (params: RequestModelTextParams): Promise<{ conte
   let apiKey: string | undefined, model: string, baseUrl: string;
   let customEnv: Record<string, unknown> | undefined;
 
+  const getStorageItem = (key: string): string | null => {
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return null;
+    return localStorage.getItem(key);
+  };
+
   if (provider === 'openrouter') {
-    apiKey = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY;
-    model = process.env.NEXT_PUBLIC_OPENROUTER_MODEL || 'anthropic/claude-3.5-sonnet';
+    apiKey = getStorageItem('mittenOS_openrouter_api_key') || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY;
+    model = getStorageItem('mittenOS_openrouter_model') || process.env.NEXT_PUBLIC_OPENROUTER_MODEL || 'anthropic/claude-3.5-sonnet';
     baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
   } else if (provider === 'custom') {
-    apiKey = process.env.NEXT_PUBLIC_CUSTOM_API_KEY;
-    model = process.env.NEXT_PUBLIC_CUSTOM_MODEL || 'gpt-4o';
-    baseUrl = process.env.NEXT_PUBLIC_CUSTOM_BASE_URL || 'https://api.openai.com/v1/chat/completions';
+    apiKey = getStorageItem('mittenOS_custom_api_key') || process.env.NEXT_PUBLIC_CUSTOM_API_KEY;
+    model = getStorageItem('mittenOS_custom_model') || process.env.NEXT_PUBLIC_CUSTOM_MODEL || 'gpt-4o';
+    baseUrl = getStorageItem('mittenOS_custom_base_url') || process.env.NEXT_PUBLIC_CUSTOM_BASE_URL || 'https://api.openai.com/v1/chat/completions';
     customEnv = {
       temperature: process.env.NEXT_PUBLIC_CUSTOM_TEMPERATURE ? parseFloat(process.env.NEXT_PUBLIC_CUSTOM_TEMPERATURE) : undefined,
       top_p: process.env.NEXT_PUBLIC_CUSTOM_TOP_P ? parseFloat(process.env.NEXT_PUBLIC_CUSTOM_TOP_P) : undefined,
@@ -238,9 +243,13 @@ const requestModelText = async (params: RequestModelTextParams): Promise<{ conte
       stop: process.env.NEXT_PUBLIC_CUSTOM_STOP ? process.env.NEXT_PUBLIC_CUSTOM_STOP.split(',').map(s => s.trim()) : undefined,
     };
   } else {
-    apiKey = process.env.NEXT_PUBLIC_ZAI_API_KEY;
+    apiKey = getStorageItem('mittenOS_zai_api_key') || process.env.NEXT_PUBLIC_ZAI_API_KEY;
     model = process.env.NEXT_PUBLIC_ZAI_MODEL || 'glm-4-plus';
     baseUrl = 'https://api.z.ai/api/coding/paas/v4/chat/completions';
+  }
+
+  if (!apiKey) {
+    throw new Error(`API key for provider '${provider}' is not configured. Please set it in Settings.`);
   }
 
   try {
@@ -460,10 +469,25 @@ export function OrionAppBuilder() {
     const storedProvider = localStorage.getItem('orion-api-provider') as ProviderId | null;
     return storedProvider && PROVIDER_OPTION_MAP[storedProvider] ? storedProvider : DEFAULT_PROVIDER;
   });
+  const [zaiKey, setZaiKey] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_zai_api_key') || '' : ''));
+  const [openrouterKey, setOpenrouterKey] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_openrouter_api_key') || '' : ''));
+  const [customKey, setCustomKey] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_custom_api_key') || '' : ''));
+  const [customBaseUrl, setCustomBaseUrl] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_custom_base_url') || '' : ''));
+  const [customModel, setCustomModel] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('mittenOS_custom_model') || '' : ''));
   const [streamingCode, setStreamingCode] = useState('');
   const [streamingGeneratedCode, setStreamingGeneratedCode] = useState('');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isSettingsOpen && typeof window !== 'undefined') {
+      setZaiKey(localStorage.getItem('mittenOS_zai_api_key') || '');
+      setOpenrouterKey(localStorage.getItem('mittenOS_openrouter_api_key') || '');
+      setCustomKey(localStorage.getItem('mittenOS_custom_api_key') || '');
+      setCustomBaseUrl(localStorage.getItem('mittenOS_custom_base_url') || '');
+      setCustomModel(localStorage.getItem('mittenOS_custom_model') || '');
+    }
+  }, [isSettingsOpen]);
   const [isNamingModalOpen, setIsNamingModalOpen] = useState(false);
   const [tempProjectName, setTempProjectName] = useState('');
   const [shouldGenerateAfterNaming, setShouldGenerateAfterNaming] = useState(false);
@@ -875,6 +899,11 @@ export function OrionAppBuilder() {
 
   const handleSaveSettings = () => {
     localStorage.setItem('orion-api-provider', apiProvider);
+    localStorage.setItem('mittenOS_zai_api_key', zaiKey.trim());
+    localStorage.setItem('mittenOS_openrouter_api_key', openrouterKey.trim());
+    localStorage.setItem('mittenOS_custom_api_key', customKey.trim());
+    localStorage.setItem('mittenOS_custom_base_url', customBaseUrl.trim());
+    localStorage.setItem('mittenOS_custom_model', customModel.trim());
     setIsSettingsOpen(false);
   };
 
@@ -1163,6 +1192,74 @@ export function OrionAppBuilder() {
                     );
                   })}
                 </div>
+              </div>
+
+              {/* API Key Configuration depending on selected provider */}
+              <div className="pt-4 border-t border-slate-100 space-y-4">
+                {apiProvider === 'zai' && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Z.ai API Key</label>
+                    <input
+                      type="password"
+                      value={zaiKey}
+                      onChange={(e) => setZaiKey(e.target.value)}
+                      placeholder="Enter Z.ai API Key"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    />
+                    <p className="text-[10px] text-slate-400 font-medium font-sans">This key is saved locally in your browser's localStorage.</p>
+                  </div>
+                )}
+
+                {apiProvider === 'openrouter' && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">OpenRouter API Key</label>
+                    <input
+                      type="password"
+                      value={openrouterKey}
+                      onChange={(e) => setOpenrouterKey(e.target.value)}
+                      placeholder="sk-or-..."
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    />
+                    <p className="text-[10px] text-slate-400 font-medium font-sans">This key is saved locally in your browser's localStorage.</p>
+                  </div>
+                )}
+
+                {apiProvider === 'custom' && (
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Custom API Key</label>
+                      <input
+                        type="password"
+                        value={customKey}
+                        onChange={(e) => setCustomKey(e.target.value)}
+                        placeholder="sk-..."
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Custom Base URL</label>
+                        <input
+                          type="text"
+                          value={customBaseUrl}
+                          onChange={(e) => setCustomBaseUrl(e.target.value)}
+                          placeholder="https://api.openai.com/v1"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Custom Model Name</label>
+                        <input
+                          type="text"
+                          value={customModel}
+                          onChange={(e) => setCustomModel(e.target.value)}
+                          placeholder="gpt-4o"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             <div className="bg-slate-50 px-8 py-5 flex justify-end gap-3">

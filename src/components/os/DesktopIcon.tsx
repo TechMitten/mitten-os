@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useDesktopStore } from '@/stores/desktop-store';
 import {
   FolderOpen,
   TerminalSquare,
@@ -31,12 +32,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Bot,
 };
 
-function snapToGrid(pos: WindowPosition): WindowPosition {
-  return {
-    x: Math.round((pos.x - DESKTOP_GRID_OFFSET_X) / DESKTOP_GRID_CELL) * DESKTOP_GRID_CELL + DESKTOP_GRID_OFFSET_X,
-    y: Math.round((pos.y - DESKTOP_GRID_OFFSET_Y) / DESKTOP_GRID_CELL) * DESKTOP_GRID_CELL + DESKTOP_GRID_OFFSET_Y,
-  };
-}
+
 
 interface DesktopIconProps {
   icon: string;
@@ -61,6 +57,42 @@ export function DesktopIcon({
   onDragEnd,
   iconId,
 }: DesktopIconProps) {
+  const iconSize = useDesktopStore((s) => s.iconSize) || 'medium';
+
+  const gridCellSize = {
+    small: 72,
+    medium: 84,
+    large: 96,
+  }[iconSize];
+
+  const snapToGrid = useCallback((pos: WindowPosition): WindowPosition => {
+    return {
+      x: Math.round((pos.x - DESKTOP_GRID_OFFSET_X) / gridCellSize) * gridCellSize + DESKTOP_GRID_OFFSET_X,
+      y: Math.round((pos.y - DESKTOP_GRID_OFFSET_Y) / gridCellSize) * gridCellSize + DESKTOP_GRID_OFFSET_Y,
+    };
+  }, [gridCellSize]);
+
+  const sizeStyles = {
+    small: {
+      container: 'w-16 h-16',
+      iconWrapper: 'w-8 h-8 mb-0.5',
+      iconSize: 'w-6 h-6',
+      labelSize: 'text-[10px] max-w-[60px]',
+    },
+    medium: {
+      container: 'w-20 h-20',
+      iconWrapper: 'w-10 h-10 mb-1',
+      iconSize: 'w-8 h-8',
+      labelSize: 'text-[11px] max-w-[72px]',
+    },
+    large: {
+      container: 'w-24 h-24',
+      iconWrapper: 'w-12 h-12 mb-1.5',
+      iconSize: 'w-10 h-10',
+      labelSize: 'text-[12px] max-w-[88px]',
+    },
+  }[iconSize];
+
   const [hovered, setHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [livePos, setLivePos] = useState(position);
@@ -138,7 +170,7 @@ export function DesktopIcon({
       document.addEventListener('mousemove', handleMove);
       document.addEventListener('mouseup', handleUp);
     },
-    [iconId, position.x, position.y, onClick, onDragEnd]
+    [iconId, position.x, position.y, onClick, onDragEnd, snapToGrid]
   );
 
   const handleClick = useCallback(
@@ -160,7 +192,7 @@ export function DesktopIcon({
       <div
         className={`
           flex flex-col items-center justify-center
-          w-20 h-20 rounded-lg cursor-pointer select-none
+          ${sizeStyles.container} rounded-lg cursor-pointer select-none
           transition-colors duration-150
           ${selected ? selBg : hovered ? hovBg : ''}
           ${isDragging ? 'opacity-70 scale-105' : ''}
@@ -174,15 +206,15 @@ export function DesktopIcon({
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
       >
-        <div className="flex items-center justify-center w-10 h-10 mb-1">
+        <div className={`flex items-center justify-center ${sizeStyles.iconWrapper}`}>
           <IconComponent
-            className={`w-8 h-8 ${iconColor} ${iconFilter} drop-shadow-lg`}
+            className={`${sizeStyles.iconSize} ${iconColor} ${iconFilter} drop-shadow-lg`}
             strokeWidth={1.5}
           />
         </div>
         <span
           className={`
-            text-[11px] text-center leading-tight max-w-[72px] truncate
+            ${sizeStyles.labelSize} text-center leading-tight truncate
             px-1 ${labelShadow}
             ${labelColor}
           `}

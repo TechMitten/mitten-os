@@ -109,7 +109,7 @@ export default function LoginScreen() {
       style={{
         background:
           theme === 'dark'
-            ? 'linear-gradient(135deg, #0f0c29, #302b63, #24243e)'
+            ? 'linear-gradient(135deg, #030b20, #0d2b63, #071730)'
             : 'linear-gradient(135deg, #c9d6ff, #e2e2e2, #f5f7fa)',
       }}
     >

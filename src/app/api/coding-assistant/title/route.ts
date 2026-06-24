@@ -4,12 +4,12 @@ const API_KEY = process.env.CODING_ASSISTANT_DEEPSEEK_API_KEY;
 const MODEL = process.env.CODING_ASSISTANT_DEEPSEEK_MODEL || 'deepseek-v4-pro';
 const BASE_URL = 'https://api.deepseek.com';
 
-async function fetchTitleFromStream(message: string): Promise<string | null> {
+async function fetchTitleFromStream(message: string, apiKey: string): Promise<string | null> {
   const response = await fetch(`${BASE_URL}/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${API_KEY}`,
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
       model: MODEL,
@@ -86,9 +86,12 @@ async function fetchTitleFromStream(message: string): Promise<string | null> {
 
 export async function POST(request: NextRequest) {
   try {
-    if (!API_KEY) {
+    const userApiKey = request.headers.get('x-api-key');
+    const apiKeyToUse = userApiKey || process.env.CODING_ASSISTANT_DEEPSEEK_API_KEY;
+
+    if (!apiKeyToUse) {
       console.warn('[title] API key not configured');
-      return Response.json({ error: 'API key not configured' }, { status: 500 });
+      return Response.json({ error: 'API key not configured' }, { status: 400 });
     }
 
     const body = await request.json();
@@ -98,7 +101,7 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: 'message is required' }, { status: 400 });
     }
 
-    const raw = await fetchTitleFromStream(message);
+    const raw = await fetchTitleFromStream(message, apiKeyToUse);
 
     if (!raw) {
       return Response.json({ title: 'New Chat' });

@@ -18,6 +18,7 @@ interface DesktopStore {
   userId: string | null;
   welcomeDismissed: boolean;
   persistWindows: boolean;
+  iconSize: "small" | "medium" | "large";
 
   loadSettings: (userId: string) => Promise<void>;
   setWallpaper: (url: string) => void;
@@ -32,6 +33,7 @@ interface DesktopStore {
   setSearchQuery: (query: string) => void;
   setWelcomeDismissed: (dismissed: boolean) => void;
   setPersistWindows: (persist: boolean) => void;
+  setIconSize: (size: "small" | "medium" | "large") => void;
   updateIconPosition: (id: string, position: WindowPosition) => void;
   loadIconPositions: (positions: Record<string, WindowPosition>) => void;
   reset: () => void;
@@ -72,7 +74,7 @@ const defaultIcons: DesktopIcon[] = [
 let notificationCounter = 0;
 
 export const useDesktopStore = create<DesktopStore>((set, get) => ({
-  wallpaper: "linear-gradient(135deg, #0f0c29, #302b63, #24243e)",
+  wallpaper: "linear-gradient(135deg, #030b20, #0d2b63, #071730)",
   theme: "dark",
   desktopIcons: defaultIcons,
   notifications: [],
@@ -83,6 +85,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   userId: null,
   welcomeDismissed: false,
   persistWindows: true,
+  iconSize: "medium",
 
   loadSettings: async (userId: string) => {
     if (isGuest(userId)) {
@@ -113,9 +116,10 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
 
     set({
       theme: data.theme || "dark",
-      wallpaper: data.wallpaper || "linear-gradient(135deg, #0f0c29, #302b63, #24243e)",
+      wallpaper: data.wallpaper || "linear-gradient(135deg, #030b20, #0d2b63, #071730)",
       welcomeDismissed: localStorage.getItem(`mittenos:welcomeDismissed:${userId}`) === "true" || (data.settings_json?.welcomeDismissed ?? false),
       persistWindows: data.settings_json?.persistWindows ?? true,
+      iconSize: data.settings_json?.iconSize || "medium",
       userId,
       loaded: true,
     });
@@ -123,12 +127,12 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
 
   setWallpaper: (url: string) => {
     set({ wallpaper: url });
-    const { userId, theme, welcomeDismissed, persistWindows } = get();
+    const { userId, theme, welcomeDismissed, persistWindows, iconSize } = get();
     if (!userId || isGuest(userId)) return;
     const supabase = createClient();
     supabase
       .from("user_settings")
-      .upsert({ user_id: userId, theme, wallpaper: url, settings_json: { welcomeDismissed, persistWindows }, updated_at: new Date().toISOString() })
+      .upsert({ user_id: userId, theme, wallpaper: url, settings_json: { welcomeDismissed, persistWindows, iconSize }, updated_at: new Date().toISOString() })
       .then(({ error }) => { if (error) console.error("Failed to save wallpaper:", error); });
   },
 
@@ -136,14 +140,14 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     const wallpaper =
       theme === "light"
         ? "linear-gradient(135deg, #c9d6ff, #e2e2e2, #f5f7fa)"
-        : "linear-gradient(135deg, #0f0c29, #302b63, #24243e)";
+        : "linear-gradient(135deg, #030b20, #0d2b63, #071730)";
     set({ theme, wallpaper });
-    const { userId, welcomeDismissed, persistWindows } = get();
+    const { userId, welcomeDismissed, persistWindows, iconSize } = get();
     if (!userId || isGuest(userId)) return;
     const supabase = createClient();
     supabase
       .from("user_settings")
-      .upsert({ user_id: userId, theme, wallpaper, settings_json: { welcomeDismissed, persistWindows }, updated_at: new Date().toISOString() })
+      .upsert({ user_id: userId, theme, wallpaper, settings_json: { welcomeDismissed, persistWindows, iconSize }, updated_at: new Date().toISOString() })
       .then(({ error }) => { if (error) console.error("Failed to save theme:", error); });
   },
 
@@ -153,14 +157,14 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     const wallpaper =
       next === "light"
         ? "linear-gradient(135deg, #c9d6ff, #e2e2e2, #f5f7fa)"
-        : "linear-gradient(135deg, #0f0c29, #302b63, #24243e)";
+        : "linear-gradient(135deg, #030b20, #0d2b63, #071730)";
     set({ theme: next, wallpaper });
-    const { userId, welcomeDismissed, persistWindows } = get();
+    const { userId, welcomeDismissed, persistWindows, iconSize } = get();
     if (!userId || isGuest(userId)) return;
     const supabase = createClient();
     supabase
       .from("user_settings")
-      .upsert({ user_id: userId, theme: next, wallpaper, settings_json: { welcomeDismissed, persistWindows }, updated_at: new Date().toISOString() })
+      .upsert({ user_id: userId, theme: next, wallpaper, settings_json: { welcomeDismissed, persistWindows, iconSize }, updated_at: new Date().toISOString() })
       .then(({ error }) => { if (error) console.error("Failed to save theme:", error); });
   },
 
@@ -211,7 +215,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
 
   setWelcomeDismissed: (dismissed: boolean) => {
     set({ welcomeDismissed: dismissed });
-    const { userId, theme, wallpaper, persistWindows } = get();
+    const { userId, theme, wallpaper, persistWindows, iconSize } = get();
     if (userId) {
       localStorage.setItem(`mittenos:welcomeDismissed:${userId}`, String(dismissed));
     }
@@ -223,14 +227,14 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
         user_id: userId,
         theme,
         wallpaper,
-        settings_json: { welcomeDismissed: dismissed, persistWindows },
+        settings_json: { welcomeDismissed: dismissed, persistWindows, iconSize },
         updated_at: new Date().toISOString(),
       });
   },
 
   setPersistWindows: (persist: boolean) => {
     set({ persistWindows: persist });
-    const { userId, theme, wallpaper, welcomeDismissed } = get();
+    const { userId, theme, wallpaper, welcomeDismissed, iconSize } = get();
     if (!userId || isGuest(userId)) return;
     const supabase = createClient();
     supabase
@@ -239,7 +243,23 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
         user_id: userId,
         theme,
         wallpaper,
-        settings_json: { welcomeDismissed, persistWindows: persist },
+        settings_json: { welcomeDismissed, persistWindows: persist, iconSize },
+        updated_at: new Date().toISOString(),
+      });
+  },
+
+  setIconSize: (size: "small" | "medium" | "large") => {
+    set({ iconSize: size });
+    const { userId, theme, wallpaper, welcomeDismissed, persistWindows } = get();
+    if (!userId || isGuest(userId)) return;
+    const supabase = createClient();
+    supabase
+      .from("user_settings")
+      .upsert({
+        user_id: userId,
+        theme,
+        wallpaper,
+        settings_json: { welcomeDismissed, persistWindows, iconSize: size },
         updated_at: new Date().toISOString(),
       });
   },
@@ -258,6 +278,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
       userId: null,
       welcomeDismissed: false,
       persistWindows: true,
+      iconSize: "medium",
     });
   },
 }));
@@ -266,7 +287,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
 export async function saveWindowStates(userId: string, windows: import("@/types/os").OSWindow[]) {
   if (isGuest(userId)) return;
   const supabase = createClient();
-  const { theme, wallpaper, welcomeDismissed, persistWindows } = useDesktopStore.getState();
+  const { theme, wallpaper, welcomeDismissed, persistWindows, iconSize } = useDesktopStore.getState();
   const states = windows.map((w) => ({
     appId: w.appId,
     windowId: w.id,
@@ -279,7 +300,7 @@ export async function saveWindowStates(userId: string, windows: import("@/types/
   }));
   await supabase
     .from("user_settings")
-    .upsert({ user_id: userId, theme, wallpaper, window_states: states, settings_json: { welcomeDismissed, persistWindows }, updated_at: new Date().toISOString() });
+    .upsert({ user_id: userId, theme, wallpaper, window_states: states, settings_json: { welcomeDismissed, persistWindows, iconSize }, updated_at: new Date().toISOString() });
 }
 
 export async function loadWindowStates(userId: string) {
@@ -305,14 +326,14 @@ export async function loadWindowStates(userId: string) {
 export async function saveIconPositions(userId: string, icons: DesktopIcon[]) {
   if (isGuest(userId)) return;
   const supabase = createClient();
-  const { theme, wallpaper, welcomeDismissed, persistWindows } = useDesktopStore.getState();
+  const { theme, wallpaper, welcomeDismissed, persistWindows, iconSize } = useDesktopStore.getState();
   const positions: Record<string, WindowPosition> = {};
   for (const icon of icons) {
     positions[icon.id] = icon.position;
   }
   await supabase
     .from("user_settings")
-    .upsert({ user_id: userId, theme, wallpaper, icon_positions: positions, settings_json: { welcomeDismissed, persistWindows }, updated_at: new Date().toISOString() });
+    .upsert({ user_id: userId, theme, wallpaper, icon_positions: positions, settings_json: { welcomeDismissed, persistWindows, iconSize }, updated_at: new Date().toISOString() });
 }
 
 export async function loadIconPositions(userId: string) {

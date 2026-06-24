@@ -28,10 +28,13 @@ interface ChatMessage {
 
 export async function POST(request: NextRequest) {
   try {
-    if (!API_KEY) {
+    const userApiKey = request.headers.get('x-api-key');
+    const apiKeyToUse = userApiKey || process.env.CODING_ASSISTANT_DEEPSEEK_API_KEY;
+
+    if (!apiKeyToUse) {
       return Response.json(
-        { error: 'CODING_ASSISTANT_DEEPSEEK_API_KEY is not configured' },
-        { status: 500 }
+        { error: 'API key is not configured. Please set it in Settings.' },
+        { status: 400 }
       );
     }
 
@@ -51,7 +54,7 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${API_KEY}`,
+        Authorization: `Bearer ${apiKeyToUse}`,
       },
       body: JSON.stringify({
         model: MODEL,

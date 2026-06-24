@@ -223,9 +223,13 @@ export const useCodingAssistantStore = create<CodingAssistantState>((set, get) =
 
     try {
       const apiMessages = updatedMessages.map((m) => ({ role: m.role, content: m.content }));
+      const codingKey = typeof window !== 'undefined' ? localStorage.getItem('mittenOS_coding_assistant_key') || '' : '';
       const response = await fetch('/api/coding-assistant/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': codingKey,
+        },
         body: JSON.stringify({ messages: apiMessages }),
       });
 
@@ -298,9 +302,13 @@ export const useCodingAssistantStore = create<CodingAssistantState>((set, get) =
         if (isFirstMessage) {
           let generatedTitle: string | null = null;
           try {
+            const codingKey = typeof window !== 'undefined' ? localStorage.getItem('mittenOS_coding_assistant_key') || '' : '';
             const titleRes = await fetch('/api/coding-assistant/title', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': codingKey,
+              },
               body: JSON.stringify({ message: content }),
             });
             if (titleRes.ok) {
