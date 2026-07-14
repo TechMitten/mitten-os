@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Folder,
   FileText,
@@ -20,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useFileSystemStore } from '@/stores/filesystem-store';
 import { useWindowStore } from '@/stores/window-store';
+import { useDesktopStore } from '@/stores/desktop-store';
 
 type ViewMode = 'list' | 'grid';
 
@@ -30,12 +32,12 @@ interface QuickAccessItem {
 }
 
 const QUICK_ACCESS: QuickAccessItem[] = [
+  { id: 'root', name: 'Home', icon: <Home className="w-4 h-4" /> },
   { id: 'desktop', name: 'Desktop', icon: <Monitor className="w-4 h-4" /> },
   { id: 'documents', name: 'Documents', icon: <File className="w-4 h-4" /> },
-  { id: 'pictures', name: 'Pictures', icon: <ImageIcon className="w-4 h-4" /> },
-  { id: 'music', name: 'Music', icon: <Music className="w-4 h-4" /> },
   { id: 'downloads', name: 'Downloads', icon: <Download className="w-4 h-4" /> },
-  { id: 'root', name: '/', icon: <Home className="w-4 h-4" /> },
+  { id: 'music', name: 'Music', icon: <Music className="w-4 h-4" /> },
+  { id: 'pictures', name: 'Pictures', icon: <ImageIcon className="w-4 h-4" /> },
 ];
 
 function formatFileSize(bytes: number): string {
@@ -59,14 +61,18 @@ function formatDate(timestamp: number): string {
 export function FileExplorer() {
   const fsStore = useFileSystemStore();
   const openWindow = useWindowStore((s) => s.openWindow);
+  const theme = useDesktopStore((s) => s.theme);
 
   const [currentFolderId, setCurrentFolderId] = useState('root');
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [orderRevision, setOrderRevision] = useState(0);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
-    itemId: string;
+    itemId: string | null;
   } | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -170,6 +176,16 @@ export function FileExplorer() {
     []
   );
 
+  const handleEmptyContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setSelectedItemId(null);
+      setContextMenu({ x: e.clientX, y: e.clientY, itemId: null });
+    },
+    []
+  );
+
   // Close context menu on click outside
   useEffect(() => {
     const handleClick = () => setContextMenu(null);
@@ -193,6 +209,20 @@ export function FileExplorer() {
       newItemInputRef.current.focus();
     }
   }, [creating]);
+
+  // Redirect hardcoded system folder IDs to resolved cloud IDs once loaded
+  useEffect(() => {
+    const systemFolderIds = ['desktop', 'documents', 'downloads', 'pictures', 'music'];
+    if (systemFolderIds.includes(currentFolderId)) {
+      const rootNode = fsStore.getNodeById('root');
+      const resolved = rootNode?.children?.find(
+        (c) => c.name.toLowerCase() === currentFolderId && c.type === 'folder'
+      );
+      if (resolved) {
+        setCurrentFolderId(resolved.id);
+      }
+    }
+  }, [currentFolderId, fsStore.loaded, fsStore]);
 
   const handleRename = useCallback(
     (id: string) => {
@@ -237,11 +267,80 @@ export function FileExplorer() {
     }
   }, []);
 
-  // Sort children: folders first, then files, alphabetical
-  const sortedChildren = [...children].sort((a, b) => {
-    if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
-    return a.name.localeCompare(b.name);
-  });
+  const handleDragStart = useCallback((e: React.DragEvent, id: string) => {
+    setDraggedId(id);
+    e.dataTransfer.setData('text/plain', id);
+    e.dataTransfer.effectAllowed = 'move';
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    if (id !== draggedId) {
+      setDragOverId(id);
+    }
+  }, [draggedId]);
+
+  const handleDragEnd = useCallback(() => {
+    setDraggedId(null);
+    setDragOverId(null);
+  }, []);
+
+  // Sort children: respects manual drag-and-drop order if stored in localStorage, otherwise alphabetical
+  const sortedChildren = useMemo(() => {
+    const userId = fsStore.userId || 'default';
+    const savedOrderJson = typeof window !== 'undefined'
+      ? localStorage.getItem(`mittenos:fs_order:${userId}:${currentFolderId}`)
+      : null;
+
+    if (savedOrderJson) {
+      try {
+        const orderedIds: string[] = JSON.parse(savedOrderJson);
+        return [...children].sort((a, b) => {
+          const idxA = orderedIds.indexOf(a.id);
+          const idxB = orderedIds.indexOf(b.id);
+          if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+          if (idxA !== -1) return -1;
+          if (idxB !== -1) return 1;
+          if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
+          return a.name.localeCompare(b.name);
+        });
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    return [...children].sort((a, b) => {
+      if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [children, currentFolderId, fsStore.userId, orderRevision]);
+
+  const handleDrop = useCallback((e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    const sourceId = e.dataTransfer.getData('text/plain') || draggedId;
+    if (!sourceId || sourceId === targetId) {
+      setDraggedId(null);
+      setDragOverId(null);
+      return;
+    }
+
+    const currentOrder = sortedChildren.map(c => c.id);
+    const sourceIdx = currentOrder.indexOf(sourceId);
+    const targetIdx = currentOrder.indexOf(targetId);
+
+    if (sourceIdx !== -1 && targetIdx !== -1) {
+      const newOrder = [...currentOrder];
+      newOrder.splice(sourceIdx, 1);
+      newOrder.splice(targetIdx, 0, sourceId);
+
+      const userId = fsStore.userId || 'default';
+      localStorage.setItem(`mittenos:fs_order:${userId}:${currentFolderId}`, JSON.stringify(newOrder));
+      setOrderRevision(r => r + 1);
+    }
+
+    setDraggedId(null);
+    setDragOverId(null);
+  }, [draggedId, sortedChildren, currentFolderId, fsStore.userId]);
 
   return (
     <div
@@ -258,7 +357,12 @@ export function FileExplorer() {
           Quick Access
         </div>
         {QUICK_ACCESS.map((item) => {
-          const isActive = currentFolderId === item.id;
+          const rootNode = fsStore.getNodeById('root');
+          const resolvedFolder = item.id === 'root' ? null : rootNode?.children?.find(
+            (c) => c.name.toLowerCase() === item.name.toLowerCase() && c.type === 'folder'
+          );
+          const resolvedId = resolvedFolder ? resolvedFolder.id : item.id;
+          const isActive = currentFolderId === resolvedId;
           return (
             <button
               key={item.id}
@@ -267,7 +371,7 @@ export function FileExplorer() {
               }`}
               onClick={(e) => {
                 e.stopPropagation();
-                navigateTo(item.id);
+                navigateTo(resolvedId);
               }}
             >
               <span className={isActive ? 'text-foreground' : 'text-muted-foreground/70'}>
@@ -326,7 +430,7 @@ export function FileExplorer() {
                     }
                   }}
                 >
-                  {crumb.name}
+                  {crumb.id === 'root' ? 'Home' : crumb.name}
                 </button>
               </React.Fragment>
             ))}
@@ -372,7 +476,10 @@ export function FileExplorer() {
         </div>
 
         {/* File List / Grid */}
-        <div className="flex-1 overflow-y-auto p-2">
+        <div 
+          className="flex-1 overflow-y-auto p-2"
+          onContextMenu={handleEmptyContextMenu}
+        >
           {viewMode === 'list' ? (
             <div className="flex flex-col">
               {/* List Header */}
@@ -420,8 +527,15 @@ export function FileExplorer() {
               {sortedChildren.map((node) => (
                 <div
                   key={node.id}
-                  className={`flex items-center gap-2 px-3 py-1.5 hover:bg-accent dark:hover:bg-white/5 rounded cursor-pointer ${
+                  draggable={true}
+                  onDragStart={(e) => handleDragStart(e, node.id)}
+                  onDragOver={(e) => handleDragOver(e, node.id)}
+                  onDrop={(e) => handleDrop(e, node.id)}
+                  onDragEnd={handleDragEnd}
+                  className={`flex items-center gap-2 px-3 py-1.5 hover:bg-accent dark:hover:bg-white/5 rounded cursor-pointer transition-all ${
                     selectedItemId === node.id ? 'bg-accent dark:bg-white/10' : ''
+                  } ${
+                    dragOverId === node.id && draggedId !== node.id ? 'border-l-4 border-l-primary pl-2' : ''
                   }`}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -501,8 +615,15 @@ export function FileExplorer() {
               {sortedChildren.map((node) => (
                 <div
                   key={node.id}
-                  className={`flex flex-col items-center p-3 hover:bg-accent dark:hover:bg-white/5 rounded-lg cursor-pointer ${
+                  draggable={true}
+                  onDragStart={(e) => handleDragStart(e, node.id)}
+                  onDragOver={(e) => handleDragOver(e, node.id)}
+                  onDrop={(e) => handleDrop(e, node.id)}
+                  onDragEnd={handleDragEnd}
+                  className={`flex flex-col items-center p-3 hover:bg-accent dark:hover:bg-white/5 rounded-lg cursor-pointer transition-all ${
                     selectedItemId === node.id ? 'bg-accent dark:bg-white/10' : ''
+                  } ${
+                    dragOverId === node.id && draggedId !== node.id ? 'ring-2 ring-primary ring-offset-2 ring-offset-background scale-105' : ''
                   }`}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -550,31 +671,63 @@ export function FileExplorer() {
       </div>
 
       {/* Context Menu */}
-      {contextMenu && (
-        <div
-          className="fixed bg-card dark:bg-zinc-800/95 backdrop-blur-sm border border-border rounded-lg shadow-xl py-1 min-w-[140px] z-[99999]"
-          style={{
-            left: contextMenu.x,
-            top: contextMenu.y,
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-foreground/80 hover:bg-accent dark:hover:bg-white/10 transition-colors"
-            onClick={() => startRename(contextMenu.itemId)}
-          >
-            Rename
-          </button>
-          <button
-            className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-destructive hover:bg-accent dark:hover:bg-white/10 transition-colors"
-            onClick={() => {
-              handleDelete(contextMenu.itemId);
-              setContextMenu(null);
+      {contextMenu && typeof document !== 'undefined' && createPortal(
+        <div className={theme === 'dark' ? 'dark' : ''}>
+          <div
+            className="fixed bg-card dark:bg-zinc-800/95 backdrop-blur-sm border border-border rounded-lg shadow-xl py-1 min-w-[150px] z-[99999]"
+            style={{
+              left: contextMenu.x,
+              top: contextMenu.y,
             }}
+            onClick={(e) => e.stopPropagation()}
           >
-            Delete
-          </button>
+          {contextMenu.itemId ? (
+            <>
+              <button
+                className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-foreground/80 hover:bg-accent dark:hover:bg-white/10 transition-colors"
+                onClick={() => startRename(contextMenu.itemId!)}
+              >
+                Rename
+              </button>
+              <button
+                className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-destructive hover:bg-accent dark:hover:bg-white/10 transition-colors"
+                onClick={() => {
+                  handleDelete(contextMenu.itemId!);
+                  setContextMenu(null);
+                }}
+              >
+                Delete
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                className="flex items-center gap-2.5 w-full px-3 py-1.5 text-sm text-foreground/80 hover:bg-accent dark:hover:bg-white/10 transition-colors"
+                onClick={() => {
+                  setCreating('folder');
+                  setNewItemName('');
+                  setContextMenu(null);
+                }}
+              >
+                <FolderPlus className="w-4 h-4 text-amber-500 shrink-0" />
+                New Folder
+              </button>
+              <button
+                className="flex items-center gap-2.5 w-full px-3 py-1.5 text-sm text-foreground/80 hover:bg-accent dark:hover:bg-white/10 transition-colors"
+                onClick={() => {
+                  setCreating('file');
+                  setNewItemName('');
+                  setContextMenu(null);
+                }}
+              >
+                <FilePlus className="w-4 h-4 text-blue-500 shrink-0" />
+                New File
+              </button>
+            </>
+          )}
         </div>
+        </div>,
+        document.body
       )}
     </div>
   );

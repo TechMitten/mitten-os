@@ -1,5 +1,3 @@
-'use client';
-
 import React, { useEffect, useRef, useCallback } from 'react';
 import { useWindowStore } from '@/stores/window-store';
 import { useDesktopStore } from '@/stores/desktop-store';
@@ -52,26 +50,74 @@ export function OSPortal({ windowId, children, onIframeRef }: OSPortalProps) {
           case 'fs.readFile': {
             const path = data.payload?.path as string;
             const fs = useFileSystemStore.getState();
-            const node = findNodeByPath(fs.nodes, path);
-            respond(true, { content: node?.content ?? null });
+            const normalizedPath = path.startsWith('/') ? path : '/' + path;
+            const node = fs.getNode(normalizedPath);
+            if (node && node.type === 'file') {
+              fs.fetchFileContentIfNeeded(node.id)
+                .then((content) => {
+                  respond(true, { content });
+                })
+                .catch((err) => {
+                  respond(false, undefined, err.message);
+                });
+            } else {
+              respond(true, { content: null });
+            }
             break;
           }
           case 'fs.writeFile': {
             const path = data.payload?.path as string;
             const content = data.payload?.content as string;
             const fs = useFileSystemStore.getState();
-            writeNodeByPath(fs, path, content);
-            respond(true);
+            
+            const normalizedPath = path.startsWith('/') ? path : '/' + path;
+            const parts = normalizedPath.split('/').filter(Boolean);
+            if (parts.length === 0) {
+              respond(false, undefined, "Invalid path");
+              break;
+            }
+            
+            const name = parts[parts.length - 1];
+            const parentParts = parts.slice(0, -1);
+            const parentPath = '/' + parentParts.join('/');
+            
+            const parentNode = fs.getNode(parentPath);
+            if (!parentNode || parentNode.type !== 'folder') {
+              respond(false, undefined, `Parent directory does not exist: ${parentPath}`);
+              break;
+            }
+
+            const existingNode = fs.getNode(normalizedPath);
+            if (existingNode) {
+              fs.updateFileContent(existingNode.id, content)
+                .then(() => {
+                  respond(true);
+                })
+                .catch((err) => {
+                  respond(false, undefined, err.message);
+                });
+            } else {
+              fs.createFile(parentNode.id, name, content)
+                .then(() => {
+                  respond(true);
+                })
+                .catch((err) => {
+                  respond(false, undefined, err.message);
+                });
+            }
             break;
           }
           case 'fs.listDir': {
             const path = data.payload?.path as string;
             const fs = useFileSystemStore.getState();
-            const node = findNodeByPath(fs.nodes, path);
-            const children = node?.children
-              ? fs.nodes.filter((n) => n.parentId === node.id).map((n) => n.name)
-              : [];
-            respond(true, { entries: children });
+            const normalizedPath = path.startsWith('/') ? path : '/' + path;
+            const node = fs.getNode(normalizedPath);
+            if (node && node.type === 'folder') {
+              const children = fs.getChildren(node.id).map((c) => c.name);
+              respond(true, { entries: children });
+            } else {
+              respond(true, { entries: [] });
+            }
             break;
           }
           case 'notifications.show': {
@@ -100,55 +146,12 @@ export function OSPortal({ windowId, children, onIframeRef }: OSPortalProps) {
     return () => window.removeEventListener('message', handleMessage);
   }, [windowId]);
 
-  if (!React.isValidElement(children)) return children as React.ReactElement;
+  if (!React.isValidElement(children)) {
+    return children as unknown as React.ReactElement;
+  }
 
-  return React.cloneElement(children as React.ReactElement<{ ref?: (el: HTMLIFrameElement | null) => void }>, {
+  // Safely clone React element with dynamic ref forwarding
+  return React.cloneElement(children as unknown as React.ReactElement<{ ref?: (el: HTMLIFrameElement | null) => void }>, {
     ref: setIframeRef,
   });
-}
-
-function findNodeByPath(nodes: { id: string; name: string; parentId: string | null; content?: string; type: string; children?: { id: string }[] }[], path: string): { content?: string; id?: string } | null {
-  const parts = path.split('/').filter(Boolean);
-  if (parts.length === 0) return null;
-
-  let current = nodes.find((n) => n.parentId === null && n.name === parts[0]);
-  if (!current) return null;
-
-  for (let i = 1; i < parts.length; i++) {
-    const childId = current.children?.find((c) => {
-      const node = nodes.find((n) => n.id === c.id);
-      return node?.name === parts[i];
-    })?.id;
-    if (!childId) return null;
-    const child = nodes.find((n) => n.id === childId);
-    if (!child) return null;
-    current = child;
-  }
-
-  return current;
-}
-
-function writeNodeByPath(
-  fs: { nodes: { id: string; name: string; parentId: string | null; content?: string; type: string }[]; updateNode: (id: string, updates: { content?: string; name?: string }) => void },
-  path: string,
-  content: string
-) {
-  const parts = path.split('/').filter(Boolean);
-  if (parts.length === 0) return;
-
-  let current = fs.nodes.find((n) => n.parentId === null && n.name === parts[0]);
-  if (!current) return;
-
-  for (let i = 1; i < parts.length; i++) {
-    const childId = current.children?.find((c) => {
-      const node = fs.nodes.find((n) => n.id === c.id);
-      return node?.name === parts[i];
-    })?.id;
-    if (!childId) return;
-    const child = fs.nodes.find((n) => n.id === childId);
-    if (!child) return;
-    current = child;
-  }
-
-  fs.updateNode(current.id, { content });
 }

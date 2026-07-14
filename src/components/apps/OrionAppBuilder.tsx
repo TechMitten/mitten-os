@@ -585,12 +585,12 @@ export function OrionAppBuilder() {
     };
   }, []);
 
-  const clearStreamingState = () => {
+  const clearStreamingState = useCallback(() => {
     setStreamingCode('');
     setStreamingGeneratedCode('');
     streamingBufferRef.current = '';
     streamingGeneratedCodeRef.current = '';
-  };
+  }, []);
 
   // --- Dynamic Zoom Logic ---
   useEffect(() => {
@@ -894,7 +894,8 @@ export function OrionAppBuilder() {
       }
     };
     fetchAndResume();
-  }, [loadUserProjects, loadProjectById, currentProjectId]);
+    // We intentionally omit currentProjectId to avoid re-triggering the load and resetting when starting a new app
+  }, [loadUserProjects, loadProjectById]);
 
   const loadProject = (project: Project) => {
     clearStreamingState();

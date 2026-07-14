@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDesktopStore } from '@/stores/desktop-store';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -17,13 +17,17 @@ import {
   Key,
   Eye,
   EyeOff,
+  Cloud,
+  HardDrive,
+  RefreshCw,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-type Section = 'appearance' | 'wallpaper' | 'display' | 'general' | 'about' | 'ai-keys';
+type Section = 'appearance' | 'wallpaper' | 'display' | 'general' | 'storage' | 'about' | 'ai-keys';
 
 const SIDEBAR_ITEMS: { id: Section; label: string; icon: React.ReactNode }[] = [
   { id: 'general', label: 'General', icon: <LayoutPanelTop className="w-4 h-4" /> },
+  { id: 'storage', label: 'Storage', icon: <Cloud className="w-4 h-4" /> },
   { id: 'appearance', label: 'Appearance', icon: <Palette className="w-4 h-4" /> },
   { id: 'wallpaper', label: 'Wallpaper', icon: <ImageIcon className="w-4 h-4" /> },
   { id: 'display', label: 'Display', icon: <Monitor className="w-4 h-4" /> },
@@ -148,6 +152,7 @@ export default function SettingsApp() {
             setPersistWindows={setPersistWindows}
           />
         )}
+        {activeSection === 'storage' && <StorageSection />}
         {activeSection === 'ai-keys' && <AiKeysSection />}
         {activeSection === 'about' && <AboutSection />}
       </div>
@@ -781,6 +786,190 @@ function AiKeysSection() {
           Save Keys
         </button>
       </div>
+    </div>
+  );
+}
+
+/* ─── Storage Section ─────────────────────────────────────── */
+import { useFileSystemStore } from '@/stores/filesystem-store';
+
+function StorageSection() {
+  const {
+    storageBackend,
+    gdriveConnected,
+    setStorageBackend,
+    disconnectGDrive,
+    loading
+  } = useFileSystemStore();
+
+  const [profile, setProfile] = useState<{ name: string; email: string; picture: string } | null>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('mittenos:gdrive:profile');
+      return saved ? JSON.parse(saved) : null;
+    }
+    return null;
+  });
+
+  const handleConnect = () => {
+    const width = 500;
+    const height = 650;
+    const left = window.screen.width / 2 - width / 2;
+    const top = window.screen.height / 2 - height / 2;
+    window.open(
+      '/api/auth/google/login',
+      'Connect Google Drive',
+      `width=${width},height=${height},left=${left},top=${top}`
+    );
+  };
+
+  const handleDisconnect = () => {
+    disconnectGDrive();
+    setProfile(null);
+  };
+
+  // Sync profile data on change
+  useEffect(() => {
+    if (gdriveConnected) {
+      const saved = localStorage.getItem('mittenos:gdrive:profile');
+      if (saved) setProfile(JSON.parse(saved));
+    }
+  }, [gdriveConnected]);
+
+  return (
+    <div className="space-y-6 max-w-xl">
+      <div>
+        <h3 className="text-lg font-medium mb-1">Storage Backend</h3>
+        <p className="text-xs text-muted-foreground">
+          Choose where your files and folders are saved. You can use local browser storage or sync with Google Drive.
+        </p>
+      </div>
+
+      {/* Connection Status Card */}
+      <div className="p-4 rounded-xl border border-border bg-muted/20 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${gdriveConnected ? 'bg-emerald-500/10 text-emerald-500' : 'bg-zinc-500/10 text-zinc-500'}`}>
+              <Cloud className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold">Google Drive Connection</h4>
+              <p className="text-xs text-muted-foreground">
+                {gdriveConnected 
+                  ? 'Connected to Google Drive API' 
+                  : 'Not connected. Connect to store your files in the cloud.'}
+              </p>
+            </div>
+          </div>
+          {gdriveConnected ? (
+            <button
+              onClick={handleDisconnect}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors"
+            >
+              Disconnect
+            </button>
+          ) : (
+            <button
+              onClick={handleConnect}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition-colors"
+            >
+              Connect
+            </button>
+          )}
+        </div>
+
+        {gdriveConnected && profile && (
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/40 border border-border/50 text-xs">
+            {profile.picture ? (
+              <img src={profile.picture} alt="User Avatar" className="w-9 h-9 rounded-full border border-border" />
+            ) : (
+              <div className="w-9 h-9 rounded-full bg-accent flex items-center justify-center font-bold text-foreground">
+                {profile.name.charAt(0)}
+              </div>
+            )}
+            <div>
+              <p className="font-semibold text-foreground">{profile.name}</p>
+              <p className="text-muted-foreground">{profile.email}</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Storage Provider Selector */}
+      <div className="space-y-3">
+        <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider">
+          Active Storage Provider
+        </label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Local Storage */}
+          <button
+            onClick={() => setStorageBackend('local')}
+            className={`flex items-start gap-3.5 p-4 rounded-xl border-2 transition-all text-left ${
+              storageBackend === 'local'
+                ? 'border-amber-500 bg-amber-500/5'
+                : 'border-border hover:border-foreground/10 bg-muted/20'
+            }`}
+          >
+            <div className={`p-2 rounded-lg ${storageBackend === 'local' ? 'bg-amber-500/10 text-amber-500' : 'bg-muted text-muted-foreground'}`}>
+              <HardDrive className="w-5 h-5" />
+            </div>
+            <div>
+              <h5 className="text-sm font-semibold">Local Storage</h5>
+              <p className="text-[11px] text-muted-foreground leading-normal mt-0.5">
+                Saved locally in your browser cache. Quick loading, offline-only, not shared across devices.
+              </p>
+            </div>
+          </button>
+
+          {/* Google Drive */}
+          <button
+            onClick={() => gdriveConnected && setStorageBackend('gdrive')}
+            disabled={!gdriveConnected}
+            className={`flex items-start gap-3.5 p-4 rounded-xl border-2 transition-all text-left ${
+              !gdriveConnected 
+                ? 'opacity-40 cursor-not-allowed border-border'
+                : storageBackend === 'gdrive'
+                  ? 'border-amber-500 bg-amber-500/5'
+                  : 'border-border hover:border-foreground/10 bg-muted/20'
+            }`}
+          >
+            <div className={`p-2 rounded-lg ${storageBackend === 'gdrive' ? 'bg-amber-500/10 text-amber-500' : 'bg-muted text-muted-foreground'}`}>
+              <Cloud className="w-5 h-5" />
+            </div>
+            <div>
+              <h5 className="text-sm font-semibold flex items-center gap-1.5">
+                Google Drive
+                {!gdriveConnected && (
+                  <span className="text-[9px] font-normal px-1.5 py-0.5 rounded bg-muted-foreground/20 text-muted-foreground uppercase">
+                    Locked
+                  </span>
+                )}
+              </h5>
+              <p className="text-[11px] text-muted-foreground leading-normal mt-0.5">
+                Saved in your personal Google Drive in the <code className="bg-muted px-1 rounded">MittenOS</code> folder. Persists across devices and logins.
+              </p>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* Sync details */}
+      {storageBackend === 'gdrive' && (
+        <div className="p-3 rounded-lg border border-border bg-muted/10 flex items-center justify-between text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <span>
+              {loading ? 'Synchronizing files with Google Drive...' : 'Files are synchronized with Google Drive'}
+            </span>
+          </div>
+          <button
+            onClick={() => useFileSystemStore.getState().loadFromDB(useFileSystemStore.getState().userId || '')}
+            disabled={loading}
+            className="hover:text-foreground underline transition-colors"
+          >
+            Force Sync
+          </button>
+        </div>
+      )}
     </div>
   );
 }

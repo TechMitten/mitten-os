@@ -98,6 +98,54 @@ export function Desktop() {
     }
   }, [initialize]);
 
+  // Listen for Google Drive OAuth popup callback success message
+  useEffect(() => {
+    const handleOAuthMessage = async (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type === 'GOOGLE_AUTH_SUCCESS') {
+        const { accessToken, refreshToken, expiresIn } = event.data;
+        console.log('[Desktop] Google Drive OAuth success received, connecting...');
+        
+        const fsStore = useFileSystemStore.getState();
+        
+        try {
+          const profileRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: `Bearer ${accessToken}` }
+          });
+          if (profileRes.ok) {
+            const profile = await profileRes.json();
+            localStorage.setItem('mittenos:gdrive:profile', JSON.stringify({
+              name: profile.name || 'Google Drive User',
+              email: profile.email || '',
+              picture: profile.picture || ''
+            }));
+          }
+        } catch (e) {
+          console.error('[Desktop] Failed to fetch Google Drive user profile info:', e);
+        }
+
+        try {
+          await fsStore.connectGDrive({ accessToken, refreshToken, expiresIn });
+          useDesktopStore.getState().addNotification({
+            title: 'Google Drive Connected',
+            message: 'Your Google Drive has been connected as the storage backend.',
+            type: 'success'
+          });
+        } catch (err: any) {
+          console.error('[Desktop] Failed to initialize Google Drive VFS:', err);
+          useDesktopStore.getState().addNotification({
+            title: 'Google Drive Connection Failed',
+            message: err.message || 'Failed to initialize storage backend.',
+            type: 'error'
+          });
+        }
+      }
+    };
+
+    window.addEventListener('message', handleOAuthMessage);
+    return () => window.removeEventListener('message', handleOAuthMessage);
+  }, []);
+
   // Reset data-loaded flag when user logs out
   useEffect(() => {
     if (!user) {
@@ -240,12 +288,48 @@ export function Desktop() {
         {
           label: 'New Folder',
           icon: 'FolderPlus',
-          action: () => { },
+          action: () => {
+            const name = prompt('Enter folder name:', 'New Folder');
+            if (name && name.trim()) {
+              const fs = useFileSystemStore.getState();
+              const desktopFolder = fs.root.children?.find(
+                (c) => c.name.toLowerCase() === 'desktop' && c.type === 'folder'
+              );
+              const parentId = desktopFolder ? desktopFolder.id : 'root';
+              fs.createFolder(parentId, name.trim()).then(() => {
+                useDesktopStore.getState().addNotification({
+                  title: 'Folder Created',
+                  message: `Folder "${name}" created inside Desktop directory.`,
+                  type: 'success',
+                });
+              }).catch((err) => {
+                console.error(err);
+              });
+            }
+          },
         },
         {
           label: 'New File',
           icon: 'FilePlus',
-          action: () => { },
+          action: () => {
+            const name = prompt('Enter file name:', 'New File.txt');
+            if (name && name.trim()) {
+              const fs = useFileSystemStore.getState();
+              const desktopFolder = fs.root.children?.find(
+                (c) => c.name.toLowerCase() === 'desktop' && c.type === 'folder'
+              );
+              const parentId = desktopFolder ? desktopFolder.id : 'root';
+              fs.createFile(parentId, name.trim(), '').then(() => {
+                useDesktopStore.getState().addNotification({
+                  title: 'File Created',
+                  message: `File "${name}" created inside Desktop directory.`,
+                  type: 'success',
+                });
+              }).catch((err) => {
+                console.error(err);
+              });
+            }
+          },
         },
         {
           label: 'Change Wallpaper',
