@@ -1,12 +1,15 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "mittenos",
+	"name": "mitten-os",
 	"main": ".open-next/worker.js",
 	"compatibility_date": "2026-06-23",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
 	"assets": {
 		"directory": ".open-next/assets",
 		"binding": "ASSETS"
+	},
+	"vars": {
+		"GOOGLE_CLIENT_ID": "1046110139653-np809u1tookblutn34146luh5jcv4r6l.apps.googleusercontent.com"
 	},
 	"routes": [
 		{ "pattern": "mittenai.dev", "custom_domain": true },
