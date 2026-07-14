@@ -218,7 +218,7 @@ export const APP_REGISTRY: Record<string, Omit<AppDefinition, "component">> = {
   "app-builder": {
     id: "app-builder",
     name: "Orion",
-    icon: "Code2",
+    icon: "Zap",
     description: "AI-powered app generator",
     category: "development",
     defaultWindowSize: { width: 1200, height: 700 },

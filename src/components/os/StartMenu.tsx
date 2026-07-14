@@ -2,24 +2,8 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  FolderOpen,
-  TerminalSquare,
-  Globe,
-  FileText,
-  Settings,
-  Calculator,
-  Image,
-  Store,
-  CloudSun,
-  Info,
-  Search,
-  Bot,
-  LayoutDashboard,
-  CheckCircle2,
-  KeyRound,
-  type LucideIcon,
-} from 'lucide-react';
+import { FileText, Search, CheckCircle2, LayoutDashboard } from 'lucide-react';
+import { ICON_MAP } from '@/lib/icon-map';
 import { useDesktopStore } from '@/stores/desktop-store';
 import { useWindowStore } from '@/stores/window-store';
 import { useFileSystemStore } from '@/stores/filesystem-store';
@@ -28,20 +12,7 @@ import { useAppRegistryStore } from '@/stores/app-registry-store';
 import { saveWindowStates } from '@/stores/desktop-store';
 import { APP_REGISTRY, type UserAppDefinition } from '@/types/os';
 
-const ICON_MAP: Record<string, LucideIcon> = {
-  FolderOpen,
-  TerminalSquare,
-  Globe,
-  FileText,
-  Settings,
-  Calculator,
-  Image,
-  Store,
-  CloudSun,
-  Info,
-  Bot,
-  KeyRound,
-};
+
 
 interface AppContextMenuState {
   appId: string;
@@ -62,6 +33,13 @@ export function StartMenu() {
   const userApps = useAppRegistryStore((s) => s.userApps);
   const menuRef = useRef<HTMLDivElement>(null);
   const ctxMenuRef = useRef<HTMLDivElement>(null);
+  const gdriveConnected = useFileSystemStore((s) => s.gdriveConnected);
+
+  const profile = React.useMemo<{ name: string; email: string; picture: string } | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const saved = localStorage.getItem('mittenos:gdrive:profile');
+    return saved ? JSON.parse(saved) : null;
+  }, [gdriveConnected]);
 
   const [appContextMenu, setAppContextMenu] = useState<AppContextMenuState | null>(null);
   const [justAdded, setJustAdded] = useState<string | null>(null);
@@ -239,8 +217,24 @@ export function StartMenu() {
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between p-3 border-t border-black/5 dark:border-white/[0.06]">
-            <span className="text-[11px] text-muted-foreground/50">MittenOS</span>
+          <div className="flex items-center gap-2.5 p-3 border-t border-black/5 dark:border-white/[0.06]">
+            {gdriveConnected && profile ? (
+              <>
+                {profile.picture ? (
+                  <img src={profile.picture} alt="avatar" className="w-6 h-6 rounded-full border border-black/10 dark:border-white/10 shrink-0" />
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center font-bold text-[10px] shrink-0">
+                    {profile.name.charAt(0)}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold text-foreground/80 dark:text-white/70 truncate leading-tight">{profile.name}</p>
+                  <p className="text-[10px] text-muted-foreground/60 truncate leading-tight">{profile.email}</p>
+                </div>
+              </>
+            ) : (
+              <span className="text-[11px] text-muted-foreground/50">MittenOS</span>
+            )}
           </div>
         </motion.div>
       )}

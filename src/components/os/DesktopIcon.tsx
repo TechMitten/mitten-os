@@ -2,37 +2,11 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useDesktopStore } from '@/stores/desktop-store';
-import {
-  FolderOpen,
-  TerminalSquare,
-  Globe,
-  FileText,
-  Settings,
-  Calculator,
-  Image,
-  Store,
-  CloudSun,
-  Info,
-  Bot,
-  KeyRound,
-  type LucideIcon,
-} from 'lucide-react';
+import { FileText } from 'lucide-react';
+import { ICON_MAP } from '@/lib/icon-map';
 import { DESKTOP_GRID_CELL, DESKTOP_GRID_OFFSET_X, DESKTOP_GRID_OFFSET_Y, DRAG_THRESHOLD, type WindowPosition } from '@/types/os';
 
-const ICON_MAP: Record<string, LucideIcon> = {
-  FolderOpen,
-  TerminalSquare,
-  Globe,
-  FileText,
-  Settings,
-  Calculator,
-  Image,
-  Store,
-  CloudSun,
-  Info,
-  Bot,
-  KeyRound,
-};
+
 
 
 
@@ -208,4 +182,3 @@ export function DesktopIcon({
   );
 }
 
-export { ICON_MAP };

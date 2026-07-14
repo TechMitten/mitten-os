@@ -6,24 +6,14 @@ import {
   Sun,
   Moon,
   Bell,
-  FolderOpen,
-  TerminalSquare,
-  FileText,
-  Calculator,
-  Settings,
-  Globe,
-  Image,
-  Store,
-  CloudSun,
-  Info,
   User,
-  Bot,
-  KeyRound,
   Cloud,
+  CloudSun,
   CloudRain,
   Snowflake,
   Loader2,
 } from 'lucide-react';
+import { ICON_MAP } from '@/lib/icon-map';
 import { useWindowStore } from '@/stores/window-store';
 import { useDesktopStore } from '@/stores/desktop-store';
 import { useAuthStore } from '@/stores/auth-store';
@@ -36,26 +26,7 @@ import {
   TooltipProvider,
 } from '@/components/ui/tooltip';
 
-// Map icon name strings to actual Lucide components
-const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
-  LayoutGrid,
-  FolderOpen,
-  TerminalSquare,
-  FileText,
-  Calculator,
-  Settings,
-  Globe,
-  Image,
-  Store,
-  CloudSun,
-  Info,
-  Sun,
-  Moon,
-  Bell,
-  User,
-  Bot,
-  KeyRound,
-};
+
 
 function Clock() {
   const [now, setNow] = useState<Date | null>(null);
@@ -344,20 +315,6 @@ export default function Taskbar() {
             </TooltipContent>
           </Tooltip>
 
-          {/* User badge */}
-          {user && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-foreground/60 text-[11px]">
-                  <User className="w-3.5 h-3.5" />
-                  <span className="max-w-[80px] truncate hidden sm:block">
-                    {user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0]}
-                  </span>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="top">{user.email}</TooltipContent>
-            </Tooltip>
-          )}
 
           {/* Weather */}
           <TaskbarWeather />
