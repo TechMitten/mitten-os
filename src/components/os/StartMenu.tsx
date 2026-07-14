@@ -14,7 +14,6 @@ import {
   CloudSun,
   Info,
   Search,
-  LogOut,
   Bot,
   LayoutDashboard,
   CheckCircle2,
@@ -240,22 +239,6 @@ export function StartMenu() {
           {/* Footer */}
           <div className="flex items-center justify-between p-3 border-t border-black/5 dark:border-white/[0.06]">
             <span className="text-[11px] text-muted-foreground/50">MittenOS</span>
-            <button
-              className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
-              onClick={async () => {
-                setStartMenuOpen(false);
-                const userId = useAuthStore.getState().user?.id;
-                if (userId && !isGuestUser(userId) && useDesktopStore.getState().persistWindows) {
-                  await saveWindowStates(userId, useWindowStore.getState().windows);
-                }
-                useFileSystemStore.getState().reset();
-                useDesktopStore.getState().reset();
-                await useAuthStore.getState().signOut();
-              }}
-              title="Sign out"
-            >
-              <LogOut className="w-4 h-4 text-muted-foreground/60" />
-            </button>
           </div>
         </motion.div>
       )}

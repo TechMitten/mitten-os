@@ -1,17 +1,15 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useDesktopStore, type ContextMenuItem, loadWindowStates, saveIconPositions, loadIconPositions as fetchIconPositions } from '@/stores/desktop-store';
+import { useDesktopStore, type ContextMenuItem, loadWindowStates, saveWindowStates, saveIconPositions, loadIconPositions as fetchIconPositions } from '@/stores/desktop-store';
 import { useWindowStore } from '@/stores/window-store';
 import { useFileSystemStore } from '@/stores/filesystem-store';
 import { useAuthStore, isGuestUser } from '@/stores/auth-store';
-import { createClient } from '@/lib/supabase/client';
 import { ContextMenu } from '@/components/os/ContextMenu';
 import { DesktopIcon } from '@/components/os/DesktopIcon';
 import Window from '@/components/os/Window';
 import { StartMenu } from '@/components/os/StartMenu';
 import Taskbar from '@/components/os/Taskbar';
-import LoginScreen from '@/components/auth/LoginScreen';
 import WelcomeWindow from '@/components/os/WelcomeWindow';
 import { Loader2 } from 'lucide-react';
 import { isWallpaperDark } from '@/lib/utils';
@@ -125,13 +123,6 @@ export function Desktop() {
   useEffect(() => {
     if (!user?.id || dataLoaded) return;
 
-    if (isGuest || isGuestUser(user.id)) {
-      loadSettings(user.id);
-      loadApprovedApps();
-      setDataLoaded(true);
-      return;
-    }
-
     let cancelled = false;
     (async () => {
       await Promise.all([
@@ -174,7 +165,7 @@ export function Desktop() {
     })();
 
     return () => { cancelled = true; };
-  }, [user?.id, dataLoaded, isGuest, loadSettings, loadFromDB, loadApprovedApps]);
+  }, [user?.id, dataLoaded, loadSettings, loadFromDB, loadApprovedApps]);
 
   // Save window states and icon positions periodically
   const windowsRef = useRef(windows);
@@ -186,38 +177,13 @@ export function Desktop() {
     iconsRef.current = desktopIcons;
   });
   useEffect(() => {
-    if (!user?.id || !dataLoaded || isGuest || isGuestUser(user.id)) return;
+    if (!user?.id || !dataLoaded) return;
     const interval = setInterval(async () => {
-      const { persistWindows, welcomeDismissed } = useDesktopStore.getState();
-      const states = persistWindows ? windowsRef.current.map((w) => ({
-        appId: w.appId,
-        windowId: w.id,
-        title: w.title,
-        x: w.position.x,
-        y: w.position.y,
-        width: w.size.width,
-        height: w.size.height,
-        state: w.state,
-      })) : undefined;
-
-      const positions: Record<string, { x: number; y: number }> = {};
-      for (const icon of iconsRef.current) {
-        positions[icon.id] = icon.position;
+      const { persistWindows } = useDesktopStore.getState();
+      if (persistWindows) {
+        await saveWindowStates(user.id, windowsRef.current);
       }
-
-      const { theme, wallpaper } = useDesktopStore.getState();
-      const supabase = createClient();
-      await supabase
-        .from('user_settings')
-        .upsert({
-          user_id: user.id,
-          theme,
-          wallpaper,
-          ...(states ? { window_states: states } : {}),
-          icon_positions: positions,
-          settings_json: { welcomeDismissed, persistWindows },
-          updated_at: new Date().toISOString(),
-        });
+      await saveIconPositions(user.id, iconsRef.current);
     }, 10000);
     return () => clearInterval(interval);
   }, [user?.id, dataLoaded]);
@@ -572,14 +538,7 @@ export function Desktop() {
     );
   }
 
-  // --- Not authenticated ---
-  if (!user) {
-    return (
-      <div className={theme === 'dark' ? 'dark' : ''}>
-        <LoginScreen />
-      </div>
-    );
-  }
+
 
   // --- Data still loading ---
   if (!dataLoaded) {

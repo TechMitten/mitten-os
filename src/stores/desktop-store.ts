@@ -1,10 +1,5 @@
 import { create } from "zustand";
 import { DesktopIcon, DESKTOP_GRID_CELL, DESKTOP_GRID_OFFSET_X, DESKTOP_GRID_OFFSET_Y, Notification, WindowPosition } from "@/types/os";
-import { createClient } from "@/lib/supabase/client";
-
-function isGuest(userId: string): boolean {
-  return userId.startsWith("guest-");
-}
 
 interface DesktopStore {
   wallpaper: string;
@@ -91,6 +86,21 @@ function getSettingsJson(state: DesktopStore) {
   };
 }
 
+function persistSettings(userId: string | null, state: DesktopStore) {
+  if (!userId || typeof window === 'undefined') return;
+  const settings = {
+    theme: state.theme,
+    wallpaper: state.wallpaper,
+    welcomeDismissed: state.welcomeDismissed,
+    persistWindows: state.persistWindows,
+    iconSize: state.iconSize,
+    deletedIconIds: state.deletedIconIds || [],
+    renamedIconLabels: state.renamedIconLabels || {},
+    customDesktopIcons: state.customDesktopIcons || [],
+  };
+  localStorage.setItem(`mittenos:settings:${userId}`, JSON.stringify(settings));
+}
+
 export const useDesktopStore = create<DesktopStore>((set, get) => ({
   wallpaper: "linear-gradient(135deg, #030b20, #0d2b63, #071730)",
   theme: "dark",
@@ -109,35 +119,27 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   renamedIconLabels: {},
 
   loadSettings: async (userId: string) => {
-    if (isGuest(userId)) {
-      set({ loaded: true, userId, welcomeDismissed: false, persistWindows: false, deletedIconIds: [], renamedIconLabels: {} });
-      return;
+    let settings: any = {};
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`mittenos:settings:${userId}`);
+      if (saved) {
+        try {
+          settings = JSON.parse(saved);
+        } catch (e) {
+          console.error("Failed to parse settings:", e);
+        }
+      }
     }
 
-    const supabase = createClient();
+    const theme = settings.theme || "dark";
+    const wallpaper = settings.wallpaper || "linear-gradient(135deg, #030b20, #0d2b63, #071730)";
+    const welcomeDismissed = localStorage.getItem(`mittenos:welcomeDismissed:${userId}`) === "true" || (settings.welcomeDismissed ?? false);
+    const persistWindows = settings.persistWindows ?? false;
+    const iconSize = settings.iconSize || "medium";
+    const deletedIconIds = settings.deletedIconIds || [];
+    const renamedIconLabels = settings.renamedIconLabels || {};
+    const customDesktopIcons = settings.customDesktopIcons || [];
 
-    const { data, error } = await supabase
-      .from("user_settings")
-      .select("*")
-      .eq("user_id", userId)
-      .single();
-
-    if (error || !data) {
-      // Settings don't exist yet — use defaults and upsert
-      const state = get();
-      await supabase.from("user_settings").upsert({
-        user_id: userId,
-        theme: state.theme,
-        wallpaper: state.wallpaper,
-        updated_at: new Date().toISOString(),
-      });
-      set({ loaded: true, userId });
-      return;
-    }
-
-    const deletedIconIds = data.settings_json?.deletedIconIds || [];
-    const renamedIconLabels = data.settings_json?.renamedIconLabels || {};
-    const customDesktopIcons: DesktopIcon[] = data.settings_json?.customDesktopIcons || [];
     const updatedIcons = defaultIcons
       .filter((icon) => !deletedIconIds.includes(icon.id))
       .map((icon) => ({
@@ -146,11 +148,11 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
       }));
 
     set({
-      theme: data.theme || "dark",
-      wallpaper: data.wallpaper || "linear-gradient(135deg, #030b20, #0d2b63, #071730)",
-      welcomeDismissed: localStorage.getItem(`mittenos:welcomeDismissed:${userId}`) === "true" || (data.settings_json?.welcomeDismissed ?? false),
-      persistWindows: data.settings_json?.persistWindows ?? false,
-      iconSize: data.settings_json?.iconSize || "medium",
+      theme,
+      wallpaper,
+      welcomeDismissed,
+      persistWindows,
+      iconSize,
       userId,
       loaded: true,
       deletedIconIds,
@@ -162,13 +164,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
 
   setWallpaper: (url: string) => {
     set({ wallpaper: url });
-    const { userId, theme } = get();
-    if (!userId || isGuest(userId)) return;
-    const supabase = createClient();
-    supabase
-      .from("user_settings")
-      .upsert({ user_id: userId, theme, wallpaper: url, settings_json: getSettingsJson(get()), updated_at: new Date().toISOString() })
-      .then(({ error }) => { if (error) console.error("Failed to save wallpaper:", error); });
+    persistSettings(get().userId, get());
   },
 
   setTheme: (theme: "light" | "dark") => {
@@ -177,13 +173,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
         ? "linear-gradient(135deg, #c9d6ff, #e2e2e2, #f5f7fa)"
         : "linear-gradient(135deg, #030b20, #0d2b63, #071730)";
     set({ theme, wallpaper });
-    const { userId } = get();
-    if (!userId || isGuest(userId)) return;
-    const supabase = createClient();
-    supabase
-      .from("user_settings")
-      .upsert({ user_id: userId, theme, wallpaper, settings_json: getSettingsJson(get()), updated_at: new Date().toISOString() })
-      .then(({ error }) => { if (error) console.error("Failed to save theme:", error); });
+    persistSettings(get().userId, get());
   },
 
   toggleTheme: () => {
@@ -194,13 +184,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
         ? "linear-gradient(135deg, #c9d6ff, #e2e2e2, #f5f7fa)"
         : "linear-gradient(135deg, #030b20, #0d2b63, #071730)";
     set({ theme: next, wallpaper });
-    const { userId } = get();
-    if (!userId || isGuest(userId)) return;
-    const supabase = createClient();
-    supabase
-      .from("user_settings")
-      .upsert({ user_id: userId, theme: next, wallpaper, settings_json: getSettingsJson(get()), updated_at: new Date().toISOString() })
-      .then(({ error }) => { if (error) console.error("Failed to save theme:", error); });
+    persistSettings(get().userId, get());
   },
 
   setStartMenuOpen: (open: boolean) => set({ startMenuOpen: open }),
@@ -250,53 +234,21 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
 
   setWelcomeDismissed: (dismissed: boolean) => {
     set({ welcomeDismissed: dismissed });
-    const { userId, theme, wallpaper } = get();
+    const { userId } = get();
     if (userId) {
       localStorage.setItem(`mittenos:welcomeDismissed:${userId}`, String(dismissed));
     }
-    if (!userId || isGuest(userId)) return;
-    const supabase = createClient();
-    supabase
-      .from("user_settings")
-      .upsert({
-        user_id: userId,
-        theme,
-        wallpaper,
-        settings_json: getSettingsJson(get()),
-        updated_at: new Date().toISOString(),
-      });
+    persistSettings(userId, get());
   },
 
   setPersistWindows: (persist: boolean) => {
     set({ persistWindows: persist });
-    const { userId, theme, wallpaper } = get();
-    if (!userId || isGuest(userId)) return;
-    const supabase = createClient();
-    supabase
-      .from("user_settings")
-      .upsert({
-        user_id: userId,
-        theme,
-        wallpaper,
-        settings_json: getSettingsJson(get()),
-        updated_at: new Date().toISOString(),
-      });
+    persistSettings(get().userId, get());
   },
 
   setIconSize: (size: "small" | "medium" | "large") => {
     set({ iconSize: size });
-    const { userId, theme, wallpaper } = get();
-    if (!userId || isGuest(userId)) return;
-    const supabase = createClient();
-    supabase
-      .from("user_settings")
-      .upsert({
-        user_id: userId,
-        theme,
-        wallpaper,
-        settings_json: getSettingsJson(get()),
-        updated_at: new Date().toISOString(),
-      });
+    persistSettings(get().userId, get());
   },
 
   reset: () => {
@@ -327,21 +279,8 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
         icon.id === id ? { ...icon, label } : icon
       );
       
-      const { userId, theme, wallpaper } = state;
-      if (userId && !isGuest(userId)) {
-        const supabase = createClient();
-        supabase
-          .from("user_settings")
-          .upsert({
-            user_id: userId,
-            theme,
-            wallpaper,
-            settings_json: getSettingsJson({ ...state, renamedIconLabels }),
-            updated_at: new Date().toISOString(),
-          })
-          .then(({ error }) => { if (error) console.error("Failed to save renamed icon label:", error); });
-      }
-
+      const nextState = { ...state, renamedIconLabels, desktopIcons };
+      persistSettings(state.userId, nextState);
       return { renamedIconLabels, desktopIcons };
     });
   },
@@ -351,21 +290,8 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
       const deletedIconIds = [...state.deletedIconIds, id];
       const desktopIcons = state.desktopIcons.filter((icon) => icon.id !== id);
 
-      const { userId, theme, wallpaper } = state;
-      if (userId && !isGuest(userId)) {
-        const supabase = createClient();
-        supabase
-          .from("user_settings")
-          .upsert({
-            user_id: userId,
-            theme,
-            wallpaper,
-            settings_json: getSettingsJson({ ...state, deletedIconIds }),
-            updated_at: new Date().toISOString(),
-          })
-          .then(({ error }) => { if (error) console.error("Failed to save deleted icon status:", error); });
-      }
-
+      const nextState = { ...state, deletedIconIds, desktopIcons };
+      persistSettings(state.userId, nextState);
       return { deletedIconIds, desktopIcons };
     });
   },
@@ -397,21 +323,8 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
       const customDesktopIcons = [...state.customDesktopIcons, newIcon];
       const desktopIcons = [...state.desktopIcons, newIcon];
 
-      const { userId, theme, wallpaper } = state;
-      if (userId && !isGuest(userId)) {
-        const supabase = createClient();
-        supabase
-          .from("user_settings")
-          .upsert({
-            user_id: userId,
-            theme,
-            wallpaper,
-            settings_json: getSettingsJson({ ...state, customDesktopIcons }),
-            updated_at: new Date().toISOString(),
-          })
-          .then(({ error }) => { if (error) console.error("Failed to save custom desktop icon:", error); });
-      }
-
+      const nextState = { ...state, customDesktopIcons, desktopIcons };
+      persistSettings(state.userId, nextState);
       return { customDesktopIcons, desktopIcons };
     });
   },
@@ -421,21 +334,8 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
       const customDesktopIcons = state.customDesktopIcons.filter((icon) => icon.id !== id);
       const desktopIcons = state.desktopIcons.filter((icon) => icon.id !== id);
 
-      const { userId, theme, wallpaper } = state;
-      if (userId && !isGuest(userId)) {
-        const supabase = createClient();
-        supabase
-          .from("user_settings")
-          .upsert({
-            user_id: userId,
-            theme,
-            wallpaper,
-            settings_json: getSettingsJson({ ...state, customDesktopIcons }),
-            updated_at: new Date().toISOString(),
-          })
-          .then(({ error }) => { if (error) console.error("Failed to remove custom desktop icon:", error); });
-      }
-
+      const nextState = { ...state, customDesktopIcons, desktopIcons };
+      persistSettings(state.userId, nextState);
       return { customDesktopIcons, desktopIcons };
     });
   },
@@ -443,9 +343,6 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
 
 // Standalone function for saving window states (called from Desktop)
 export async function saveWindowStates(userId: string, windows: import("@/types/os").OSWindow[]) {
-  if (isGuest(userId)) return;
-  const supabase = createClient();
-  const { theme, wallpaper } = useDesktopStore.getState();
   const states = windows.map((w) => ({
     appId: w.appId,
     windowId: w.id,
@@ -456,51 +353,53 @@ export async function saveWindowStates(userId: string, windows: import("@/types/
     height: w.size.height,
     state: w.state,
   }));
-  await supabase
-    .from("user_settings")
-    .upsert({ user_id: userId, theme, wallpaper, window_states: states, settings_json: getSettingsJson(useDesktopStore.getState()), updated_at: new Date().toISOString() });
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(`mittenos:window_states:${userId}`, JSON.stringify(states));
+  }
 }
 
 export async function loadWindowStates(userId: string) {
-  if (isGuest(userId)) return [];
-  const supabase = createClient();
-  const { data } = await supabase
-    .from("user_settings")
-    .select("window_states")
-    .eq("user_id", userId)
-    .single();
-  return (data?.window_states ?? []) as Array<{
-    appId: string;
-    windowId: string;
-    title: string;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    state: string;
-  }>;
+  if (typeof window === 'undefined') return [];
+  const saved = localStorage.getItem(`mittenos:window_states:${userId}`);
+  if (saved) {
+    try {
+      return JSON.parse(saved) as Array<{
+        appId: string;
+        windowId: string;
+        title: string;
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+        state: string;
+      }>;
+    } catch (e) {
+      console.error("Failed to parse window states:", e);
+    }
+  }
+  return [];
 }
 
 export async function saveIconPositions(userId: string, icons: DesktopIcon[]) {
-  if (isGuest(userId)) return;
-  const supabase = createClient();
-  const { theme, wallpaper } = useDesktopStore.getState();
   const positions: Record<string, WindowPosition> = {};
   for (const icon of icons) {
     positions[icon.id] = icon.position;
   }
-  await supabase
-    .from("user_settings")
-    .upsert({ user_id: userId, theme, wallpaper, icon_positions: positions, settings_json: getSettingsJson(useDesktopStore.getState()), updated_at: new Date().toISOString() });
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(`mittenos:icon_positions:${userId}`, JSON.stringify(positions));
+  }
 }
 
 export async function loadIconPositions(userId: string) {
-  if (isGuest(userId)) return {};
-  const supabase = createClient();
-  const { data } = await supabase
-    .from("user_settings")
-    .select("icon_positions")
-    .eq("user_id", userId)
-    .single();
-  return (data?.icon_positions ?? {}) as Record<string, WindowPosition>;
+  if (typeof window === 'undefined') return {};
+  const saved = localStorage.getItem(`mittenos:icon_positions:${userId}`);
+  if (saved) {
+    try {
+      return JSON.parse(saved) as Record<string, WindowPosition>;
+    } catch (e) {
+      console.error("Failed to parse icon positions:", e);
+    }
+  }
+  return {};
 }
+

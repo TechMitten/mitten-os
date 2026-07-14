@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useWindowStore } from '@/stores/window-store';
-import { createClient } from '@/lib/supabase/client';
+
 import {
   Wand2, Smartphone, Code2, Play, Loader2, History, Settings, Layout, Download,
   RefreshCw, Sparkles, ChevronRight, TerminalSquare, Plus, Edit2, Clock,
@@ -465,7 +465,6 @@ const buildMarqueeLoop = (value: string): string => {
 
 // --- Component ---
 export function OrionAppBuilder() {
-  const supabase = createClient();
   const user = useAuthStore(s => s.user);
 
   const [prompt, setPrompt] = useState('');
@@ -783,49 +782,32 @@ export function OrionAppBuilder() {
   const loadUserProjects = useCallback(async (): Promise<Project[]> => {
     try {
       if (!user) return [];
-      const { data, error: sbError } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('updated_at', { ascending: false });
-
-      if (sbError) throw sbError;
-
-      const projects: Project[] = (data || []).map((row: Record<string, unknown>) => ({
-        id: row.id as string,
-        name: (row.name as string) || 'Untitled App',
-        versions: ((row.data as Record<string, unknown>)?.versions as Version[]) || [],
-        currentVersionIndex: ((row.data as Record<string, unknown>)?.currentVersionIndex as number) ?? -1,
-        lastModified: row.updated_at ? new Date(row.updated_at as string) : undefined,
-      }));
-
+      const saved = localStorage.getItem(`orion:projects:${user.id}`);
+      const projects: Project[] = saved ? JSON.parse(saved) : [];
       setMyProjects(projects);
       return projects;
     } catch (err) {
       console.error("Error loading projects:", err);
       return [];
     }
-  }, [user, supabase]);
+  }, [user]);
 
   const loadProjectById = useCallback(async (projectId: string) => {
     try {
-      const { data, error: sbError } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('id', projectId)
-        .single();
+      if (!user) return;
+      const saved = localStorage.getItem(`orion:projects:${user.id}`);
+      const projects: Project[] = saved ? JSON.parse(saved) : [];
+      const project = projects.find(p => p.id === projectId);
 
-      if (sbError || !data) {
+      if (!project) {
         localStorage.removeItem('orion-current-project-id');
         return;
       }
 
       clearStreamingState();
-      const row = data as Record<string, unknown>;
-      setProjectName((row.name as string) || 'Untitled App');
-      const projectData = (row.data as Record<string, unknown>) || {};
-      const vs = (projectData.versions as Version[]) || [];
-      const idx = (projectData.currentVersionIndex as number) ?? -1;
+      setProjectName(project.name || 'Untitled App');
+      const vs = project.versions || [];
+      const idx = project.currentVersionIndex ?? -1;
       setVersions(vs);
       setCurrentVersionIndex(idx);
       if (vs && vs[idx]) {
@@ -836,7 +818,7 @@ export function OrionAppBuilder() {
     } catch (err) {
       console.error("Error loading project by ID:", err);
     }
-  }, [supabase, clearStreamingState]);
+  }, [user, clearStreamingState]);
 
   const saveProject = useCallback(async (params: {
     versionsToSave?: Version[];
@@ -857,14 +839,26 @@ export function OrionAppBuilder() {
     const projectId = idToSave || currentProjectId || Date.now().toString();
 
     try {
-      const projectData = { versions: versionsToSave, currentVersionIndex: indexToSave };
-      await supabase.from('projects').upsert({
+      const key = `orion:projects:${user.id}`;
+      const saved = localStorage.getItem(key);
+      let projects: Project[] = saved ? JSON.parse(saved) : [];
+
+      const projectIndex = projects.findIndex(p => p.id === projectId);
+      const updatedProject: Project = {
         id: projectId,
-        user_id: user.id,
         name: nameToSave,
-        data: projectData,
-        updated_at: new Date().toISOString(),
-      });
+        versions: versionsToSave,
+        currentVersionIndex: indexToSave,
+        lastModified: new Date()
+      };
+
+      if (projectIndex >= 0) {
+        projects[projectIndex] = updatedProject;
+      } else {
+        projects.unshift(updatedProject);
+      }
+
+      localStorage.setItem(key, JSON.stringify(projects));
 
       if (!currentProjectId || currentProjectId !== projectId) {
         setCurrentProjectId(projectId);
@@ -874,7 +868,7 @@ export function OrionAppBuilder() {
     } catch (err) {
       console.error("Error saving project:", err);
     }
-  }, [versions, currentVersionIndex, projectName, currentProjectId, user, supabase, loadUserProjects]);
+  }, [versions, currentVersionIndex, projectName, currentProjectId, user, loadUserProjects]);
 
   // Auto-save name changes
   useEffect(() => {
@@ -1142,7 +1136,17 @@ export function OrionAppBuilder() {
 
     setRenamingProjectId(project.id);
     try {
-      await supabase.from('projects').update({ name: trimmedName, updated_at: new Date().toISOString() }).eq('id', project.id);
+      if (user) {
+        const key = `orion:projects:${user.id}`;
+        const saved = localStorage.getItem(key);
+        let projects: Project[] = saved ? JSON.parse(saved) : [];
+        const projectIndex = projects.findIndex(p => p.id === project.id);
+        if (projectIndex >= 0) {
+          projects[projectIndex].name = trimmedName;
+          projects[projectIndex].lastModified = new Date();
+          localStorage.setItem(key, JSON.stringify(projects));
+        }
+      }
       setMyProjects(prev => prev.map(p => p.id === project.id ? { ...p, name: trimmedName } : p));
       if (currentProjectId === project.id) setProjectName(trimmedName);
       cancelProjectRename();
@@ -1158,7 +1162,13 @@ export function OrionAppBuilder() {
     const projectId = projectToDelete.id;
     setDeletingProjectId(projectId);
     try {
-      await supabase.from('projects').delete().eq('id', projectId);
+      if (user) {
+        const key = `orion:projects:${user.id}`;
+        const saved = localStorage.getItem(key);
+        let projects: Project[] = saved ? JSON.parse(saved) : [];
+        projects = projects.filter(p => p.id !== projectId);
+        localStorage.setItem(key, JSON.stringify(projects));
+      }
       setMyProjects(prev => prev.filter(project => project.id !== projectId));
       if (editingProjectId === projectId) cancelProjectRename();
       if (currentProjectId === projectId) resetCurrentWorkspace();

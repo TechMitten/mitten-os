@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { createClient } from '@/lib/supabase/client';
 
 const getActiveProviderDetails = () => {
   if (typeof window === 'undefined') return { provider: 'mittenai', apiKey: '', model: '', baseUrl: '' };
@@ -67,8 +66,46 @@ function generateId(): string {
   return crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 }
 
-let guestSessions: CodingSession[] = [];
-let guestMessages: Record<string, CodingMessage[]> = {};
+function getSavedSessions(userId: string): CodingSession[] {
+  if (typeof window === 'undefined') return [];
+  const saved = localStorage.getItem(`mittenos:chat_sessions:${userId}`);
+  if (saved) {
+    try {
+      return JSON.parse(saved);
+    } catch (e) {
+      console.error("Failed to parse sessions:", e);
+    }
+  }
+  return [];
+}
+
+function saveSessions(userId: string, sessions: CodingSession[]) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(`mittenos:chat_sessions:${userId}`, JSON.stringify(sessions));
+}
+
+function getSavedMessages(userId: string, sessionId: string): CodingMessage[] {
+  if (typeof window === 'undefined') return [];
+  const saved = localStorage.getItem(`mittenos:chat_messages:${userId}:${sessionId}`);
+  if (saved) {
+    try {
+      return JSON.parse(saved);
+    } catch (e) {
+      console.error("Failed to parse messages:", e);
+    }
+  }
+  return [];
+}
+
+function saveMessages(userId: string, sessionId: string, messages: CodingMessage[]) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(`mittenos:chat_messages:${userId}:${sessionId}`, JSON.stringify(messages));
+}
+
+function deleteMessages(userId: string, sessionId: string) {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(`mittenos:chat_messages:${userId}:${sessionId}`);
+}
 
 export const useCodingAssistantStore = create<CodingAssistantState>((set, get) => ({
   sessions: [],
@@ -83,30 +120,11 @@ export const useCodingAssistantStore = create<CodingAssistantState>((set, get) =
   clearError: () => set({ error: null }),
 
   loadSessions: async (userId: string) => {
-    const isGuest = userId.startsWith('guest-');
-    if (isGuest) {
-      set({ sessions: guestSessions, loaded: true });
-      return;
-    }
-
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from('code_chat_sessions')
-      .select('*')
-      .eq('user_id', userId)
-      .order('updated_at', { ascending: false });
-
-    if (error) {
-      console.error('Failed to load sessions:', error);
-      set({ loaded: true });
-      return;
-    }
-
-    set({ sessions: data as CodingSession[], loaded: true });
+    const sessions = getSavedSessions(userId);
+    set({ sessions, loaded: true });
   },
 
   createSession: async (userId: string) => {
-    const isGuest = userId.startsWith('guest-');
     const id = generateId();
     const now = new Date().toISOString();
     const session: CodingSession = {
@@ -116,115 +134,45 @@ export const useCodingAssistantStore = create<CodingAssistantState>((set, get) =
       updated_at: now,
     };
 
-    if (isGuest) {
-      guestSessions = [session, ...guestSessions];
-      guestMessages[id] = [];
-      set({ sessions: guestSessions, activeSessionId: id, messages: [] });
-      return id;
-    }
+    const sessions = [session, ...get().sessions];
+    saveSessions(userId, sessions);
+    saveMessages(userId, id, []);
 
-    const supabase = createClient();
-    const { error } = await supabase
-      .from('code_chat_sessions')
-      .insert({ id, user_id: userId, title: 'New Chat' });
-
-    if (error) {
-      console.error('Failed to create session:', error);
-    }
-
-    set((state) => ({
-      sessions: [session, ...state.sessions],
-      activeSessionId: id,
-      messages: [],
-    }));
+    set({ sessions, activeSessionId: id, messages: [] });
     return id;
   },
 
   deleteSession: async (userId: string, sessionId: string) => {
-    const isGuest = userId.startsWith('guest-');
-    if (isGuest) {
-      guestSessions = guestSessions.filter((s) => s.id !== sessionId);
-      delete guestMessages[sessionId];
-      const { activeSessionId } = get();
-      if (activeSessionId === sessionId) {
-        const next = guestSessions[0];
-        set({
-          sessions: guestSessions,
-          activeSessionId: next?.id ?? null,
-          messages: next ? (guestMessages[next.id] ?? []) : [],
-        });
-      } else {
-        set({ sessions: guestSessions });
-      }
-      return;
-    }
+    const sessions = get().sessions.filter((s) => s.id !== sessionId);
+    saveSessions(userId, sessions);
+    deleteMessages(userId, sessionId);
 
-    const supabase = createClient();
-    const { error } = await supabase.from('code_chat_sessions').delete().eq('id', sessionId);
-    if (error) console.error('Failed to delete session:', error);
+    const { activeSessionId } = get();
+    const activeId = activeSessionId === sessionId
+      ? (sessions[0]?.id ?? null)
+      : activeSessionId;
 
-    set((state) => {
-      const sessions = state.sessions.filter((s) => s.id !== sessionId);
-      const activeSessionId = state.activeSessionId === sessionId
-        ? (sessions[0]?.id ?? null)
-        : state.activeSessionId;
-      return { sessions, activeSessionId, messages: activeSessionId ? state.messages : [] };
-    });
+    const messages = activeId ? getSavedMessages(userId, activeId) : [];
+    set({ sessions, activeSessionId: activeId, messages });
   },
 
   renameSession: async (userId: string, sessionId: string, title: string) => {
-    const isGuest = userId.startsWith('guest-');
-    if (isGuest) {
-      guestSessions = guestSessions.map((s) =>
-        s.id === sessionId ? { ...s, title, updated_at: new Date().toISOString() } : s
-      );
-      set({ sessions: guestSessions });
-      return;
-    }
-
-    const supabase = createClient();
-    const { error: updateError } = await supabase
-      .from('code_chat_sessions')
-      .update({ title, updated_at: new Date().toISOString() })
-      .eq('id', sessionId);
-    if (updateError) console.error('Failed to rename session:', updateError);
-
-    set((state) => ({
-      sessions: state.sessions.map((s) =>
-        s.id === sessionId ? { ...s, title, updated_at: new Date().toISOString() } : s
-      ),
-    }));
+    const sessions = get().sessions.map((s) =>
+      s.id === sessionId ? { ...s, title, updated_at: new Date().toISOString() } : s
+    );
+    saveSessions(userId, sessions);
+    set({ sessions });
   },
 
   selectSession: async (userId: string, sessionId: string) => {
-    const isGuest = userId.startsWith('guest-');
-    if (isGuest) {
-      const messages = guestMessages[sessionId] ?? [];
-      set({ activeSessionId: sessionId, messages });
-      return;
-    }
-
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from('code_chat_messages')
-      .select('*')
-      .eq('session_id', sessionId)
-      .order('created_at', { ascending: true });
-
-    if (error) {
-      console.error('Failed to load messages:', error);
-      set({ activeSessionId: sessionId, messages: [] });
-      return;
-    }
-
-    set({ activeSessionId: sessionId, messages: (data as CodingMessage[]) ?? [] });
+    const messages = getSavedMessages(userId, sessionId);
+    set({ activeSessionId: sessionId, messages });
   },
 
   sendMessage: async (userId: string, content: string) => {
     const { activeSessionId, messages } = get();
     if (!activeSessionId) return;
 
-    const isGuest = userId.startsWith('guest-');
     const userMessage: CodingMessage = {
       id: Date.now(),
       session_id: activeSessionId,
@@ -234,18 +182,8 @@ export const useCodingAssistantStore = create<CodingAssistantState>((set, get) =
     };
 
     const updatedMessages = [...messages, userMessage];
+    saveMessages(userId, activeSessionId, updatedMessages);
     set({ messages: updatedMessages, isStreaming: true, streamingContent: '', error: null });
-
-    if (!isGuest) {
-      const supabase = createClient();
-      const { error: insertError } = await supabase
-        .from('code_chat_messages')
-        .insert({ session_id: activeSessionId, role: 'user', content });
-      if (insertError) console.error('Failed to save user message:', insertError);
-    } else {
-      if (!guestMessages[activeSessionId]) guestMessages[activeSessionId] = [];
-      guestMessages[activeSessionId].push(userMessage);
-    }
 
     const isFirstMessage = messages.length === 0;
 
@@ -312,23 +250,15 @@ export const useCodingAssistantStore = create<CodingAssistantState>((set, get) =
         };
 
         const finalMessages = [...get().messages, assistantMessage];
-        set({ messages: finalMessages, isStreaming: false, streamingContent: '' });
+        saveMessages(userId, activeSessionId, finalMessages);
 
-        if (!isGuest) {
-          const supabase = createClient();
-          const { error: insertError } = await supabase
-            .from('code_chat_messages')
-            .insert({ session_id: activeSessionId, role: 'assistant', content: fullContent });
-          if (insertError) console.error('Failed to save assistant message:', insertError);
+        // Update the updated_at timestamp in the session
+        const sessions = get().sessions.map((s) =>
+          s.id === activeSessionId ? { ...s, updated_at: new Date().toISOString() } : s
+        );
+        saveSessions(userId, sessions);
 
-          const { error: touchError } = await supabase
-            .from('code_chat_sessions')
-            .update({ updated_at: new Date().toISOString() })
-            .eq('id', activeSessionId);
-          if (touchError) console.error('Failed to touch session:', touchError);
-        } else {
-          guestMessages[activeSessionId].push(assistantMessage);
-        }
+        set({ sessions, messages: finalMessages, isStreaming: false, streamingContent: '' });
 
         if (isFirstMessage) {
           let generatedTitle: string | null = null;
@@ -368,3 +298,4 @@ export const useCodingAssistantStore = create<CodingAssistantState>((set, get) =
     }
   },
 }));
+

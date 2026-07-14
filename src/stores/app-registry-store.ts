@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { APP_REGISTRY, type AppDefinition, type UserAppDefinition, type UserAppRow, type AppCategory } from '@/types/os';
-import { createClient } from '@/lib/supabase/client';
 
 interface AppRegistryStore {
   userApps: UserAppDefinition[];
@@ -34,21 +33,20 @@ export const useAppRegistryStore = create<AppRegistryStore>((set, get) => ({
   loaded: false,
 
   loadApprovedApps: async () => {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from('user_apps')
-      .select('*')
-      .eq('status', 'approved')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Failed to load approved apps:', error.message);
-      set({ loaded: true });
-      return;
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('mittenos:user_apps');
+      if (saved) {
+        try {
+          const rows = JSON.parse(saved) as UserAppRow[];
+          const userAppDefs = rows.map(toUserAppDef);
+          set({ userApps: userAppDefs, loaded: true });
+          return;
+        } catch (e) {
+          console.error('Failed to load user apps from local storage:', e);
+        }
+      }
     }
-
-    const userAppDefs = ((data || []) as UserAppRow[]).map(toUserAppDef);
-    set({ userApps: userAppDefs, loaded: true });
+    set({ userApps: [], loaded: true });
   },
 
   getUserApp: (id: string) => {
@@ -65,3 +63,4 @@ export const useAppRegistryStore = create<AppRegistryStore>((set, get) => ({
     set({ userApps: [], loaded: false });
   },
 }));
+
