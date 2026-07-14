@@ -209,7 +209,7 @@ export const APP_REGISTRY: Record<string, Omit<AppDefinition, "component">> = {
     icon: "Info",
     description: "System information",
     category: "system",
-    defaultWindowSize: { width: 450, height: 400 },
+    defaultWindowSize: { width: 450, height: 592 },
     minWindowSize: { width: 350, height: 350 },
     singleton: true,
   },

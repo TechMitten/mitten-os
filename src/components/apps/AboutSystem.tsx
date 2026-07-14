@@ -38,7 +38,7 @@ export default function AboutSystem() {
   const cores = mounted ? (navigator.hardwareConcurrency?.toString() || 'N/A') : 'Loading...';
 
   return (
-    <div className="bg-card dark:bg-zinc-900 text-card-foreground h-full overflow-y-auto select-none flex flex-col items-center">
+    <div className="bg-card dark:bg-zinc-900 text-card-foreground h-full overflow-y-auto about-scrollbar select-none flex flex-col items-center">
       {/* Logo area */}
       <div className="pt-8 pb-6 flex flex-col items-center">
         <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg mb-4">
