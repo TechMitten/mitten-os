@@ -11,7 +11,7 @@ npm run start      # production server (uses bun)
 npm run build:cf   # build via OpenNext for Cloudflare (.open-next/)
 npm run preview    # build:cf + wrangler dev (local Workers runtime preview)
 npm run deploy     # build:cf + wrangler deploy (deploys to Cloudflare)
-npm run cf-typegen # regenerate cloudflare-env.d.ts from wrangler.jsonc bindings
+npm run cf-typegen # regenerate cloudflare-env.d.ts from wrangler.jsonc bindings 
 ```
 
 There are no typecheck or test scripts. `next.config.ts` sets `ignoreBuildErrors: true` and `reactStrictMode: false`. The ESLint config disables nearly all rules — `npm run lint` is a soft check.
