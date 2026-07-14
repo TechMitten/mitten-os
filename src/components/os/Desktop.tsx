@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useDesktopStore, type ContextMenuItem, loadWindowStates, saveWindowStates, saveIconPositions, loadIconPositions as fetchIconPositions } from '@/stores/desktop-store';
+import { useDesktopStore, type ContextMenuItem, loadWindowStates, saveWindowStates, saveIconPositions } from '@/stores/desktop-store';
 import { useWindowStore } from '@/stores/window-store';
 import { useFileSystemStore } from '@/stores/filesystem-store';
 import { useAuthStore, isGuestUser } from '@/stores/auth-store';
@@ -60,7 +60,6 @@ export function Desktop() {
   const persistWindows = useDesktopStore((s) => s.persistWindows);
   const setWelcomeDismissed = useDesktopStore((s) => s.setWelcomeDismissed);
   const updateIconPosition = useDesktopStore((s) => s.updateIconPosition);
-  const loadIconPositions = useDesktopStore((s) => s.loadIconPositions);
   const renameDesktopIcon = useDesktopStore((s) => s.renameDesktopIcon);
   const deleteDesktopIcon = useDesktopStore((s) => s.deleteDesktopIcon);
   const customDesktopIcons = useDesktopStore((s) => s.customDesktopIcons);

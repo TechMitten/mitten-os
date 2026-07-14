@@ -121,14 +121,10 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
             loading: false,
           });
 
-          // Sync desktop store settings & icon positions
+          // Sync desktop store state
           try {
-            const { useDesktopStore, loadIconPositions } = await import("./desktop-store");
+            const { useDesktopStore } = await import("./desktop-store");
             await useDesktopStore.getState().loadSettings(userId);
-            const savedIconPositions = await loadIconPositions(userId);
-            if (savedIconPositions && Object.keys(savedIconPositions).length > 0) {
-              useDesktopStore.getState().loadIconPositions(savedIconPositions);
-            }
           } catch (e) {
             console.error("[FSStore] Failed to sync desktop settings on Google Drive load:", e);
           }
@@ -155,14 +151,10 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
             loading: false,
           });
 
-          // Sync desktop store settings & icon positions
+          // Sync desktop store state
           try {
-            const { useDesktopStore, loadIconPositions } = await import("./desktop-store");
+            const { useDesktopStore } = await import("./desktop-store");
             await useDesktopStore.getState().loadSettings(userId);
-            const savedIconPositions = await loadIconPositions(userId);
-            if (savedIconPositions && Object.keys(savedIconPositions).length > 0) {
-              useDesktopStore.getState().loadIconPositions(savedIconPositions);
-            }
           } catch (e) {
             console.error("[FSStore] Failed to sync desktop settings on local fallback load:", e);
           }
@@ -186,12 +178,8 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
     });
 
     try {
-      const { useDesktopStore, loadIconPositions } = await import("./desktop-store");
+      const { useDesktopStore } = await import("./desktop-store");
       await useDesktopStore.getState().loadSettings(userId);
-      const savedIconPositions = await loadIconPositions(userId);
-      if (savedIconPositions && Object.keys(savedIconPositions).length > 0) {
-        useDesktopStore.getState().loadIconPositions(savedIconPositions);
-      }
     } catch (e) {
       console.error("[FSStore] Failed to sync desktop settings on default load:", e);
     }
