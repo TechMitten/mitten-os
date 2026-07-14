@@ -45,17 +45,7 @@ npm install
 ```
 
 ### 3. Environment Setup
-Create a `.env.local` file in the root directory and configure your AI model keys (required for the Orion App Builder):
-
-```ini
-# DeepSeek configuration (optional)
-DEEPSEEK_API_KEY=your_deepseek_api_key_here
-DEEPSEEK_MODEL=deepseek-v4-pro
-
-# Z.ai configuration (optional)
-ZAI_API_KEY=your_zai_api_key_here
-ZAI_MODEL=glm-5.1
-```
+Create a `.env.local` file in the root directory and configure the required environment variables.
 
 ### 4. Run the Development Server
 ```bash
