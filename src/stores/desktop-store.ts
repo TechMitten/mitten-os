@@ -94,8 +94,13 @@ async function writeVFSFile(path: string, content: string, mimeType = 'applicati
     if (node) {
       await fsStore.updateFileContent(node.id, content);
     } else {
-      const name = path.substring(path.lastIndexOf('/') + 1);
-      await fsStore.createFile('root', name, content, mimeType);
+      const lastSlash = path.lastIndexOf('/');
+      const parentPath = path.substring(0, lastSlash) || "/";
+      const name = path.substring(lastSlash + 1);
+      
+      const parentNode = fsStore.getNode(parentPath);
+      const parentId = parentNode ? parentNode.id : 'root';
+      await fsStore.createFile(parentId, name, content, mimeType);
     }
   } catch (e) {
     console.error(`Failed to write file to VFS: ${path}`, e);
@@ -132,13 +137,13 @@ async function persistDesktopState(userId: string | null, state: DesktopStore, i
     const { useFileSystemStore } = await import("./filesystem-store");
     const fsStore = useFileSystemStore.getState();
     if (fsStore.loaded) {
-      const currentVFSNode = fsStore.getNode("/.desktop_state.json");
+      const currentVFSNode = fsStore.getNode("/.system/desktop_state.json");
       let lastSavedContent = null;
       if (currentVFSNode) {
         lastSavedContent = currentVFSNode.content || await fsStore.fetchFileContentIfNeeded(currentVFSNode.id);
       }
       if (lastSavedContent !== content) {
-        await writeVFSFile("/.desktop_state.json", content);
+        await writeVFSFile("/.system/desktop_state.json", content);
       }
     }
   } catch (e) {
@@ -171,12 +176,21 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     let desktopState: any = {};
     if (typeof window !== 'undefined') {
       let vfsStateStr = null;
+      let oldNode = null;
       try {
         const { useFileSystemStore } = await import("./filesystem-store");
         const fsStore = useFileSystemStore.getState();
-        const node = fsStore.getNode("/.desktop_state.json");
+        
+        // 1. Try reading from the new path first
+        let node = fsStore.getNode("/.system/desktop_state.json");
         if (node) {
           vfsStateStr = await fsStore.fetchFileContentIfNeeded(node.id);
+        } else {
+          // 2. Migration: Try reading from the old path if new path doesn't exist
+          oldNode = fsStore.getNode("/.desktop_state.json");
+          if (oldNode) {
+            vfsStateStr = await fsStore.fetchFileContentIfNeeded(oldNode.id);
+          }
         }
       } catch (e) {
         console.error("Failed to read desktop state from VFS:", e);
@@ -186,6 +200,17 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
         try {
           desktopState = JSON.parse(vfsStateStr);
           console.log("[DesktopStore] Loaded desktop state from VFS:", desktopState);
+
+          // If we loaded from the old node, write it to the new path and delete the old file
+          if (oldNode) {
+            const { useFileSystemStore } = await import("./filesystem-store");
+            const fsStore = useFileSystemStore.getState();
+            if (fsStore.loaded) {
+              console.log("[DesktopStore] Migrating desktop state from /.desktop_state.json to /.system/desktop_state.json...");
+              await writeVFSFile("/.system/desktop_state.json", vfsStateStr);
+              await fsStore.deleteNode(oldNode.id);
+            }
+          }
         } catch (e) {
           console.error("Failed to parse VFS desktop state:", e);
         }
@@ -211,7 +236,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
         const { useFileSystemStore } = await import("./filesystem-store");
         const fsStore = useFileSystemStore.getState();
         if (fsStore.loaded) {
-          await writeVFSFile("/.desktop_state.json", JSON.stringify(desktopState));
+          await writeVFSFile("/.system/desktop_state.json", JSON.stringify(desktopState));
         }
       }
     }
@@ -488,7 +513,7 @@ export async function loadIconPositions(userId: string) {
   try {
     const { useFileSystemStore } = await import("./filesystem-store");
     const fsStore = useFileSystemStore.getState();
-    const node = fsStore.getNode("/.desktop_state.json");
+    const node = fsStore.getNode("/.system/desktop_state.json");
     if (node) {
       const content = await fsStore.fetchFileContentIfNeeded(node.id);
       if (content) {

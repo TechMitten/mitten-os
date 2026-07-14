@@ -56,7 +56,7 @@ function persistFS(userId: string | null, root: FSNode) {
 }
 
 function ensureLocalSystemFolders(root: FSNode): FSNode {
-  const folders = ['Desktop', 'Documents', 'Pictures', 'Music', 'Downloads'];
+  const folders = ['Desktop', 'Documents', 'Pictures', 'Music', 'Downloads', '.system'];
   if (!root.children) root.children = [];
   
   for (const name of folders) {
@@ -99,7 +99,7 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
           let root = await gdriveVFS.loadRoot();
           
           // Ensure system folders exist in Google Drive
-          const systemFolders = ['Desktop', 'Documents', 'Pictures', 'Music', 'Downloads'];
+          const systemFolders = ['Desktop', 'Documents', 'Pictures', 'Music', 'Downloads', '.system'];
           
           for (const name of systemFolders) {
             const exists = root.children?.some(
