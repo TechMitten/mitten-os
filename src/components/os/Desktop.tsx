@@ -173,23 +173,17 @@ export function Desktop() {
 
     let cancelled = false;
     (async () => {
+      // 1. Load filesystem (which also loads settings and icon positions) and approved apps first
       await Promise.all([
-        loadSettings(user.id),
         loadFromDB(user.id),
         loadApprovedApps(),
       ]);
       if (cancelled) return;
 
       // Restore window states (if enabled)
+      const { persistWindows } = useDesktopStore.getState();
       const savedWindows = persistWindows ? await loadWindowStates(user.id) : [];
       if (cancelled) return;
-
-      // Restore icon positions
-      const savedIconPositions = await fetchIconPositions(user.id);
-      if (cancelled) return;
-      if (savedIconPositions && Object.keys(savedIconPositions).length > 0) {
-        loadIconPositions(savedIconPositions);
-      }
 
       // Reopen windows that were non-minimized
       const { openWindow } = useWindowStore.getState();
@@ -213,7 +207,7 @@ export function Desktop() {
     })();
 
     return () => { cancelled = true; };
-  }, [user?.id, dataLoaded, loadSettings, loadFromDB, loadApprovedApps]);
+  }, [user?.id, dataLoaded, loadFromDB, loadApprovedApps]);
 
   // Save window states and icon positions periodically
   const windowsRef = useRef(windows);

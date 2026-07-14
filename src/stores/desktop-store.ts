@@ -86,7 +86,23 @@ function getSettingsJson(state: DesktopStore) {
   };
 }
 
-function persistSettings(userId: string | null, state: DesktopStore) {
+async function writeVFSFile(path: string, content: string, mimeType = 'application/json') {
+  try {
+    const { useFileSystemStore } = await import("./filesystem-store");
+    const fsStore = useFileSystemStore.getState();
+    const node = fsStore.getNode(path);
+    if (node) {
+      await fsStore.updateFileContent(node.id, content);
+    } else {
+      const name = path.substring(path.lastIndexOf('/') + 1);
+      await fsStore.createFile('root', name, content, mimeType);
+    }
+  } catch (e) {
+    console.error(`Failed to write file to VFS: ${path}`, e);
+  }
+}
+
+async function persistSettings(userId: string | null, state: DesktopStore) {
   if (!userId || typeof window === 'undefined') return;
   const settings = {
     theme: state.theme,
@@ -98,7 +114,25 @@ function persistSettings(userId: string | null, state: DesktopStore) {
     renamedIconLabels: state.renamedIconLabels || {},
     customDesktopIcons: state.customDesktopIcons || [],
   };
-  localStorage.setItem(`mittenos:settings:${userId}`, JSON.stringify(settings));
+  const content = JSON.stringify(settings);
+  localStorage.setItem(`mittenos:settings:${userId}`, content);
+
+  try {
+    const { useFileSystemStore } = await import("./filesystem-store");
+    const fsStore = useFileSystemStore.getState();
+    if (fsStore.loaded) {
+      const currentVFSNode = fsStore.getNode("/.desktop_settings.json");
+      let lastSavedContent = null;
+      if (currentVFSNode) {
+        lastSavedContent = currentVFSNode.content || await fsStore.fetchFileContentIfNeeded(currentVFSNode.id);
+      }
+      if (lastSavedContent !== content) {
+        await writeVFSFile("/.desktop_settings.json", content);
+      }
+    }
+  } catch (e) {
+    console.error("Failed to persist settings to VFS:", e);
+  }
 }
 
 export const useDesktopStore = create<DesktopStore>((set, get) => ({
@@ -121,12 +155,43 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   loadSettings: async (userId: string) => {
     let settings: any = {};
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`mittenos:settings:${userId}`);
-      if (saved) {
+      let vfsSettingsStr = null;
+      try {
+        const { useFileSystemStore } = await import("./filesystem-store");
+        const fsStore = useFileSystemStore.getState();
+        const node = fsStore.getNode("/.desktop_settings.json");
+        if (node) {
+          vfsSettingsStr = await fsStore.fetchFileContentIfNeeded(node.id);
+        }
+      } catch (e) {
+        console.error("Failed to read settings from VFS:", e);
+      }
+
+      if (vfsSettingsStr) {
         try {
-          settings = JSON.parse(saved);
+          settings = JSON.parse(vfsSettingsStr);
+          console.log("[DesktopStore] Loaded settings from VFS:", settings);
         } catch (e) {
-          console.error("Failed to parse settings:", e);
+          console.error("Failed to parse VFS settings:", e);
+        }
+      }
+
+      // Fallback to localStorage if VFS settings were not found or couldn't be parsed
+      if (!vfsSettingsStr || Object.keys(settings).length === 0) {
+        const saved = localStorage.getItem(`mittenos:settings:${userId}`);
+        if (saved) {
+          try {
+            settings = JSON.parse(saved);
+            console.log("[DesktopStore] Loaded settings from localStorage fallback:", settings);
+            // Write it to VFS so it is persisted in the cloud
+            const { useFileSystemStore } = await import("./filesystem-store");
+            const fsStore = useFileSystemStore.getState();
+            if (fsStore.loaded) {
+              await writeVFSFile("/.desktop_settings.json", saved);
+            }
+          } catch (e) {
+            console.error("Failed to parse settings from localStorage:", e);
+          }
         }
       }
     }
@@ -385,21 +450,69 @@ export async function saveIconPositions(userId: string, icons: DesktopIcon[]) {
   for (const icon of icons) {
     positions[icon.id] = icon.position;
   }
+  const content = JSON.stringify(positions);
+
   if (typeof window !== 'undefined') {
-    localStorage.setItem(`mittenos:icon_positions:${userId}`, JSON.stringify(positions));
+    localStorage.setItem(`mittenos:icon_positions:${userId}`, content);
+
+    try {
+      const { useFileSystemStore } = await import("./filesystem-store");
+      const fsStore = useFileSystemStore.getState();
+      if (fsStore.loaded) {
+        const currentVFSNode = fsStore.getNode("/.desktop_icon_positions.json");
+        let lastSavedContent = null;
+        if (currentVFSNode) {
+          lastSavedContent = currentVFSNode.content || await fsStore.fetchFileContentIfNeeded(currentVFSNode.id);
+        }
+        if (lastSavedContent !== content) {
+          await writeVFSFile("/.desktop_icon_positions.json", content);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to save icon positions to VFS:", e);
+    }
   }
 }
 
 export async function loadIconPositions(userId: string) {
   if (typeof window === 'undefined') return {};
-  const saved = localStorage.getItem(`mittenos:icon_positions:${userId}`);
-  if (saved) {
-    try {
-      return JSON.parse(saved) as Record<string, WindowPosition>;
-    } catch (e) {
-      console.error("Failed to parse icon positions:", e);
+
+  let positions: Record<string, WindowPosition> = {};
+  let loadedFromVFS = false;
+
+  try {
+    const { useFileSystemStore } = await import("./filesystem-store");
+    const fsStore = useFileSystemStore.getState();
+    const node = fsStore.getNode("/.desktop_icon_positions.json");
+    if (node) {
+      const content = await fsStore.fetchFileContentIfNeeded(node.id);
+      if (content) {
+        positions = JSON.parse(content);
+        loadedFromVFS = true;
+        console.log("[DesktopStore] Loaded icon positions from VFS:", positions);
+      }
+    }
+  } catch (e) {
+    console.error("Failed to load icon positions from VFS:", e);
+  }
+
+  if (!loadedFromVFS) {
+    const saved = localStorage.getItem(`mittenos:icon_positions:${userId}`);
+    if (saved) {
+      try {
+        positions = JSON.parse(saved) as Record<string, WindowPosition>;
+        console.log("[DesktopStore] Loaded icon positions from localStorage fallback:", positions);
+        const { useFileSystemStore } = await import("./filesystem-store");
+        const fsStore = useFileSystemStore.getState();
+        if (fsStore.loaded) {
+          await writeVFSFile("/.desktop_icon_positions.json", saved);
+        }
+      } catch (e) {
+        console.error("Failed to parse icon positions from localStorage:", e);
+      }
     }
   }
-  return {};
+
+  return positions;
 }
 

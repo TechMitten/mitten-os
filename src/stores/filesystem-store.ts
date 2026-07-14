@@ -120,6 +120,19 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
             loaded: true,
             loading: false,
           });
+
+          // Sync desktop store settings & icon positions
+          try {
+            const { useDesktopStore, loadIconPositions } = await import("./desktop-store");
+            await useDesktopStore.getState().loadSettings(userId);
+            const savedIconPositions = await loadIconPositions(userId);
+            if (savedIconPositions && Object.keys(savedIconPositions).length > 0) {
+              useDesktopStore.getState().loadIconPositions(savedIconPositions);
+            }
+          } catch (e) {
+            console.error("[FSStore] Failed to sync desktop settings on Google Drive load:", e);
+          }
+
           return;
         } catch (e) {
           console.error('[FSStore] Failed to load filesystem from Google Drive, falling back to local:', e);
@@ -141,6 +154,19 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
             loaded: true,
             loading: false,
           });
+
+          // Sync desktop store settings & icon positions
+          try {
+            const { useDesktopStore, loadIconPositions } = await import("./desktop-store");
+            await useDesktopStore.getState().loadSettings(userId);
+            const savedIconPositions = await loadIconPositions(userId);
+            if (savedIconPositions && Object.keys(savedIconPositions).length > 0) {
+              useDesktopStore.getState().loadIconPositions(savedIconPositions);
+            }
+          } catch (e) {
+            console.error("[FSStore] Failed to sync desktop settings on local fallback load:", e);
+          }
+
           return;
         } catch (e) {
           console.error("Failed to parse saved filesystem:", e);
@@ -158,6 +184,17 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
       loaded: true,
       loading: false,
     });
+
+    try {
+      const { useDesktopStore, loadIconPositions } = await import("./desktop-store");
+      await useDesktopStore.getState().loadSettings(userId);
+      const savedIconPositions = await loadIconPositions(userId);
+      if (savedIconPositions && Object.keys(savedIconPositions).length > 0) {
+        useDesktopStore.getState().loadIconPositions(savedIconPositions);
+      }
+    } catch (e) {
+      console.error("[FSStore] Failed to sync desktop settings on default load:", e);
+    }
   },
 
   getNode: (path: string) => {
@@ -394,7 +431,7 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
 
   getChildren: (parentId: string) => {
     const node = get().getNodeById(parentId);
-    return node?.children || [];
+    return (node?.children || []).filter((c) => !c.name.startsWith("."));
   },
 
   fetchFileContentIfNeeded: async (id: string) => {
