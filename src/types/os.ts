@@ -40,6 +40,8 @@ export interface AppDefinition {
   minWindowSize: WindowSize;
   singleton?: boolean;
   component: ReactNode;
+  /** Excluded from the desktop default icons and Start Menu app grid; still launchable (e.g. from Settings). */
+  hidden?: boolean;
 }
 
 export type AppCategory = "system" | "utilities" | "productivity" | "internet" | "media" | "development";
@@ -241,5 +243,6 @@ export const APP_REGISTRY: Record<string, Omit<AppDefinition, "component">> = {
     defaultWindowSize: { width: 500, height: 450 },
     minWindowSize: { width: 350, height: 300 },
     singleton: true,
+    hidden: true,
   },
 };

@@ -104,7 +104,7 @@ export function StartMenu() {
     };
   }, [startMenuOpen, setStartMenuOpen, appContextMenu]);
 
-  const builtInApps = Object.values(APP_REGISTRY);
+  const builtInApps = Object.values(APP_REGISTRY).filter((app) => !app.hidden);
   const allApps = [...builtInApps, ...userApps];
   const filteredApps = searchQuery
     ? allApps.filter((app) =>

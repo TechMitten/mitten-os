@@ -15,6 +15,7 @@ import {
   Box,
   LayoutPanelTop,
   Key,
+  Shield,
   Eye,
   EyeOff,
   Cloud,
@@ -32,7 +33,7 @@ const SIDEBAR_ITEMS: { id: Section; label: string; icon: React.ReactNode }[] = [
   { id: 'appearance', label: 'Appearance', icon: <Palette className="w-4 h-4" /> },
   { id: 'wallpaper', label: 'Wallpaper', icon: <ImageIcon className="w-4 h-4" /> },
   { id: 'display', label: 'Display', icon: <Monitor className="w-4 h-4" /> },
-  { id: 'ai-keys', label: 'AI API Keys', icon: <Key className="w-4 h-4" /> },
+  { id: 'ai-keys', label: 'Security', icon: <Shield className="w-4 h-4" /> },
   { id: 'about', label: 'About', icon: <Info className="w-4 h-4" /> },
 ];
 
@@ -77,6 +78,11 @@ const WALLPAPERS = [
     name: 'Midnight',
     gradient: 'linear-gradient(135deg, #232526, #414345)',
   },
+  {
+    id: 'wp-9',
+    name: 'Grunge',
+    image: '/grungewallpaper.png',
+  },
 ];
 
 const ACCENT_COLORS = [
@@ -91,8 +97,16 @@ const ACCENT_COLORS = [
 ];
 
 export default function SettingsApp() {
-  const [activeSection, setActiveSection] = useState<Section>('general');
+  const [activeSection, setActiveSection] = useState<Section>(
+    () => (useDesktopStore.getState().settingsInitialSection as Section) || 'general'
+  );
   const [selectedAccent, setSelectedAccent] = useState('Amber');
+
+  useEffect(() => {
+    if (useDesktopStore.getState().settingsInitialSection) {
+      useDesktopStore.getState().setSettingsInitialSection(null);
+    }
+  }, []);
   const iconSize = useDesktopStore((s) => s.iconSize) || 'medium';
   const setIconSize = useDesktopStore((s) => s.setIconSize);
 
@@ -289,16 +303,20 @@ function WallpaperSection({
       </p>
       <div className="grid grid-cols-3 gap-3">
         {WALLPAPERS.map((wp) => {
-          const isSelected =
-            wallpaper === wp.gradient;
+          const value = wp.image || wp.gradient!;
+          const isSelected = wallpaper === value;
           return (
             <button
               key={wp.id}
-              onClick={() => setWallpaper(wp.gradient)}
+              onClick={() => setWallpaper(value)}
               className={`h-24 rounded-lg cursor-pointer border-2 transition-all hover:border-white/30 ${
                 isSelected ? 'border-amber-500' : 'border-transparent'
               }`}
-              style={{ background: wp.gradient }}
+              style={
+                wp.image
+                  ? { backgroundImage: `url(${wp.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                  : { background: wp.gradient }
+              }
               title={wp.name}
             >
               <div className="flex items-end justify-center h-full pb-2">
@@ -475,7 +493,7 @@ function AiKeysSection() {
   return (
     <div className="space-y-6 max-w-xl">
       <div>
-        <h3 className="text-lg font-medium mb-1">AI API Keys</h3>
+        <h3 className="text-lg font-medium mb-1">Security</h3>
         <p className="text-xs text-muted-foreground">
           Centralized AI configurations.
         </p>

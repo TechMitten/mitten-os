@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { DesktopIcon, DESKTOP_GRID_CELL, DESKTOP_GRID_OFFSET_X, DESKTOP_GRID_OFFSET_Y, Notification, WindowPosition } from "@/types/os";
+import { APP_REGISTRY, DesktopIcon, DESKTOP_GRID_CELL, DESKTOP_GRID_OFFSET_X, DESKTOP_GRID_OFFSET_Y, Notification, WindowPosition } from "@/types/os";
 
 interface DesktopStore {
   wallpaper: string;
@@ -17,6 +17,7 @@ interface DesktopStore {
   iconSize: "small" | "medium" | "large";
   deletedIconIds: string[];
   renamedIconLabels: Record<string, string>;
+  settingsInitialSection: string | null;
 
   loadSettings: (userId: string) => Promise<void>;
   setWallpaper: (url: string) => void;
@@ -39,6 +40,7 @@ interface DesktopStore {
   deleteDesktopIcon: (id: string) => void;
   addDesktopIcon: (icon: Omit<DesktopIcon, "id" | "position">) => void;
   removeCustomDesktopIcon: (id: string) => void;
+  setSettingsInitialSection: (section: string | null) => void;
 }
 
 export interface ContextMenuState {
@@ -71,7 +73,6 @@ const defaultIcons: DesktopIcon[] = [
   { id: "icon-5", appId: "app-builder", label: "Orion", icon: "Code2", position: gridToPixel(0, 4) },
   { id: "icon-6", appId: "settings", label: "Settings", icon: "Settings", position: gridToPixel(0, 5) },
   { id: "icon-7", appId: "coding-assistant", label: "MittenAI", icon: "Bot", position: gridToPixel(0, 6) },
-  { id: "icon-8", appId: "keys", label: "Keys", icon: "KeyRound", position: gridToPixel(0, 7) },
 ];
 
 let notificationCounter = 0;
@@ -172,6 +173,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   iconSize: "medium",
   deletedIconIds: [],
   renamedIconLabels: {},
+  settingsInitialSection: null,
 
   loadSettings: async (userId: string) => {
     let desktopState: any = {};
@@ -287,6 +289,10 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     persistSettings(get().userId, get());
   },
 
+  setSettingsInitialSection: (section: string | null) => {
+    set({ settingsInitialSection: section });
+  },
+
   setTheme: (theme: "light" | "dark") => {
     const wallpaper =
       theme === "light"
@@ -394,11 +400,16 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
 
   renameDesktopIcon: (id: string, label: string) => {
     set((state) => {
+      const icon = state.desktopIcons.find((i) => i.id === id);
+      // Built-in apps have a hardcoded identity; only their desktop shortcut
+      // would change, but we still block it to avoid confusing rename UX.
+      if (icon && icon.appId in APP_REGISTRY) return state;
+
       const renamedIconLabels = { ...state.renamedIconLabels, [id]: label };
       const desktopIcons = state.desktopIcons.map((icon) =>
         icon.id === id ? { ...icon, label } : icon
       );
-      
+
       const nextState = { ...state, renamedIconLabels, desktopIcons };
       persistSettings(state.userId, nextState);
       return { renamedIconLabels, desktopIcons };

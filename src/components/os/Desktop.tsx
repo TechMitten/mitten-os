@@ -13,7 +13,7 @@ import Taskbar from '@/components/os/Taskbar';
 import WelcomeWindow from '@/components/os/WelcomeWindow';
 import { Loader2 } from 'lucide-react';
 import { isWallpaperDark } from '@/lib/utils';
-import { DESKTOP_GRID_OFFSET_X, DESKTOP_GRID_OFFSET_Y, DRAG_THRESHOLD, type WindowPosition } from '@/types/os';
+import { APP_REGISTRY, DESKTOP_GRID_OFFSET_X, DESKTOP_GRID_OFFSET_Y, DRAG_THRESHOLD, type WindowPosition } from '@/types/os';
 import {
   FileExplorer,
   Terminal,
@@ -329,7 +329,10 @@ export function Desktop() {
         {
           label: 'Change Wallpaper',
           icon: 'Palette',
-          action: () => { },
+          action: () => {
+            useDesktopStore.getState().setSettingsInitialSection('wallpaper');
+            openWindowFn('settings');
+          },
         },
         {
           label: 'Display Settings',
@@ -456,6 +459,9 @@ export function Desktop() {
       e.preventDefault();
       e.stopPropagation();
 
+      const icon = desktopIcons.find((i) => i.id === iconId);
+      const isBuiltInApp = !!icon && icon.appId in APP_REGISTRY;
+
       const items: ContextMenuItem[] = [
         {
           label: 'Open',
@@ -475,7 +481,9 @@ export function Desktop() {
         {
           label: 'Rename',
           icon: 'Edit2',
+          disabled: isBuiltInApp,
           action: () => {
+            if (isBuiltInApp) return;
             setRenamingIconId(iconId);
           },
         },

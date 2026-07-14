@@ -333,7 +333,7 @@ export default function KeysApp() {
         <div className="space-y-5 max-w-md mx-auto w-full">
           {/* Header */}
           <div className="flex items-center gap-4 pb-4 border-b border-border">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-md">
+            <div className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-md">
               <Key className="w-5 h-5 text-white" />
             </div>
             <div>
