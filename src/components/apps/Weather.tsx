@@ -624,10 +624,10 @@ export default function Weather() {
             </div>
           </div>
 
-          {/* 5-day forecast */}
+          {/* 8-day forecast */}
           <div className="px-4 pb-3">
             <div className="bg-black/10 dark:bg-white/10 rounded-xl p-3">
-              <div className="text-[10px] uppercase tracking-wider opacity-50 mb-2">5-Day Forecast</div>
+              <div className="text-[10px] uppercase tracking-wider opacity-50 mb-2">8-Day Forecast</div>
               <div className="space-y-3">
                 {(() => {
                   const allLows = data.daily.map(d => d.low);

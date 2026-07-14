@@ -199,7 +199,7 @@ export const APP_REGISTRY: Record<string, Omit<AppDefinition, "component">> = {
     icon: "CloudSun",
     description: "Check weather conditions",
     category: "utilities",
-    defaultWindowSize: { width: 400, height: 500 },
+    defaultWindowSize: { width: 600, height: 570 },
     minWindowSize: { width: 320, height: 400 },
     singleton: true,
   },

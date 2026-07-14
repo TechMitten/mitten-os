@@ -100,6 +100,46 @@ function getDescriptionFromWmo(code: number): string {
   }
 }
 
+async function writeVFSFile(path: string, content: string, mimeType = 'application/json') {
+  try {
+    const { useFileSystemStore } = await import("./filesystem-store");
+    const fsStore = useFileSystemStore.getState();
+    const node = fsStore.getNode(path);
+    if (node) {
+      await fsStore.updateFileContent(node.id, content);
+    } else {
+      const lastSlash = path.lastIndexOf('/');
+      const parentPath = path.substring(0, lastSlash) || "/";
+      const name = path.substring(lastSlash + 1);
+      
+      const parentNode = fsStore.getNode(parentPath);
+      const parentId = parentNode ? parentNode.id : 'root';
+      await fsStore.createFile(parentId, name, content, mimeType);
+    }
+  } catch (e) {
+    console.error(`Failed to write file to VFS: ${path}`, e);
+  }
+}
+
+async function saveSettingsToVFS(state: WeatherStore) {
+  try {
+    const { useFileSystemStore } = await import("./filesystem-store");
+    const fsStore = useFileSystemStore.getState();
+    if (!fsStore.loaded) return;
+
+    const settings = {
+      showInTaskbar: state.showInTaskbar,
+      refreshInterval: state.refreshInterval,
+      savedLoc: state.savedLoc,
+      tempUnit: state.tempUnit,
+      windVisibilityUnit: state.windVisibilityUnit,
+    };
+    await writeVFSFile("/.system/.settings", JSON.stringify(settings));
+  } catch (e) {
+    console.error("Failed to save weather settings to VFS:", e);
+  }
+}
+
 export const useWeatherStore = create<WeatherStore>((set, get) => ({
   initialized: false,
   showInTaskbar: false,
@@ -119,81 +159,185 @@ export const useWeatherStore = create<WeatherStore>((set, get) => ({
   initialize: () => {
     if (typeof window === 'undefined') return;
 
-    const showInTaskbar = localStorage.getItem('mittenOS_weather_showInTaskbar') === 'true';
-    const refreshInterval = Number(localStorage.getItem('mittenOS_weather_refreshInterval') || '30');
-
-    let loc = { name: 'San Francisco, CA', latitude: 37.7749, longitude: -122.4194 };
-    const storedLoc = localStorage.getItem('mittenOS_weather_location');
-    if (storedLoc) {
+    const loadFromVFS = async () => {
       try {
-        const parsed = JSON.parse(storedLoc);
-        if (parsed && parsed.name && typeof parsed.latitude === 'number') {
-          loc = parsed;
+        const { useFileSystemStore } = await import("./filesystem-store");
+        const fsStore = useFileSystemStore.getState();
+        
+        let node = fsStore.getNode("/.system/.settings");
+        let oldNode = null;
+        let content = null;
+        
+        if (node) {
+          content = await fsStore.fetchFileContentIfNeeded(node.id);
+        } else {
+          // Check for the older filename weather_settings.json for migration
+          oldNode = fsStore.getNode("/.system/weather_settings.json");
+          if (oldNode) {
+            content = await fsStore.fetchFileContentIfNeeded(oldNode.id);
+          }
+        }
+
+        if (content) {
+          const settings = JSON.parse(content);
+          set({
+            showInTaskbar: settings.showInTaskbar ?? false,
+            refreshInterval: settings.refreshInterval ?? 30,
+            savedLoc: settings.savedLoc || {
+              name: 'San Francisco, CA',
+              latitude: 37.7749,
+              longitude: -122.4194,
+            },
+            tempUnit: settings.tempUnit || 'celsius',
+            windVisibilityUnit: settings.windVisibilityUnit || 'metric',
+            initialized: true,
+          });
+
+          // Migrate to the new .settings path and delete the old one
+          if (oldNode) {
+            await writeVFSFile("/.system/.settings", content);
+            await fsStore.deleteNode(oldNode.id);
+          }
+          return;
         }
       } catch (e) {
-        console.error(e);
+        console.error("Failed to load weather settings from VFS:", e);
       }
-    }
 
-    let unit: 'celsius' | 'fahrenheit' = 'celsius';
-    const storedUnit = localStorage.getItem('mittenOS_weather_unit');
-    if (storedUnit === 'fahrenheit' || storedUnit === 'celsius') {
-      unit = storedUnit;
-    }
+      // Migration / Fallback from localStorage
+      const showInTaskbar = localStorage.getItem('mittenOS_weather_showInTaskbar') === 'true';
+      const refreshInterval = Number(localStorage.getItem('mittenOS_weather_refreshInterval') || '30');
 
-    let windVisibilityUnit: 'metric' | 'imperial' = 'metric';
-    const storedWindVisibilityUnit = localStorage.getItem('mittenOS_weather_windVisibilityUnit');
-    if (storedWindVisibilityUnit === 'imperial' || storedWindVisibilityUnit === 'metric') {
-      windVisibilityUnit = storedWindVisibilityUnit;
-    }
+      let loc = { name: 'San Francisco, CA', latitude: 37.7749, longitude: -122.4194 };
+      const storedLoc = localStorage.getItem('mittenOS_weather_location');
+      if (storedLoc) {
+        try {
+          const parsed = JSON.parse(storedLoc);
+          if (parsed && parsed.name && typeof parsed.latitude === 'number') {
+            loc = parsed;
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
 
-    set({
-      showInTaskbar,
-      refreshInterval,
-      savedLoc: loc,
-      tempUnit: unit,
-      windVisibilityUnit,
-      initialized: true,
+      let unit: 'celsius' | 'fahrenheit' = 'celsius';
+      const storedUnit = localStorage.getItem('mittenOS_weather_unit');
+      if (storedUnit === 'fahrenheit' || storedUnit === 'celsius') {
+        unit = storedUnit;
+      }
+
+      let windVisibilityUnit: 'metric' | 'imperial' = 'metric';
+      const storedWindVisibilityUnit = localStorage.getItem('mittenOS_weather_windVisibilityUnit');
+      if (storedWindVisibilityUnit === 'imperial' || storedWindVisibilityUnit === 'metric') {
+        windVisibilityUnit = storedWindVisibilityUnit;
+      }
+
+      set({
+        showInTaskbar,
+        refreshInterval,
+        savedLoc: loc,
+        tempUnit: unit,
+        windVisibilityUnit,
+        initialized: true,
+      });
+
+      // Write migrated settings to VFS
+      const settings = {
+        showInTaskbar,
+        refreshInterval,
+        savedLoc: loc,
+        tempUnit: unit,
+        windVisibilityUnit,
+      };
+      await writeVFSFile("/.system/.settings", JSON.stringify(settings));
+    };
+
+    // Load from localStorage first to initialize UI immediately (with fallback settings)
+    const initLocal = () => {
+      const showInTaskbar = localStorage.getItem('mittenOS_weather_showInTaskbar') === 'true';
+      const refreshInterval = Number(localStorage.getItem('mittenOS_weather_refreshInterval') || '30');
+
+      let loc = { name: 'San Francisco, CA', latitude: 37.7749, longitude: -122.4194 };
+      const storedLoc = localStorage.getItem('mittenOS_weather_location');
+      if (storedLoc) {
+        try {
+          const parsed = JSON.parse(storedLoc);
+          if (parsed && parsed.name && typeof parsed.latitude === 'number') {
+            loc = parsed;
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      let unit: 'celsius' | 'fahrenheit' = 'celsius';
+      const storedUnit = localStorage.getItem('mittenOS_weather_unit');
+      if (storedUnit === 'fahrenheit' || storedUnit === 'celsius') {
+        unit = storedUnit;
+      }
+
+      let windVisibilityUnit: 'metric' | 'imperial' = 'metric';
+      const storedWindVisibilityUnit = localStorage.getItem('mittenOS_weather_windVisibilityUnit');
+      if (storedWindVisibilityUnit === 'imperial' || storedWindVisibilityUnit === 'metric') {
+        windVisibilityUnit = storedWindVisibilityUnit;
+      }
+
+      set({
+        showInTaskbar,
+        refreshInterval,
+        savedLoc: loc,
+        tempUnit: unit,
+        windVisibilityUnit,
+        initialized: false, // remain uninitialized so weather poller doesn't trigger until VFS finishes sync
+      });
+    };
+
+    initLocal();
+
+    // Check VFS status
+    import("./filesystem-store").then(({ useFileSystemStore }) => {
+      const fsStore = useFileSystemStore.getState();
+      if (fsStore.loaded) {
+        loadFromVFS();
+      } else {
+        const unsubscribe = useFileSystemStore.subscribe((state) => {
+          if (state.loaded) {
+            loadFromVFS();
+            unsubscribe();
+          }
+        });
+      }
     });
   },
 
   setShowInTaskbar: (show: boolean) => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('mittenOS_weather_showInTaskbar', String(show));
-    }
     set({ showInTaskbar: show });
+    saveSettingsToVFS(get());
   },
 
   setRefreshInterval: (interval: number) => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('mittenOS_weather_refreshInterval', String(interval));
-    }
     set({ refreshInterval: interval });
+    saveSettingsToVFS(get());
   },
 
   setWeatherLocation: (name: string, lat: number, lon: number) => {
     const newLoc = { name, latitude: lat, longitude: lon };
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('mittenOS_weather_location', JSON.stringify(newLoc));
-    }
     set({ savedLoc: newLoc });
+    saveSettingsToVFS(get());
     get().fetchWeather(lat, lon, name, get().tempUnit);
   },
 
   setTempUnit: (unit: 'celsius' | 'fahrenheit') => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('mittenOS_weather_unit', unit);
-    }
     set({ tempUnit: unit });
+    saveSettingsToVFS(get());
     const { savedLoc } = get();
     get().fetchWeather(savedLoc.latitude, savedLoc.longitude, savedLoc.name, unit);
   },
 
   setWindVisibilityUnit: (unit: 'metric' | 'imperial') => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('mittenOS_weather_windVisibilityUnit', unit);
-    }
     set({ windVisibilityUnit: unit });
+    saveSettingsToVFS(get());
   },
 
   fetchWeather: async (
@@ -206,7 +350,7 @@ export const useWeatherStore = create<WeatherStore>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const unitParam = activeUnit === 'fahrenheit' ? '&temperature_unit=fahrenheit' : '';
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code,visibility,uv_index&daily=weather_code,temperature_2m_max,temperature_2m_min,uv_index_max${unitParam}&timezone=auto`;
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code,visibility,uv_index&daily=weather_code,temperature_2m_max,temperature_2m_min,uv_index_max${unitParam}&timezone=auto&forecast_days=10`;
       
       const res = await fetch(url);
       if (!res.ok) {
@@ -252,10 +396,10 @@ export const useWeatherStore = create<WeatherStore>((set, get) => ({
         }
       }
 
-      // Process daily (next 5 days, starting from tomorrow as index 1)
+      // Process daily (next 8 days, starting from tomorrow as index 1)
       const dailyForecasts = [];
       const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      for (let i = 1; i <= 5; i++) {
+      for (let i = 1; i <= 8; i++) {
         const idx = i;
         if (idx < daily.time.length) {
           const date = new Date(daily.time[idx] + 'T00:00:00');
