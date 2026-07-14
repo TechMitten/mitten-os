@@ -106,7 +106,7 @@ export default function KeysApp() {
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-md mb-3">
             <Key className="w-6 h-6 text-white" />
           </div>
-          <h1 className="text-lg font-semibold tracking-tight">AI API Keys</h1>
+          <h1 className="text-lg font-semibold tracking-tight">Keys</h1>
           <p className="text-xs text-muted-foreground mt-1">
             Centralize your OpenAI-compatible endpoint configurations for all OS apps.
           </p>
