@@ -351,6 +351,11 @@ export default function KeysApp() {
             </div>
           </div>
 
+          {/* Storage Info */}
+          <div className="p-3.5 rounded-xl border border-border bg-muted/20 text-[10px] text-muted-foreground/80 leading-relaxed font-sans">
+            <span className="font-semibold text-foreground">Storage Info:</span> All configuration profiles and API keys are stored strictly in your browser's local storage. They are never sent to our servers or synced to the Virtual File System (VFS), keeping your credentials private and secure on this device.
+          </div>
+
           {/* Form */}
           <div className="space-y-4">
             {/* Profile Name */}
