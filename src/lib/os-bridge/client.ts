@@ -49,6 +49,9 @@ const OS_BRIDGE_CLIENT_SCRIPT = `
     },
     apps: {
       open: function(appId) { send('apps.open', { appId: appId }); }
+    },
+    ai: {
+      chat: function(messages, options) { return send('ai.chat', { messages: messages, options: options }); }
     }
   };
 })();

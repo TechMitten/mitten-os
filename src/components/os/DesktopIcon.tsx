@@ -14,6 +14,7 @@ import {
   CloudSun,
   Info,
   Bot,
+  KeyRound,
   type LucideIcon,
 } from 'lucide-react';
 import { DESKTOP_GRID_CELL, DESKTOP_GRID_OFFSET_X, DESKTOP_GRID_OFFSET_Y, DRAG_THRESHOLD, type WindowPosition } from '@/types/os';
@@ -30,6 +31,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   CloudSun,
   Info,
   Bot,
+  KeyRound,
 };
 
 

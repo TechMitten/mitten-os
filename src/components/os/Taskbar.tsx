@@ -18,6 +18,7 @@ import {
   Info,
   User,
   Bot,
+  KeyRound,
   Cloud,
   CloudRain,
   Snowflake,
@@ -53,6 +54,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Bell,
   User,
   Bot,
+  KeyRound,
 };
 
 function Clock() {

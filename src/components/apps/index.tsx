@@ -13,3 +13,5 @@ export { default as AboutSystem } from './AboutSystem';
 export { OrionAppBuilder } from './OrionAppBuilder';
 export { SandboxedApp } from './SandboxedApp';
 export { CodingAssistant } from './CodingAssistant';
+export { default as Keys } from './Keys';
+

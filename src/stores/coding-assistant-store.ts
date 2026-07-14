@@ -1,31 +1,17 @@
 import { create } from 'zustand';
 
-const getActiveProviderDetails = () => {
-  if (typeof window === 'undefined') return { provider: 'mittenai', apiKey: '', model: '', baseUrl: '' };
-  const provider = localStorage.getItem('orion-api-provider') || 'mittenai';
-  let apiKey = '';
-  let model = '';
-  let baseUrl = '';
+const getLLMConfig = () => {
+  if (typeof window === 'undefined') return { apiKey: '', model: '', endpoint: '' };
+  const endpoint = localStorage.getItem('mittenOS_keys_endpoint') || '';
+  const apiKey = localStorage.getItem('mittenOS_keys_apikey') || '';
+  const model = localStorage.getItem('mittenOS_keys_model') || '';
+  return { apiKey, model, endpoint };
+};
 
-  if (provider === 'zai') {
-    apiKey = localStorage.getItem('mittenOS_zai_api_key') || '';
-    model = localStorage.getItem('mittenOS_zai_model') || '';
-  } else if (provider === 'gemini') {
-    apiKey = localStorage.getItem('mittenOS_gemini_api_key') || '';
-    model = localStorage.getItem('mittenOS_gemini_model') || '';
-  } else if (provider === 'openrouter') {
-    apiKey = localStorage.getItem('mittenOS_openrouter_api_key') || '';
-    model = localStorage.getItem('mittenOS_openrouter_model') || '';
-  } else if (provider === 'custom') {
-    apiKey = localStorage.getItem('mittenOS_custom_api_key') || '';
-    model = localStorage.getItem('mittenOS_custom_model') || '';
-    baseUrl = localStorage.getItem('mittenOS_custom_base_url') || '';
-  } else {
-    // mittenai / deepseek
-    apiKey = localStorage.getItem('mittenOS_coding_assistant_key') || '';
-    model = localStorage.getItem('mittenOS_coding_assistant_model') || '';
-  }
-  return { provider, apiKey, model, baseUrl };
+const getCleanedUrl = (endpoint: string) => {
+  const url = endpoint.trim();
+  if (!url) return '';
+  return url.endsWith('/chat/completions') ? url : `${url.replace(/\/$/, '')}/chat/completions`;
 };
 
 export interface CodingSession {
@@ -189,22 +175,34 @@ export const useCodingAssistantStore = create<CodingAssistantState>((set, get) =
 
     try {
       const apiMessages = updatedMessages.map((m) => ({ role: m.role, content: m.content }));
-      const { provider, apiKey, model, baseUrl } = getActiveProviderDetails();
-      const response = await fetch('/api/coding-assistant/chat', {
+      const { apiKey, model, endpoint } = getLLMConfig();
+      if (!endpoint || !apiKey || !model) {
+        throw new Error('AI API configurations are missing. Please open the Keys app and configure your endpoint, API key, and model.');
+      }
+      const targetUrl = getCleanedUrl(endpoint);
+      const response = await fetch(targetUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'x-model': model,
-          'x-provider': provider,
-          'x-base-url': baseUrl,
+          'Authorization': `Bearer ${apiKey}`,
         },
-        body: JSON.stringify({ messages: apiMessages, model, provider, baseUrl }),
+        body: JSON.stringify({
+          model,
+          messages: apiMessages,
+          stream: true,
+        }),
       });
 
       if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || `API error: ${response.status}`);
+        const text = await response.text();
+        let errMsg = `API error: ${response.status}`;
+        try {
+          const json = JSON.parse(text);
+          errMsg = json.error?.message || errMsg;
+        } catch {
+          if (text) errMsg += ` - ${text.substring(0, 100)}`;
+        }
+        throw new Error(errMsg);
       }
 
       const reader = response.body?.getReader();
@@ -230,8 +228,9 @@ export const useCodingAssistantStore = create<CodingAssistantState>((set, get) =
 
           try {
             const parsed = JSON.parse(data);
-            if (parsed.content) {
-              fullContent += parsed.content;
+            const contentChunk = parsed.choices?.[0]?.delta?.content;
+            if (contentChunk) {
+              fullContent += contentChunk;
               set({ streamingContent: fullContent });
             }
           } catch {
@@ -263,22 +262,35 @@ export const useCodingAssistantStore = create<CodingAssistantState>((set, get) =
         if (isFirstMessage) {
           let generatedTitle: string | null = null;
           try {
-            const { provider, apiKey, model, baseUrl } = getActiveProviderDetails();
-            const titleRes = await fetch('/api/coding-assistant/title', {
+            const titleRes = await fetch(targetUrl, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': apiKey,
-                'x-model': model,
-                'x-provider': provider,
-                'x-base-url': baseUrl,
+                'Authorization': `Bearer ${apiKey}`,
               },
-              body: JSON.stringify({ message: content, model, provider, baseUrl }),
+              body: JSON.stringify({
+                model,
+                messages: [
+                  {
+                    role: 'system',
+                    content: 'Generate a concise 2-4 word title for a coding chat that starts with the following user message. Return ONLY the title. No quotes, no punctuation at the end, no explanation. Do not start with "Title:" or any label.',
+                  },
+                  { role: 'user', content: content },
+                ],
+                temperature: 0.3,
+                stream: false,
+              }),
             });
             if (titleRes.ok) {
               const json = await titleRes.json();
-              if (json.title && json.title !== 'New Chat') {
-                generatedTitle = json.title;
+              const rawTitle = json.choices?.[0]?.message?.content;
+              if (rawTitle) {
+                generatedTitle = rawTitle.trim()
+                  .replace(/^["']|["']$/g, '')
+                  .replace(/[.!?,;:]+$/, '')
+                  .replace(/^Title:\s*/i, '')
+                  .replace(/\n/g, ' ')
+                  .trim();
               }
             } else {
               console.error('Title API returned status:', titleRes.status);

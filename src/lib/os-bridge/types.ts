@@ -33,6 +33,9 @@ export interface OSAPI {
   apps: {
     open: (appId: string) => void;
   };
+  ai: {
+    chat: (messages: any[], options?: { temperature?: number }) => Promise<any>;
+  };
 }
 
 declare global {

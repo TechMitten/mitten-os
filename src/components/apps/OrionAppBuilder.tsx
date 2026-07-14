@@ -8,7 +8,7 @@ import {
   Wand2, Smartphone, Code2, Play, Loader2, History, Settings, Layout, Download,
   RefreshCw, Sparkles, ChevronRight, TerminalSquare, Plus, Edit2, Clock,
   Undo2, Redo2, FolderOpen, X, Copy, Check, Trash2, ZoomIn, ZoomOut,
-  Monitor, PanelLeftOpen, PanelLeftClose, TriangleAlert, Brain,
+  Monitor, PanelLeftOpen, PanelLeftClose, TriangleAlert, Brain, Key,
 } from 'lucide-react';
 
 // --- Types ---
@@ -217,82 +217,43 @@ interface RequestModelTextParams {
 }
 
 const requestModelText = async (params: RequestModelTextParams): Promise<{ content?: string; tool_calls?: Array<{ id: string; function: { name: string; arguments: string } }> }> => {
-  const { provider, systemPrompt, userText, onChunk, temperature = 0.7, tools, tool_choice, retryCount = 0, signal } = params;
+  const { systemPrompt, userText, onChunk, temperature = 0.7, tools, tool_choice, retryCount = 0, signal } = params;
   const delays = [1000, 2000, 4000, 8000, 16000];
-
-  let apiKey: string | undefined, model: string, baseUrl: string;
-  let customEnv: Record<string, unknown> | undefined;
 
   const getStorageItem = (key: string): string | null => {
     if (typeof window === 'undefined' || typeof localStorage === 'undefined') return null;
     return localStorage.getItem(key);
   };
 
-  if (provider === 'openrouter') {
-    apiKey = getStorageItem('mittenOS_openrouter_api_key') || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY;
-    model = getStorageItem('mittenOS_openrouter_model') || process.env.NEXT_PUBLIC_OPENROUTER_MODEL || 'anthropic/claude-3.5-sonnet';
-    baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
-  } else if (provider === 'gemini') {
-    apiKey = getStorageItem('mittenOS_gemini_api_key') || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-    model = getStorageItem('mittenOS_gemini_model') || process.env.NEXT_PUBLIC_GEMINI_MODEL || 'gemini-2.5-flash';
-    baseUrl = 'https://generativelanguage.googleapis.com/v1beta/chat/completions';
-  } else if (provider === 'mittenai') {
-    apiKey = getStorageItem('mittenOS_coding_assistant_key') || process.env.NEXT_PUBLIC_CODING_ASSISTANT_KEY;
-    model = getStorageItem('mittenOS_coding_assistant_model') || 'deepseek-v4-pro';
-    baseUrl = 'https://api.deepseek.com/chat/completions';
-  } else if (provider === 'custom') {
-    apiKey = getStorageItem('mittenOS_custom_api_key') || process.env.NEXT_PUBLIC_CUSTOM_API_KEY;
-    model = getStorageItem('mittenOS_custom_model') || process.env.NEXT_PUBLIC_CUSTOM_MODEL || 'gpt-4o';
-    baseUrl = getStorageItem('mittenOS_custom_base_url') || process.env.NEXT_PUBLIC_CUSTOM_BASE_URL || 'https://api.openai.com/v1/chat/completions';
-    customEnv = {
-      temperature: process.env.NEXT_PUBLIC_CUSTOM_TEMPERATURE ? parseFloat(process.env.NEXT_PUBLIC_CUSTOM_TEMPERATURE) : undefined,
-      top_p: process.env.NEXT_PUBLIC_CUSTOM_TOP_P ? parseFloat(process.env.NEXT_PUBLIC_CUSTOM_TOP_P) : undefined,
-      max_tokens: process.env.NEXT_PUBLIC_CUSTOM_MAX_TOKENS ? parseInt(process.env.NEXT_PUBLIC_CUSTOM_MAX_TOKENS) : undefined,
-      thinking_enabled: process.env.NEXT_PUBLIC_CUSTOM_THINKING_ENABLED !== 'false',
-      reasoning_effort: process.env.NEXT_PUBLIC_CUSTOM_REASONING_EFFORT || undefined,
-      stop: process.env.NEXT_PUBLIC_CUSTOM_STOP ? process.env.NEXT_PUBLIC_CUSTOM_STOP.split(',').map(s => s.trim()) : undefined,
-    };
-  } else {
-    apiKey = getStorageItem('mittenOS_zai_api_key') || process.env.NEXT_PUBLIC_ZAI_API_KEY;
-    model = getStorageItem('mittenOS_zai_model') || process.env.NEXT_PUBLIC_ZAI_MODEL || 'glm-4-plus';
-    baseUrl = 'https://api.z.ai/api/coding/paas/v4/chat/completions';
+  const apiKey = getStorageItem('mittenOS_keys_apikey');
+  const model = getStorageItem('mittenOS_keys_model');
+  const endpoint = getStorageItem('mittenOS_keys_endpoint');
+
+  if (!endpoint || !apiKey || !model) {
+    throw new Error('AI API configurations are missing. Please open the Keys app and configure your endpoint, API key, and model.');
   }
 
-  if (!apiKey) {
-    throw new Error(`API key for provider '${provider}' is not configured. Please set it in Settings.`);
-  }
+  const cleanUrl = endpoint.trim();
+  const baseUrl = cleanUrl.endsWith('/chat/completions')
+    ? cleanUrl
+    : `${cleanUrl.replace(/\/$/, '')}/chat/completions`;
 
   try {
     const headers: Record<string, string> = {
-      'Authorization': `Bearer ${apiKey}`,
+      'Authorization': `Bearer ${apiKey.trim()}`,
       'Content-Type': 'application/json',
     };
-    if (provider === 'gemini') {
-      headers['x-goog-api-key'] = apiKey;
-    }
-    if (provider === 'openrouter') {
-      headers['HTTP-Referer'] = typeof window !== 'undefined' ? window.location.origin : '';
-      headers['X-Title'] = 'Orion';
-    }
 
     const bodyObj: Record<string, unknown> = {
-      model,
+      model: model.trim(),
       stream: !!onChunk,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userText },
       ],
+      temperature,
     };
 
-    if (provider === 'custom' && customEnv) {
-      if (customEnv.temperature !== undefined && !isNaN(customEnv.temperature as number)) bodyObj.temperature = customEnv.temperature;
-      if (customEnv.top_p !== undefined && !isNaN(customEnv.top_p as number)) bodyObj.top_p = customEnv.top_p;
-      if (customEnv.max_tokens !== undefined && !isNaN(customEnv.max_tokens as number)) bodyObj.max_tokens = customEnv.max_tokens;
-      if (customEnv.stop) bodyObj.stop = customEnv.stop;
-      if (customEnv.reasoning_effort) bodyObj.reasoning_effort = customEnv.reasoning_effort;
-    }
-
-    bodyObj.temperature = temperature;
     if (tools) bodyObj.tools = tools;
     if (tool_choice) bodyObj.tool_choice = tool_choice;
 
@@ -303,7 +264,17 @@ const requestModelText = async (params: RequestModelTextParams): Promise<{ conte
       signal,
     });
 
-    if (!response.ok) throw new Error(`API Error: ${response.status}`);
+    if (!response.ok) {
+      const errText = await response.text();
+      let errMsg = `HTTP Error ${response.status}`;
+      try {
+        const errJson = JSON.parse(errText);
+        errMsg = errJson.error?.message || errMsg;
+      } catch {
+        if (errText) errMsg += ` - ${errText.substring(0, 100)}`;
+      }
+      throw new Error(errMsg);
+    }
 
     if (!onChunk) {
       const data = await response.json() as any;
@@ -918,18 +889,6 @@ export function OrionAppBuilder() {
   ];
 
   const handleSaveSettings = () => {
-    localStorage.setItem('orion-api-provider', apiProvider);
-    localStorage.setItem('mittenOS_zai_api_key', zaiKey.trim());
-    localStorage.setItem('mittenOS_zai_model', zaiModel.trim());
-    localStorage.setItem('mittenOS_openrouter_api_key', openrouterKey.trim());
-    localStorage.setItem('mittenOS_openrouter_model', openrouterModel.trim());
-    localStorage.setItem('mittenOS_gemini_api_key', geminiKey.trim());
-    localStorage.setItem('mittenOS_gemini_model', geminiModel.trim());
-    localStorage.setItem('mittenOS_coding_assistant_key', codingKey.trim());
-    localStorage.setItem('mittenOS_coding_assistant_model', codingModel.trim());
-    localStorage.setItem('mittenOS_custom_api_key', customKey.trim());
-    localStorage.setItem('mittenOS_custom_base_url', customBaseUrl.trim());
-    localStorage.setItem('mittenOS_custom_model', customModel.trim());
     setIsSettingsOpen(false);
   };
 
@@ -1198,194 +1157,27 @@ export function OrionAppBuilder() {
       {/* Settings Modal */}
       {isSettingsOpen && (
         <div className="absolute inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden orion-animate-scale-in">
-            <div className="px-8 py-5 border-b border-slate-100 flex items-center justify-between">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden orion-animate-scale-in">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-slate-900">Settings</h2>
               <button onClick={() => setIsSettingsOpen(false)} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-50 transition-colors">
                 <X size={18} />
               </button>
             </div>
-            <div className="p-8 space-y-6">
-              <div className="space-y-3">
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">AI Provider</label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {PROVIDER_OPTIONS.map((providerOption) => {
-                    const Icon = providerOption.icon;
-                    return (
-                      <button
-                        key={providerOption.id}
-                        onClick={() => setApiProvider(providerOption.id)}
-                        className={`flex flex-col items-start p-4 rounded-2xl border-2 transition-all ${
-                          apiProvider === providerOption.id
-                            ? 'border-indigo-600 bg-indigo-50/50 shadow-sm'
-                            : 'border-slate-100 hover:border-slate-200 bg-white'
-                        }`}
-                      >
-                        <div className={`w-8 h-8 rounded-xl mb-3 flex items-center justify-center ${
-                          apiProvider === providerOption.id ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'
-                        }`}>
-                          <Icon size={18} />
-                        </div>
-                        <span className={`text-sm font-semibold ${apiProvider === providerOption.id ? 'text-indigo-900' : 'text-slate-700'}`}>
-                          {providerOption.label}
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-medium">{providerOption.description}</span>
-                      </button>
-                    );
-                  })}
+            <div className="p-6 space-y-4">
+              <div className="flex items-start gap-3 p-4 rounded-xl bg-slate-50 border border-slate-100 text-sm text-slate-600 leading-relaxed">
+                <Key className="w-5 h-5 shrink-0 mt-0.5 text-indigo-600" />
+                <div>
+                  <p className="font-semibold text-slate-800">Centralized AI Keys</p>
+                  <p className="mt-1 text-xs text-slate-500 font-sans">
+                    AI API configurations are managed globally in the <span className="font-semibold text-indigo-600">Keys</span> app. Please open the Keys app from the desktop or start menu to configure your OpenAI-compatible endpoint, API key, and model.
+                  </p>
                 </div>
               </div>
-
-              {/* API Key Configuration depending on selected provider */}
-              <div className="pt-4 border-t border-slate-100 space-y-4">
-                {apiProvider === 'mittenai' && (
-                  <div className="space-y-4">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">DeepSeek API Key</label>
-                      <input
-                        type="password"
-                        value={codingKey}
-                        onChange={(e) => setCodingKey(e.target.value)}
-                        placeholder="sk-..."
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Model Name (Optional)</label>
-                      <input
-                        type="text"
-                        value={codingModel}
-                        onChange={(e) => setCodingModel(e.target.value)}
-                        placeholder="deepseek-v4-pro"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                      />
-                    </div>
-                    <p className="text-[10px] text-slate-400 font-medium font-sans">These settings are saved locally in your browser's localStorage.</p>
-                  </div>
-                )}
-
-                {apiProvider === 'zai' && (
-                  <div className="space-y-4">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Z.ai API Key</label>
-                      <input
-                        type="password"
-                        value={zaiKey}
-                        onChange={(e) => setZaiKey(e.target.value)}
-                        placeholder="Enter Z.ai API Key"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Z.ai Model Name (Optional)</label>
-                      <input
-                        type="text"
-                        value={zaiModel}
-                        onChange={(e) => setZaiModel(e.target.value)}
-                        placeholder="glm-4-plus"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                      />
-                    </div>
-                    <p className="text-[10px] text-slate-400 font-medium font-sans">These settings are saved locally in your browser's localStorage.</p>
-                  </div>
-                )}
-
-                {apiProvider === 'openrouter' && (
-                  <div className="space-y-4">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">OpenRouter API Key</label>
-                      <input
-                        type="password"
-                        value={openrouterKey}
-                        onChange={(e) => setOpenrouterKey(e.target.value)}
-                        placeholder="sk-or-..."
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">OpenRouter Model Name (Optional)</label>
-                      <input
-                        type="text"
-                        value={openrouterModel}
-                        onChange={(e) => setOpenrouterModel(e.target.value)}
-                        placeholder="anthropic/claude-3.5-sonnet"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                      />
-                    </div>
-                    <p className="text-[10px] text-slate-400 font-medium font-sans">These settings are saved locally in your browser's localStorage.</p>
-                  </div>
-                )}
-
-                {apiProvider === 'gemini' && (
-                  <div className="space-y-4">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Gemini API Key</label>
-                      <input
-                        type="password"
-                        value={geminiKey}
-                        onChange={(e) => setGeminiKey(e.target.value)}
-                        placeholder="Enter Gemini API Key"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Gemini Model Name (Optional)</label>
-                      <input
-                        type="text"
-                        value={geminiModel}
-                        onChange={(e) => setGeminiModel(e.target.value)}
-                        placeholder="gemini-2.5-flash"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                      />
-                    </div>
-                    <p className="text-[10px] text-slate-400 font-medium font-sans">These settings are saved locally in your browser's localStorage.</p>
-                  </div>
-                )}
-
-                {apiProvider === 'custom' && (
-                  <div className="space-y-4">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Custom API Key</label>
-                      <input
-                        type="password"
-                        value={customKey}
-                        onChange={(e) => setCustomKey(e.target.value)}
-                        placeholder="sk-..."
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Custom Base URL</label>
-                        <input
-                          type="text"
-                          value={customBaseUrl}
-                          onChange={(e) => setCustomBaseUrl(e.target.value)}
-                          placeholder="https://api.openai.com/v1"
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Custom Model Name</label>
-                        <input
-                          type="text"
-                          value={customModel}
-                          onChange={(e) => setCustomModel(e.target.value)}
-                          placeholder="gpt-4o"
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
-            <div className="bg-slate-50 px-8 py-5 flex justify-end gap-3">
-              <button onClick={() => setIsSettingsOpen(false)} className="rounded-lg px-4 py-2 font-medium text-slate-600 hover:text-slate-800 transition-colors">
-                Cancel
-              </button>
-              <button onClick={handleSaveSettings} className="rounded-lg px-5 py-2 bg-indigo-600 text-white font-semibold hover:bg-indigo-700 shadow-sm transition-colors active:scale-[0.98]">
-                Save
+            <div className="bg-slate-50 px-6 py-4 flex justify-end">
+              <button onClick={() => setIsSettingsOpen(false)} className="rounded-lg px-5 py-2 bg-indigo-600 text-white font-semibold hover:bg-indigo-700 shadow-sm transition-colors active:scale-[0.98]">
+                Close
               </button>
             </div>
           </div>

@@ -134,6 +134,51 @@ export function OSPortal({ windowId, children, onIframeRef }: OSPortalProps) {
             respond(true);
             break;
           }
+          case 'ai.chat': {
+            const messages = data.payload?.messages as any[];
+            const options = data.payload?.options as any;
+            
+            const endpoint = localStorage.getItem('mittenOS_keys_endpoint') || '';
+            const apiKey = localStorage.getItem('mittenOS_keys_apikey') || '';
+            const model = localStorage.getItem('mittenOS_keys_model') || '';
+
+            if (!endpoint || !apiKey || !model) {
+              respond(false, undefined, 'AI API configurations are missing. Please open the Keys app and configure your endpoint, API key, and model.');
+              break;
+            }
+
+            const cleanUrl = endpoint.trim();
+            const targetUrl = cleanUrl.endsWith('/chat/completions')
+              ? cleanUrl
+              : `${cleanUrl.replace(/\/$/, '')}/chat/completions`;
+
+            fetch(targetUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey.trim()}`,
+              },
+              body: JSON.stringify({
+                model: model.trim(),
+                messages: messages,
+                stream: false,
+                temperature: options?.temperature ?? 0.7,
+              }),
+            })
+              .then(async (res) => {
+                if (res.ok) {
+                  const json = await res.json();
+                  respond(true, json);
+                } else {
+                  const text = await res.text();
+                  respond(false, undefined, `API Error ${res.status}: ${text.substring(0, 100)}`);
+                }
+              })
+              .catch((err) => {
+                respond(false, undefined, err.message);
+              });
+            break;
+          }
           default:
             respond(false, undefined, `Unknown method: ${data.type}`);
         }

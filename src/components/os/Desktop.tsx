@@ -28,6 +28,7 @@ import {
   OrionAppBuilder,
   SandboxedApp,
   CodingAssistant,
+  Keys,
 } from '@/components/apps';
 import { useAppRegistryStore } from '@/stores/app-registry-store';
 import { useWeatherPoller } from '@/hooks/use-weather-poller';
@@ -45,6 +46,7 @@ const APP_COMPONENT_MAP: Record<string, React.ComponentType> = {
   'about-system': AboutSystem,
   'app-builder': OrionAppBuilder,
   'coding-assistant': CodingAssistant,
+  keys: Keys,
 };
 
 export function Desktop() {

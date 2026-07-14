@@ -17,6 +17,7 @@ import {
   Bot,
   LayoutDashboard,
   CheckCircle2,
+  KeyRound,
   type LucideIcon,
 } from 'lucide-react';
 import { useDesktopStore } from '@/stores/desktop-store';
@@ -39,6 +40,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   CloudSun,
   Info,
   Bot,
+  KeyRound,
 };
 
 interface AppContextMenuState {
