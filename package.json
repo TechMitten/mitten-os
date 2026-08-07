@@ -31,7 +31,8 @@
   },
   "overrides": {
     "postcss": ">=8.5.10",
-    "dompurify": ">=3.4.11"
+    "dompurify": ">=3.4.11",
+    "undici": ">=7.29.0"
   },
   "devDependencies": {
     "@opennextjs/cloudflare": "^1.19.11",
