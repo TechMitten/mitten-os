@@ -13,6 +13,7 @@ import Taskbar from '@/components/os/Taskbar';
 import WelcomeWindow from '@/components/os/WelcomeWindow';
 import { Loader2 } from 'lucide-react';
 import { isWallpaperDark } from '@/lib/utils';
+import { applyAccentColorToDocument } from '@/lib/theme';
 import { APP_REGISTRY, DESKTOP_GRID_OFFSET_X, DESKTOP_GRID_OFFSET_Y, DRAG_THRESHOLD, type WindowPosition } from '@/types/os';
 import {
   FileExplorer,
@@ -52,6 +53,7 @@ const APP_COMPONENT_MAP: Record<string, React.ComponentType> = {
 export function Desktop() {
   useWeatherPoller();
   const wallpaper = useDesktopStore((s) => s.wallpaper);
+  const accentColor = useDesktopStore((s) => s.accentColor);
   const desktopIcons = useDesktopStore((s) => s.desktopIcons);
   const contextMenu = useDesktopStore((s) => s.contextMenu);
   const setContextMenu = useDesktopStore((s) => s.setContextMenu);
@@ -97,6 +99,11 @@ export function Desktop() {
       initialize();
     }
   }, [initialize]);
+
+  // Apply accent color whenever it changes
+  useEffect(() => {
+    applyAccentColorToDocument(accentColor);
+  }, [accentColor]);
 
 
 

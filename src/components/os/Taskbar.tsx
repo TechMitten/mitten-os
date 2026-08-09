@@ -14,6 +14,7 @@ import {
   Info,
 } from 'lucide-react';
 import { ICON_MAP } from '@/lib/icon-map';
+import { getAccentColor } from '@/lib/theme';
 import { useWindowStore } from '@/stores/window-store';
 import { useDesktopStore } from '@/stores/desktop-store';
 import { useAuthStore } from '@/stores/auth-store';
@@ -180,7 +181,10 @@ export default function Taskbar() {
     startMenuOpen,
     toggleStartMenu,
     notifications,
+    accentColor,
   } = useDesktopStore();
+
+  const currentAccent = getAccentColor(accentColor);
 
   const user = useAuthStore((s) => s.user);
 
@@ -233,11 +237,8 @@ export default function Taskbar() {
                 aria-pressed={startMenuOpen}
               >
                 <LayoutGrid
-                  className={`w-5 h-5 transition-colors duration-150 ${
-                    startMenuOpen
-                      ? 'text-primary'
-                      : 'text-foreground/80'
-                  }`}
+                  className="w-5 h-5 transition-colors duration-150 text-foreground/80"
+                  style={startMenuOpen ? { color: currentAccent.value } : undefined}
                 />
               </button>
             </TooltipTrigger>
@@ -281,10 +282,18 @@ export default function Taskbar() {
                   <button
                     onClick={handleAppClick}
                     data-taskbar-app={group.appId}
+                    style={
+                      isAnyActive
+                        ? {
+                            backgroundColor: currentAccent.value,
+                            boxShadow: `0 2px 10px ${currentAccent.value}50`,
+                          }
+                        : undefined
+                    }
                     className={`
                       relative flex items-center justify-center w-9 h-9 rounded-lg
-                      transition-colors duration-150 cursor-pointer
-                      ${isAnyActive ? 'bg-primary' : 'hover:bg-black/10 dark:hover:bg-white/10'}
+                      transition-all duration-150 cursor-pointer
+                      ${isAnyActive ? 'text-white' : 'text-foreground/80 hover:bg-black/10 dark:hover:bg-white/10'}
                       ${isAnyMinimized && !isAnyActive ? 'opacity-60' : ''}
                     `}
                     aria-label={APP_REGISTRY[group.appId]?.name || group.appId}
@@ -328,7 +337,10 @@ export default function Taskbar() {
               >
                 <Bell className="w-4 h-4" />
                 {unreadCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-500" />
+                  <span
+                    className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full"
+                    style={{ backgroundColor: currentAccent.value }}
+                  />
                 )}
               </button>
             </TooltipTrigger>

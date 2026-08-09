@@ -1,8 +1,10 @@
 import { create } from "zustand";
 import { APP_REGISTRY, DesktopIcon, DESKTOP_GRID_CELL, DESKTOP_GRID_OFFSET_X, DESKTOP_GRID_OFFSET_Y, Notification, WindowPosition } from "@/types/os";
+import { applyAccentColorToDocument } from "@/lib/theme";
 
 interface DesktopStore {
   wallpaper: string;
+  accentColor: string;
   desktopIcons: DesktopIcon[];
   customDesktopIcons: DesktopIcon[];
   notifications: Notification[];
@@ -22,6 +24,7 @@ interface DesktopStore {
 
   loadSettings: (userId: string) => Promise<void>;
   setWallpaper: (url: string) => void;
+  setAccentColor: (accent: string) => void;
   setStartMenuOpen: (open: boolean) => void;
   toggleStartMenu: () => void;
   setContextMenu: (menu: ContextMenuState | null) => void;
@@ -110,6 +113,7 @@ async function persistDesktopState(userId: string | null, state: DesktopStore, i
 
   const settings = {
     wallpaper: state.wallpaper,
+    accentColor: state.accentColor,
     welcomeDismissed: state.welcomeDismissed,
     persistWindows: state.persistWindows,
     iconSize: state.iconSize,
@@ -150,6 +154,7 @@ async function persistSettings(userId: string | null, state: DesktopStore) {
 
 export const useDesktopStore = create<DesktopStore>((set, get) => ({
   wallpaper: "/default_wallpaper.png",
+  accentColor: "Amber",
   desktopIcons: defaultIcons,
   customDesktopIcons: [],
   notifications: [],
@@ -240,6 +245,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     const positions = desktopState.positions || {};
 
     const wallpaper = settings.wallpaper || "/default_wallpaper.png";
+    const accentColor = settings.accentColor || "Amber";
     const welcomeDismissed = localStorage.getItem(`mittenos:welcomeDismissed:${userId}`) === "true" || (settings.welcomeDismissed ?? false);
     const persistWindows = settings.persistWindows ?? false;
     const iconSize = settings.iconSize || "medium";
@@ -248,6 +254,8 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     const deletedIconIds = settings.deletedIconIds || [];
     const renamedIconLabels = settings.renamedIconLabels || {};
     const customDesktopIcons = settings.customDesktopIcons || [];
+
+    applyAccentColorToDocument(accentColor);
 
     const updatedIcons = defaultIcons
       .filter((icon) => !deletedIconIds.includes(icon.id))
@@ -264,6 +272,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
 
     set({
       wallpaper,
+      accentColor,
       welcomeDismissed,
       persistWindows,
       iconSize,
@@ -280,6 +289,12 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
 
   setWallpaper: (url: string) => {
     set({ wallpaper: url });
+    persistSettings(get().userId, get());
+  },
+
+  setAccentColor: (accent: string) => {
+    set({ accentColor: accent });
+    applyAccentColorToDocument(accent);
     persistSettings(get().userId, get());
   },
 
@@ -362,9 +377,10 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   },
 
   reset: () => {
-    const { wallpaper } = get();
+    const { wallpaper, accentColor } = get();
     set({
       wallpaper,
+      accentColor: accentColor || "Amber",
       desktopIcons: defaultIcons,
       customDesktopIcons: [],
       notifications: [],

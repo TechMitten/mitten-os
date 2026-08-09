@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useWindowStore } from '@/stores/window-store';
+import { ACCENT_COLORS, getAccentColor } from '@/lib/theme';
 
 type Section = 'appearance' | 'wallpaper' | 'display' | 'date-time' | 'general' | 'storage' | 'about' | 'ai-keys';
 
@@ -105,23 +106,13 @@ const WALLPAPERS = [
   },
 ];
 
-const ACCENT_COLORS = [
-  { name: 'Amber', value: '#f59e0b' },
-  { name: 'Rose', value: '#f43f5e' },
-  { name: 'Emerald', value: '#10b981' },
-  { name: 'Cyan', value: '#06b6d4' },
-  { name: 'Violet', value: '#8b5cf6' },
-  { name: 'Orange', value: '#f97316' },
-  { name: 'Pink', value: '#ec4899' },
-  { name: 'Teal', value: '#14b8a6' },
-];
-
 export default function SettingsApp() {
   const settingsInitialSection = useDesktopStore((s) => s.settingsInitialSection);
   const [activeSection, setActiveSection] = useState<Section>(
     () => (useDesktopStore.getState().settingsInitialSection as Section) || 'general'
   );
-  const [selectedAccent, setSelectedAccent] = useState('Amber');
+  const accentColor = useDesktopStore((s) => s.accentColor);
+  const setAccentColor = useDesktopStore((s) => s.setAccentColor);
 
   useEffect(() => {
     if (settingsInitialSection) {
@@ -196,14 +187,15 @@ export default function SettingsApp() {
       <div className="flex-1 p-6 overflow-y-auto settings-scrollbar">
         {activeSection === 'appearance' && (
           <AppearanceSection
-            selectedAccent={selectedAccent}
-            setSelectedAccent={setSelectedAccent}
+            selectedAccent={accentColor}
+            setSelectedAccent={setAccentColor}
           />
         )}
         {activeSection === 'wallpaper' && (
           <WallpaperSection
             wallpaper={wallpaper}
             setWallpaper={setWallpaper}
+            accentColor={accentColor}
           />
         )}
         {activeSection === 'display' && (
@@ -240,6 +232,8 @@ function AppearanceSection({
   selectedAccent: string;
   setSelectedAccent: (v: string) => void;
 }) {
+  const currentAccent = getAccentColor(selectedAccent);
+
   return (
     <div>
       <h3 className="text-lg font-medium mb-4">Appearance</h3>
@@ -256,25 +250,30 @@ function AppearanceSection({
           </div>
         </div>
         <div className="flex gap-2 flex-wrap pl-7">
-          {ACCENT_COLORS.map((color) => (
-            <button
-              key={color.name}
-              onClick={() => setSelectedAccent(color.name)}
-              className={`w-8 h-8 rounded-full transition-all ${
-                selectedAccent === color.name
-                  ? 'ring-2 ring-offset-2 ring-offset-card dark:ring-offset-zinc-900 scale-110'
-                  : 'hover:scale-105'
-              }`}
-              style={{
-                backgroundColor: color.value,
-                boxShadow:
-                  selectedAccent === color.name
-                    ? `0 0 0 2px #18181b, 0 0 0 4px ${color.value}`
-                    : undefined,
-              }}
-              title={color.name}
-            />
-          ))}
+          {ACCENT_COLORS.map((color) => {
+            const isSelected =
+              selectedAccent?.toLowerCase() === color.name.toLowerCase() ||
+              selectedAccent?.toLowerCase() === color.value.toLowerCase();
+            return (
+              <button
+                key={color.name}
+                onClick={() => setSelectedAccent(color.name)}
+                className={`w-8 h-8 rounded-full transition-all cursor-pointer ${
+                  isSelected
+                    ? 'ring-2 ring-offset-2 ring-offset-card dark:ring-offset-zinc-900 scale-110'
+                    : 'hover:scale-105'
+                }`}
+                style={{
+                  backgroundColor: color.value,
+                  boxShadow:
+                    isSelected
+                      ? `0 0 0 2px #18181b, 0 0 0 4px ${color.value}`
+                      : undefined,
+                }}
+                title={color.name}
+              />
+            );
+          })}
         </div>
       </div>
 
@@ -306,9 +305,7 @@ function AppearanceSection({
             <div
               className="h-1.5 rounded-full w-1/3 mt-1"
               style={{
-                backgroundColor:
-                  ACCENT_COLORS.find((c) => c.name === selectedAccent)?.value ??
-                  '#f59e0b',
+                backgroundColor: currentAccent.value,
               }}
             />
           </div>
@@ -323,10 +320,14 @@ function AppearanceSection({
 function WallpaperSection({
   wallpaper,
   setWallpaper,
+  accentColor,
 }: {
   wallpaper: string;
   setWallpaper: (url: string) => void;
+  accentColor: string;
 }) {
+  const currentAccent = getAccentColor(accentColor);
+
   return (
     <div>
       <h3 className="text-lg font-medium mb-4">Wallpaper</h3>
@@ -342,22 +343,31 @@ function WallpaperSection({
               key={wp.id}
               onClick={() => setWallpaper(value)}
               className={`h-24 rounded-lg cursor-pointer border-2 transition-all hover:border-white/30 ${
-                isSelected ? 'border-amber-500' : 'border-transparent'
+                isSelected ? '' : 'border-transparent'
               }`}
-              style={
-                wp.image
+              style={{
+                ...(wp.image
                   ? { backgroundImage: `url(${wp.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                  : { background: wp.gradient }
-              }
+                  : { background: wp.gradient }),
+                ...(isSelected ? { borderColor: currentAccent.value } : {}),
+              }}
               title={wp.name}
             >
               <div className="flex items-end justify-center h-full pb-2">
                 <span
                   className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
                     isSelected
-                      ? 'bg-amber-500/30 text-amber-500 dark:text-amber-300'
+                      ? ''
                       : 'bg-black/30 text-white/60'
                   }`}
+                  style={
+                    isSelected
+                      ? {
+                          backgroundColor: `${currentAccent.value}33`,
+                          color: currentAccent.value,
+                        }
+                      : undefined
+                  }
                 >
                   {wp.name}
                 </span>
