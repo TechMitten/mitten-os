@@ -9,6 +9,27 @@ MittenOS is a web-based desktop environment and operating system simulator built
 - **Orion App Builder**: An AI-powered app generator that creates self-contained HTML/JS applications from natural language prompts, supporting streaming generation, surgical edits, and version history.
 - **Sandboxed Runtime**: User-built apps are rendered in iframe sandboxes with custom Content Security Policies (CSP) and communicate with the host environment using a postMessage-based bridge API (`window.mittenOS`) for filesystem access and notification dispatching.
 
+## Built-in Apps
+
+*New apps are added every week.*
+
+| App | Description |
+|---|---|
+| **Files** | Browse and manage the virtual file system. |
+| **Terminal** | Command line interface for interacting with the virtual file system. |
+| **Browser** | Web browser for viewing external sites. |
+| **Notepad** | Simple plain-text editor. |
+| **Pencil** | Rich text editor for writing and formatting documents. |
+| **Calculator** | Basic calculator. |
+| **Settings** | System settings and preferences (wallpaper, theme, accent color, etc.). |
+| **Photos** | View and browse images. |
+| **App Store** | Discover and install user-created apps. |
+| **Weather** | Check current weather conditions. |
+| **About** | System information (hidden from Start Menu/App Store, opened via right-click desktop). |
+| **Orion** | AI-powered app generator that builds self-contained HTML/JS apps from natural language prompts, with streaming generation, surgical edits, and version history. |
+| **MittenAI** | AI-powered virtual coding chat assistant. |
+| **Keys** | Manage AI API endpoints and keys (hidden from Start Menu/App Store). |
+
 ## Architecture
 
 The project is structured as a Next.js App Router application:
