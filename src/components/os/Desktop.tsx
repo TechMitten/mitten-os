@@ -614,27 +614,25 @@ export function Desktop() {
   // --- Auth loading state ---
   if (loading) {
     return (
-      <div className={theme === 'dark' ? 'dark' : ''}>
+      <div className={theme === 'dark' ? 'dark' : ''} suppressHydrationWarning>
         <div className="fixed inset-0 flex items-center justify-center" suppressHydrationWarning style={{ background: theme === 'dark' ? 'linear-gradient(135deg, #030b20, #0d2b63, #071730)' : 'linear-gradient(135deg, #c9d6ff, #e2e2e2, #f5f7fa)' }}>
-          <div className="flex flex-col items-center gap-3">
-            <Loader2 className="w-8 h-8 text-amber-400 animate-spin" />
-            <span className="text-sm text-muted-foreground dark:text-white/40">Loading...</span>
+          <div className="flex flex-col items-center gap-3" suppressHydrationWarning>
+            <Loader2 className="w-8 h-8 text-amber-400 animate-spin" suppressHydrationWarning />
+            <span className="text-sm text-muted-foreground dark:text-white/40" suppressHydrationWarning>Loading...</span>
           </div>
         </div>
       </div>
     );
   }
 
-
-
   // --- Data still loading ---
   if (!dataLoaded) {
     return (
-      <div className={theme === 'dark' ? 'dark' : ''}>
+      <div className={theme === 'dark' ? 'dark' : ''} suppressHydrationWarning>
         <div className="fixed inset-0 flex items-center justify-center" suppressHydrationWarning style={{ background: theme === 'dark' ? 'linear-gradient(135deg, #030b20, #0d2b63, #071730)' : 'linear-gradient(135deg, #c9d6ff, #e2e2e2, #f5f7fa)' }}>
-          <div className="flex flex-col items-center gap-3">
-            <Loader2 className="w-8 h-8 text-amber-400 animate-spin" />
-            <span className="text-sm text-muted-foreground dark:text-white/40">Loading your environment...</span>
+          <div className="flex flex-col items-center gap-3" suppressHydrationWarning>
+            <Loader2 className="w-8 h-8 text-amber-400 animate-spin" suppressHydrationWarning />
+            <span className="text-sm text-muted-foreground dark:text-white/40" suppressHydrationWarning>Loading your environment...</span>
           </div>
         </div>
       </div>
