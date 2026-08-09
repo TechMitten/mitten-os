@@ -240,7 +240,7 @@ export const APP_REGISTRY: Record<string, Omit<AppDefinition, "component">> = {
     icon: "KeyRound",
     description: "Manage AI API endpoints and keys",
     category: "system",
-    defaultWindowSize: { width: 500, height: 450 },
+    defaultWindowSize: { width: 600, height: 450 },
     minWindowSize: { width: 350, height: 300 },
     singleton: true,
     hidden: true,
