@@ -4,18 +4,40 @@ export const POCKETBASE_URL = 'https://db.techmitten.com';
 export const COLLECTION_DATA = 'mitten_data';
 export const COLLECTION_USERS = 'users';
 
+let customPBUrl: string | null = null;
 let pbInstance: PocketBase | null = null;
+
+export function getPocketBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('mittenos_pb_url');
+    if (stored) return stored;
+  }
+  return customPBUrl || POCKETBASE_URL;
+}
+
+export function setPocketBaseUrl(url: string): void {
+  customPBUrl = url;
+  if (typeof window !== 'undefined') {
+    if (url && url !== POCKETBASE_URL) {
+      localStorage.setItem('mittenos_pb_url', url);
+    } else {
+      localStorage.removeItem('mittenos_pb_url');
+    }
+  }
+  pbInstance = null;
+}
 
 export function getPB(): PocketBase {
   if (!pbInstance) {
-    pbInstance = new PocketBase(POCKETBASE_URL);
+    pbInstance = new PocketBase(getPocketBaseUrl());
   }
   return pbInstance;
 }
 
 export async function checkPocketBaseHealth(): Promise<{ ok: boolean; message: string }> {
   try {
-    const res = await fetch(`${POCKETBASE_URL}/api/health`, {
+    const url = getPocketBaseUrl();
+    const res = await fetch(`${url}/api/health`, {
       method: 'GET',
       headers: { 'Accept': 'application/json' },
     });

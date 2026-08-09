@@ -782,7 +782,20 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                           Configure AI Engine
                         </h2>
                         <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                          Power Orion App Builder, MittenAI Assistant, and system intelligence.
+                          Power AI features throughout the entire OS across all applications.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* OS-wide AI Explanation Banner */}
+                    <div className="p-3 rounded-xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/25 flex items-start gap-2.5 text-xs text-amber-950 dark:text-amber-200">
+                      <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                      <div className="space-y-0.5 leading-relaxed text-[11px]">
+                        <p className="font-semibold text-amber-900 dark:text-amber-100">
+                          System-Wide AI Engine
+                        </p>
+                        <p className="text-slate-600 dark:text-slate-300">
+                          Setting this API endpoint and key enables AI features throughout the entire OS for all apps.
                         </p>
                       </div>
                     </div>
