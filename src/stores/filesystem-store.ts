@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { FSNode } from "@/types/os";
+import { isPBAuthenticated, loadUserData, debouncedSaveUserData } from "@/lib/pocketbase";
 
 function generateUUID(): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -17,6 +18,7 @@ interface FileSystemStore {
   loaded: boolean;
   loading: boolean;
   userId: string | null;
+  syncStatus: 'synced' | 'syncing' | 'local';
 
   loadFromDB: (userId: string) => Promise<void>;
   getNode: (path: string) => FSNode | null;
@@ -29,6 +31,7 @@ interface FileSystemStore {
   updateFileContent: (id: string, content: string) => Promise<void>;
   getChildren: (parentId: string) => FSNode[];
   fetchFileContentIfNeeded: (id: string) => Promise<string>;
+  syncWithPocketBase: () => Promise<void>;
   reset: () => void;
 }
 
@@ -50,6 +53,13 @@ function persistFS(userId: string | null, root: FSNode) {
     localStorage.setItem(`mittenos:fs:${userId}`, JSON.stringify(root));
   } catch (e) {
     console.error("Failed to persist filesystem to localStorage:", e);
+  }
+
+  // Cloud sync to PocketBase if user is authenticated
+  if (isPBAuthenticated()) {
+    debouncedSaveUserData('fs', root, 1500).catch((err) => {
+      console.warn('[FSStore] PocketBase background sync error:', err);
+    });
   }
 }
 
@@ -81,53 +91,102 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
   loaded: false,
   loading: false,
   userId: null,
+  syncStatus: 'local',
 
   loadFromDB: async (userId: string) => {
     set({ loading: true, userId });
 
+    let root = defaultRoot();
+    let loadedFromLocal = false;
+
+    // 1. Instant local load
     if (typeof window !== 'undefined') {
       const key = `mittenos:fs:${userId}`;
       const saved = localStorage.getItem(key);
       if (saved) {
         try {
-          let root = JSON.parse(saved) as FSNode;
+          root = JSON.parse(saved) as FSNode;
           root = ensureLocalSystemFolders(root);
-          persistFS(userId, root);
+          loadedFromLocal = true;
           set({
             root,
             loaded: true,
             loading: false,
+            syncStatus: isPBAuthenticated() ? 'synced' : 'local',
           });
 
-          // Sync desktop store state
+          // Sync desktop store settings
           try {
             const { useDesktopStore } = await import("./desktop-store");
             await useDesktopStore.getState().loadSettings(userId);
           } catch (e) {
-            console.error("[FSStore] Failed to sync desktop settings on local load:", e);
+            console.error("[FSStore] Failed to sync desktop settings:", e);
           }
-
-          return;
         } catch (e) {
           console.error("Failed to parse saved filesystem from localStorage:", e);
         }
       }
     }
 
-    let root = defaultRoot();
-    root = ensureLocalSystemFolders(root);
-    persistFS(userId, root);
-    set({
-      root,
-      loaded: true,
-      loading: false,
-    });
+    if (!loadedFromLocal) {
+      root = ensureLocalSystemFolders(root);
+      persistFS(userId, root);
+      set({
+        root,
+        loaded: true,
+        loading: false,
+        syncStatus: isPBAuthenticated() ? 'synced' : 'local',
+      });
 
+      try {
+        const { useDesktopStore } = await import("./desktop-store");
+        await useDesktopStore.getState().loadSettings(userId);
+      } catch (e) {
+        console.error("[FSStore] Failed to sync desktop settings on default load:", e);
+      }
+    }
+
+    // 2. Asynchronous PocketBase sync if authenticated
+    if (isPBAuthenticated()) {
+      (async () => {
+        try {
+          const cloudFS = await loadUserData<FSNode>('fs');
+          if (cloudFS && cloudFS.children && cloudFS.children.length > 0) {
+            const merged = ensureLocalSystemFolders(cloudFS);
+            set({ root: merged, syncStatus: 'synced' });
+            if (typeof window !== 'undefined') {
+              localStorage.setItem(`mittenos:fs:${userId}`, JSON.stringify(merged));
+            }
+          } else {
+            // First time cloud sync: push local state to PocketBase
+            const currentRoot = get().root;
+            await debouncedSaveUserData('fs', currentRoot, 500);
+          }
+        } catch (err) {
+          console.warn('[FSStore] Could not load PocketBase filesystem cloud copy:', err);
+        }
+      })();
+    }
+  },
+
+  syncWithPocketBase: async () => {
+    const { userId, root } = get();
+    if (!userId || !isPBAuthenticated()) return;
+
+    set({ syncStatus: 'syncing' });
     try {
-      const { useDesktopStore } = await import("./desktop-store");
-      await useDesktopStore.getState().loadSettings(userId);
-    } catch (e) {
-      console.error("[FSStore] Failed to sync desktop settings on default load:", e);
+      const cloudFS = await loadUserData<FSNode>('fs');
+      if (cloudFS && cloudFS.children) {
+        const merged = ensureLocalSystemFolders(cloudFS);
+        set({ root: merged, syncStatus: 'synced' });
+        persistFS(userId, merged);
+      } else {
+        await debouncedSaveUserData('fs', root, 0);
+        set({ syncStatus: 'synced' });
+      }
+    } catch (err) {
+      console.error('[FSStore] Manual PocketBase sync error:', err);
+      set({ syncStatus: 'local' });
     }
   },
 
@@ -270,7 +329,7 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
   },
 
   reset: () => {
-    set({ root: defaultRoot(), loaded: false, loading: false, userId: null });
+    set({ root: defaultRoot(), loaded: false, loading: false, userId: null, syncStatus: 'local' });
   },
 }));
 

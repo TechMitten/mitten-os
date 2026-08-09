@@ -3,7 +3,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useFileSystemStore } from '@/stores/filesystem-store';
 import { useDesktopStore } from '@/stores/desktop-store';
+import { useAuthStore } from '@/stores/auth-store';
 import { Switch } from '@/components/ui/switch';
+import { TurnstileWidget } from '@/components/ui/TurnstileWidget';
 import {
   Sun,
   Moon,
@@ -26,6 +28,13 @@ import {
   RefreshCw,
   Server,
   FolderOpen,
+  Cloud,
+  AlertCircle,
+  Copy,
+  Check,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useWindowStore } from '@/stores/window-store';
@@ -122,20 +131,37 @@ export default function SettingsApp() {
   const persistWindows = useDesktopStore((s) => s.persistWindows);
   const setPersistWindows = useDesktopStore((s) => s.setPersistWindows);
 
+  const user = useAuthStore((s) => s.user);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isDark = theme === 'dark';
 
   return (
     <div className="flex h-full bg-card dark:bg-zinc-900 text-card-foreground select-none overflow-hidden">
       {/* Sidebar */}
       <div className="w-52 bg-muted dark:bg-zinc-800/40 border-r border-border p-3 flex flex-col gap-1 shrink-0 overflow-y-auto settings-scrollbar">
-        {/* Local user card */}
+        {/* User profile card */}
         <div className="flex items-center gap-2.5 px-3 py-2.5 mb-1 rounded-xl bg-black/[0.04] dark:bg-white/[0.05] border border-border/40">
-          <div className="w-7 h-7 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center font-bold text-xs shrink-0">
-            M
-          </div>
+          {isAuthenticated && user?.avatar ? (
+            <img src={user.avatar} alt="avatar" className="w-7 h-7 rounded-full border border-border shrink-0 object-cover" />
+          ) : (
+            <div className="w-7 h-7 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center font-bold text-xs shrink-0">
+              {(user?.user_metadata?.name || user?.user_metadata?.full_name || 'U').charAt(0).toUpperCase()}
+            </div>
+          )}
           <div className="min-w-0">
-            <p className="text-xs font-semibold text-foreground truncate leading-tight">MittenOS User</p>
-            <p className="text-[10px] text-muted-foreground truncate leading-tight">Local Storage</p>
+            <p className="text-xs font-semibold text-foreground truncate leading-tight">
+              {user?.user_metadata?.full_name || user?.user_metadata?.name || 'Local User'}
+            </p>
+            <p className="text-[10px] text-muted-foreground truncate leading-tight flex items-center gap-1">
+              {isAuthenticated ? (
+                <>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
+                  MittenOS Cloud
+                </>
+              ) : (
+                'Local Storage'
+              )}
+            </p>
           </div>
         </div>
         <h2 className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60 mb-1">
@@ -538,25 +564,141 @@ function AiKeysSection() {
   );
 }
 
-/* ─── Storage Section ─────────────────────────────────────── */
+/* ─── Storage & Cloud Account Section ────────────────────────── */
 
 interface StorageCategoryUsage {
   id: string;
   name: string;
   bytes: number;
-  description: string;
-  icon: React.ReactNode;
+  color: string;
 }
 
 function StorageSection() {
   const { toast } = useToast();
   const userId = useFileSystemStore((s) => s.userId) || 'mitten-user';
   const loadFromDB = useFileSystemStore((s) => s.loadFromDB);
+  const syncWithPocketBase = useFileSystemStore((s) => s.syncWithPocketBase);
 
+  const authUser = useAuthStore((s) => s.user);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const authLoading = useAuthStore((s) => s.loading);
+  const signInWithPassword = useAuthStore((s) => s.signInWithPassword);
+  const signUpWithPassword = useAuthStore((s) => s.signUpWithPassword);
+  const signOut = useAuthStore((s) => s.signOut);
+
+  // Auth Form states
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authPasswordConfirm, setAuthPasswordConfirm] = useState('');
+  const [authName, setAuthName] = useState('');
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [verifyingTurnstile, setVerifyingTurnstile] = useState(false);
+
+  // Action states
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Local storage metrics
   const [metrics, setMetrics] = useState<{
     totalBytes: number;
     categories: StorageCategoryUsage[];
   }>({ totalBytes: 0, categories: [] });
+
+  const handleAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+
+    if (!authEmail.trim() || !authPassword.trim()) {
+      setAuthError('Email and password are required');
+      return;
+    }
+
+    const hasTurnstileKey = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
+
+    if (hasTurnstileKey) {
+      if (!turnstileToken) {
+        setAuthError('Please complete the security verification challenge.');
+        return;
+      }
+
+      setVerifyingTurnstile(true);
+      try {
+        const verifyRes = await fetch('/api/auth/verify-turnstile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: turnstileToken }),
+        });
+        const verifyData = await verifyRes.json().catch(() => ({}));
+        if (!verifyRes.ok || !verifyData.success) {
+          setVerifyingTurnstile(false);
+          setAuthError(verifyData.error || 'Security check failed. Please try again.');
+          return;
+        }
+      } catch (err: any) {
+        setVerifyingTurnstile(false);
+        setAuthError('Could not verify security challenge with server.');
+        return;
+      }
+      setVerifyingTurnstile(false);
+    }
+
+    if (authMode === 'signup') {
+      if (authPassword !== authPasswordConfirm) {
+        setAuthError('Passwords do not match');
+        return;
+      }
+      if (authPassword.length < 8) {
+        setAuthError('Password must be at least 8 characters long');
+        return;
+      }
+      const res = await signUpWithPassword(authEmail, authPassword, authPasswordConfirm, authName);
+      if (res.error) {
+        setAuthError(res.error);
+      } else {
+        toast({
+          title: 'Account Created',
+          description: `Signed in as ${authEmail}. Cloud sync is now active.`,
+        });
+      }
+    } else {
+      const res = await signInWithPassword(authEmail, authPassword);
+      if (res.error) {
+        setAuthError(res.error);
+      } else {
+        toast({
+          title: 'Signed In',
+          description: `Welcome back, ${authEmail}!`,
+        });
+      }
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast({
+      title: 'Signed Out',
+      description: 'Switched to offline local storage session.',
+    });
+  };
+
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    try {
+      await syncWithPocketBase();
+      toast({
+        title: 'Cloud Sync Complete',
+        description: 'Files, desktop preferences, and custom apps are up to date.',
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Sync Failed',
+        description: err?.message || 'Could not sync with cloud storage.',
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const calculateStorage = useCallback(() => {
     if (typeof window === 'undefined') return;
@@ -573,7 +715,7 @@ function StorageSection() {
       const key = localStorage.key(i);
       if (!key) continue;
       const val = localStorage.getItem(key) || '';
-      const itemBytes = (key.length + val.length) * 2; // UTF-16 approximate
+      const itemBytes = (key.length + val.length) * 2;
       totalBytes += itemBytes;
 
       if (key.startsWith('mittenos:fs:')) {
@@ -610,46 +752,40 @@ function StorageSection() {
         id: 'fs',
         name: 'Virtual File System',
         bytes: fsBytes,
-        description: 'User files, documents, pictures, and folders',
-        icon: <FolderOpen className="w-4 h-4 text-emerald-500" />,
+        color: '#10b981',
       },
       {
         id: 'desktop',
-        name: 'Desktop & Workspace State',
+        name: 'Desktop & Workspace',
         bytes: desktopBytes,
-        description: 'Icon positions, theme, wallpaper, and window positions',
-        icon: <LayoutPanelTop className="w-4 h-4 text-blue-500" />,
+        color: '#3b82f6',
       },
       {
         id: 'keys',
         name: 'AI Keys & Profiles',
         bytes: keysBytes,
-        description: 'Configured LLM providers and endpoint secrets',
-        icon: <Shield className="w-4 h-4 text-amber-500" />,
+        color: '#f59e0b',
       },
       {
         id: 'apps',
         name: 'Custom Apps & Projects',
         bytes: appsBytes,
-        description: 'Orion app builder source codes and custom apps',
-        icon: <Box className="w-4 h-4 text-purple-500" />,
+        color: '#a855f7',
       },
       {
         id: 'chat',
         name: 'AI Chat History',
         bytes: chatBytes,
-        description: 'Coding assistant conversations and sessions',
-        icon: <Cpu className="w-4 h-4 text-cyan-500" />,
+        color: '#06b6d4',
       },
     ];
 
     if (otherBytes > 0) {
       categories.push({
         id: 'other',
-        name: 'Other System Cache',
+        name: 'System Cache & Settings',
         bytes: otherBytes,
-        description: 'Misc OS cache and settings',
-        icon: <Database className="w-4 h-4 text-zinc-400" />,
+        color: '#71717a',
       });
     }
 
@@ -702,95 +838,242 @@ function StorageSection() {
 
   return (
     <div className="space-y-6 max-w-xl">
+      {/* ─── HEADER ─── */}
       <div>
-        <h3 className="text-lg font-medium mb-1">Storage</h3>
-        <p className="text-xs text-muted-foreground">
-          Manage your browser storage. All files, AI keys, and OS configurations are stored locally on this device.
+        <h3 className="text-lg font-medium text-foreground">Storage</h3>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Manage cloud account synchronization and local storage allocation.
         </p>
       </div>
 
-      {/* Storage Backend Card */}
-      <div className="p-4 rounded-xl border border-border bg-muted/20 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-500">
-              <HardDrive className="w-5 h-5" />
-            </div>
-            <div>
+      {/* ─── CLOUD ACCOUNT SECTION ─── */}
+      {isAuthenticated && authUser ? (
+        <div className="p-4 rounded-xl border border-border bg-card dark:bg-zinc-800/40 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            {authUser.avatar ? (
+              <img
+                src={authUser.avatar}
+                alt="avatar"
+                className="w-10 h-10 rounded-full border border-border object-cover shrink-0"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-amber-500/15 text-amber-500 font-semibold text-sm flex items-center justify-center shrink-0 border border-amber-500/20">
+                {(authUser.user_metadata?.name || authUser.email || 'U').charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h4 className="text-sm font-semibold">Browser LocalStorage</h4>
-                <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                  <CheckCircle2 className="w-3 h-3" />
-                  Active
+                <p className="text-xs font-semibold text-foreground truncate">
+                  {authUser.user_metadata?.full_name || authUser.user_metadata?.name || 'MittenOS Cloud User'}
+                </p>
+                <span className="text-[10px] text-emerald-500 font-medium flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  Synced
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Offline-first persistence. Total used: <span className="font-semibold text-foreground">{formatSize(metrics.totalBytes)}</span>
-              </p>
+              <p className="text-[11px] text-muted-foreground truncate">{authUser.email}</p>
             </div>
           </div>
-          <button
-            onClick={calculateStorage}
-            title="Refresh Storage Metrics"
-            className="p-2 rounded-lg border border-border hover:bg-muted transition-colors text-muted-foreground hover:text-foreground cursor-pointer"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
 
-      {/* Storage Breakdown */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleManualSync}
+              disabled={isSyncing}
+              className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-white text-xs font-medium transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+            >
+              <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
+              {isSyncing ? 'Syncing...' : 'Sync'}
+            </button>
+            <button
+              onClick={handleSignOut}
+              className="px-3 py-1.5 rounded-lg border border-border hover:bg-muted text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            >
+              Sign Out
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="p-4 rounded-xl border border-border bg-card dark:bg-zinc-800/40 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <Cloud className="w-4 h-4 text-amber-500 shrink-0" />
+              <div>
+                <p className="text-xs font-semibold text-foreground">MittenOS Cloud</p>
+                <p className="text-[11px] text-muted-foreground">Sign in to sync files and workspace settings</p>
+              </div>
+            </div>
+            <div className="flex bg-muted p-0.5 rounded-md border border-border">
+              <button
+                onClick={() => { setAuthMode('signin'); setAuthError(null); }}
+                className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                  authMode === 'signin' ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Sign In
+              </button>
+              <button
+                onClick={() => { setAuthMode('signup'); setAuthError(null); }}
+                className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                  authMode === 'signup' ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Create Account
+              </button>
+            </div>
+          </div>
+
+          {authError && (
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              <span>{authError}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleAuthSubmit} className="space-y-2.5">
+            {authMode === 'signup' && (
+              <div>
+                <label className="block text-[11px] text-muted-foreground mb-1">Name (Optional)</label>
+                <input
+                  type="text"
+                  value={authName}
+                  onChange={(e) => setAuthName(e.target.value)}
+                  placeholder="Jane Doe"
+                  className="w-full px-3 py-1.5 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="block text-[11px] text-muted-foreground mb-1">Email</label>
+              <input
+                type="email"
+                required
+                value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+                placeholder="user@example.com"
+                className="w-full px-3 py-1.5 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] text-muted-foreground mb-1">Password</label>
+              <input
+                type="password"
+                required
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full px-3 py-1.5 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
+              />
+            </div>
+
+            {authMode === 'signup' && (
+              <div>
+                <label className="block text-[11px] text-muted-foreground mb-1">Confirm Password</label>
+                <input
+                  type="password"
+                  required
+                  value={authPasswordConfirm}
+                  onChange={(e) => setAuthPasswordConfirm(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-3 py-1.5 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
+            )}
+
+            <TurnstileWidget
+              onVerify={(token) => {
+                setTurnstileToken(token);
+                setAuthError(null);
+              }}
+              onExpire={() => setTurnstileToken(null)}
+              onError={() => setAuthError('Security check failed. Please refresh.')}
+            />
+
+            <button
+              type="submit"
+              disabled={authLoading || verifyingTurnstile}
+              className="w-full py-2 rounded-lg bg-amber-500 hover:bg-amber-600 font-medium text-white text-xs transition-colors cursor-pointer disabled:opacity-50"
+            >
+              {authLoading || verifyingTurnstile ? 'Verifying...' : authMode === 'signup' ? 'Create Account' : 'Sign In'}
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* ─── LOCAL STORAGE BREAKDOWN ─── */}
       <div className="space-y-3">
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Storage Breakdown
-        </h4>
-        <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Storage Breakdown
+          </h4>
+          <span className="text-xs font-mono text-muted-foreground">
+            {formatSize(metrics.totalBytes)} used
+          </span>
+        </div>
+
+        {/* Proportional Storage Bar */}
+        <div className="h-2 w-full bg-muted dark:bg-zinc-800 rounded-full overflow-hidden flex gap-0.5">
+          {metrics.totalBytes > 0 ? (
+            metrics.categories
+              .filter((cat) => cat.bytes > 0)
+              .map((cat) => {
+                const percent = (cat.bytes / metrics.totalBytes) * 100;
+                return (
+                  <div
+                    key={cat.id}
+                    style={{
+                      width: `${Math.max(percent, 2)}%`,
+                      backgroundColor: cat.color,
+                    }}
+                    className="h-full rounded-full transition-all"
+                    title={`${cat.name}: ${formatSize(cat.bytes)}`}
+                  />
+                );
+              })
+          ) : (
+            <div className="h-full w-full bg-muted-foreground/20 rounded-full" />
+          )}
+        </div>
+
+        {/* Clean Category List */}
+        <div className="rounded-xl border border-border bg-card dark:bg-zinc-800/30 divide-y divide-border overflow-hidden">
           {metrics.categories.map((cat) => (
             <div
               key={cat.id}
-              className="flex items-center justify-between p-3 rounded-xl border border-border bg-card dark:bg-zinc-800/30"
+              className="flex items-center justify-between px-3.5 py-2.5 text-xs"
             >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="p-2 rounded-lg bg-muted shrink-0">
-                  {cat.icon}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-foreground truncate">{cat.name}</p>
-                  <p className="text-[10px] text-muted-foreground truncate">{cat.description}</p>
-                </div>
+              <div className="flex items-center gap-2.5">
+                <span
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{ backgroundColor: cat.color }}
+                />
+                <span className="text-foreground">{cat.name}</span>
               </div>
-              <span className="text-xs font-mono font-medium text-muted-foreground shrink-0 ml-2">
-                {formatSize(cat.bytes)}
-              </span>
+              <span className="font-mono text-muted-foreground">{formatSize(cat.bytes)}</span>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Storage Maintenance & Privacy */}
-      <div className="p-4 rounded-xl border border-border bg-muted/10 space-y-4">
-        <div className="flex items-start gap-2.5">
-          <Shield className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-          <div>
-            <p className="text-xs font-semibold text-foreground">Zero Cloud Dependency & Privacy</p>
-            <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
-              No files or secrets are synced to external cloud services or remote servers. Everything is sandboxed within your browser.
-            </p>
-          </div>
+      {/* ─── STORAGE MAINTENANCE ─── */}
+      <div className="p-3.5 rounded-xl border border-border bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-medium text-foreground">Storage Management</p>
+          <p className="text-[11px] text-muted-foreground">Reset virtual file system or clear local cache</p>
         </div>
-
-        <div className="pt-2 border-t border-border flex flex-wrap gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={handleResetFileSystem}
-            className="px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-muted transition-colors cursor-pointer text-foreground"
+            className="px-3 py-1.5 rounded-lg border border-border hover:bg-muted text-xs font-medium transition-colors cursor-pointer text-foreground"
           >
             Reset File System
           </button>
           <button
             onClick={handleClearAllStorage}
-            className="px-3 py-1.5 rounded-lg border border-red-500/30 text-red-500 dark:text-red-400 text-xs font-medium hover:bg-red-500/10 transition-colors cursor-pointer"
+            className="px-3 py-1.5 rounded-lg border border-red-500/30 text-red-500 dark:text-red-400 hover:bg-red-500/10 text-xs font-medium transition-colors cursor-pointer"
           >
-            Clear All OS Data
+            Clear All Data
           </button>
         </div>
       </div>

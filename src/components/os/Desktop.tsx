@@ -101,13 +101,13 @@ export function Desktop() {
 
 
 
-  // Reset data-loaded flag when user logs out
+  // Reset data-loaded flag when user changes
   useEffect(() => {
+    setDataLoaded(false);
     if (!user) {
-      setDataLoaded(false);
       setShowWelcome(false);
     }
-  }, [user]);
+  }, [user?.id]);
 
   // Show welcome window on sign-in
   useEffect(() => {

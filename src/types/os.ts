@@ -163,8 +163,8 @@ export const APP_REGISTRY: Record<string, Omit<AppDefinition, "component">> = {
     icon: "Settings",
     description: "System settings and preferences",
     category: "system",
-    defaultWindowSize: { width: 700, height: 500 },
-    minWindowSize: { width: 500, height: 400 },
+    defaultWindowSize: { width: 840, height: 580 },
+    minWindowSize: { width: 560, height: 400 },
     singleton: true,
   },
   browser: {

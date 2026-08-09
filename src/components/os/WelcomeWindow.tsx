@@ -20,13 +20,19 @@ import {
   Loader2,
   ShieldCheck,
   Check,
-  TerminalSquare,
   Wand2,
-  Settings as SettingsIcon,
-  ExternalLink,
+  Cloud,
+  Lock,
+  Mail,
+  User as UserIcon,
+  RefreshCw,
+  AlertCircle,
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { useWindowStore } from '@/stores/window-store';
+import { useAuthStore } from '@/stores/auth-store';
+import { useFileSystemStore } from '@/stores/filesystem-store';
+import { TurnstileWidget } from '@/components/ui/TurnstileWidget';
 import {
   loadKeyProfiles,
   saveActiveProfile,
@@ -57,10 +63,28 @@ const getInitialPos = () => {
 export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
   const openWindow = useWindowStore((s) => s.openWindow);
 
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  // Auth store
+  const authUser = useAuthStore((s) => s.user);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const signInWithPassword = useAuthStore((s) => s.signInWithPassword);
+  const signUpWithPassword = useAuthStore((s) => s.signUpWithPassword);
+  const syncWithPocketBase = useFileSystemStore((s) => s.syncWithPocketBase);
+
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [dontShowAgain, setDontShowAgain] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [hasBeenDragged, setHasBeenDragged] = useState(false);
+
+  // Cloud Auth form states
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signup');
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authPasswordConfirm, setAuthPasswordConfirm] = useState('');
+  const [authName, setAuthName] = useState('');
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [verifyingTurnstile, setVerifyingTurnstile] = useState(false);
+  const [authSubmitting, setAuthSubmitting] = useState(false);
 
   // Key form states
   const [selectedPresetId, setSelectedPresetId] = useState<string>('openai');
@@ -234,6 +258,85 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
     [updatePosState]
   );
 
+  const handleAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+
+    if (!authEmail.trim() || !authPassword.trim()) {
+      setAuthError('Email and password are required');
+      return;
+    }
+
+    const hasTurnstileKey = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
+
+    if (hasTurnstileKey) {
+      if (!turnstileToken) {
+        setAuthError('Please complete the security verification challenge.');
+        return;
+      }
+
+      setVerifyingTurnstile(true);
+      try {
+        const verifyRes = await fetch('/api/auth/verify-turnstile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: turnstileToken }),
+        });
+        const verifyData = await verifyRes.json().catch(() => ({}));
+        if (!verifyRes.ok || !verifyData.success) {
+          setVerifyingTurnstile(false);
+          setAuthError(verifyData.error || 'Security check failed. Please try again.');
+          return;
+        }
+      } catch {
+        setVerifyingTurnstile(false);
+        setAuthError('Could not verify security challenge with server.');
+        return;
+      }
+      setVerifyingTurnstile(false);
+    }
+
+    setAuthSubmitting(true);
+    try {
+      if (authMode === 'signup') {
+        if (authPassword !== authPasswordConfirm) {
+          setAuthError('Passwords do not match');
+          setAuthSubmitting(false);
+          return;
+        }
+        if (authPassword.length < 8) {
+          setAuthError('Password must be at least 8 characters long');
+          setAuthSubmitting(false);
+          return;
+        }
+        const res = await signUpWithPassword(authEmail, authPassword, authPasswordConfirm, authName);
+        if (res.error) {
+          setAuthError(res.error);
+          setAuthSubmitting(false);
+          return;
+        }
+      } else {
+        const res = await signInWithPassword(authEmail, authPassword);
+        if (res.error) {
+          setAuthError(res.error);
+          setAuthSubmitting(false);
+          return;
+        }
+      }
+
+      await syncWithPocketBase().catch(() => {});
+      setStep(3);
+    } catch (err: any) {
+      setAuthError(err?.message || 'Authentication failed. Please try again.');
+    } finally {
+      setAuthSubmitting(false);
+    }
+  };
+
+  const handleSkipCloudSetup = () => {
+    setStep(3);
+  };
+
   const handleSelectPreset = (preset: AIPreset) => {
     setSelectedPresetId(preset.id);
     if (preset.id !== 'custom') {
@@ -272,11 +375,11 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
     if (apiKey.trim() || endpoint.trim()) {
       setKeyConfigured(true);
     }
-    setStep(3);
+    setStep(4);
   };
 
   const handleSkipKeySetup = () => {
-    setStep(3);
+    setStep(4);
   };
 
   const handleOpenAppAndClose = (appId: string) => {
@@ -357,17 +460,18 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
               <div className="flex-1 flex items-center justify-center gap-2">
                 <span className="text-[11px] font-semibold tracking-wide uppercase text-slate-500 dark:text-slate-400">
                   {step === 1 && 'Welcome to MittenOS'}
-                  {step === 2 && 'Step 2: AI Key Setup'}
-                  {step === 3 && 'Step 3: Ready to Explore'}
+                  {step === 2 && 'Step 2: Cloud Sync Setup'}
+                  {step === 3 && 'Step 3: AI Engine Setup'}
+                  {step === 4 && 'Step 4: Ready to Explore'}
                 </span>
               </div>
 
               {/* Step indicator dots */}
               <div className="flex items-center gap-1 shrink-0">
-                {[1, 2, 3].map((s) => (
+                {[1, 2, 3, 4].map((s) => (
                   <button
                     key={s}
-                    onClick={() => setStep(s as 1 | 2 | 3)}
+                    onClick={() => setStep(s as 1 | 2 | 3 | 4)}
                     className={`h-1.5 rounded-full transition-all duration-200 cursor-pointer ${
                       step === s
                         ? 'w-4 bg-indigo-600 dark:bg-indigo-400'
@@ -448,10 +552,10 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                         </div>
                         <div className="flex flex-col text-left">
                           <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                            Files & Workspaces
+                            Files & Cloud Sync
                           </span>
                           <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                            Organize files, terminal sessions, & local offline storage
+                            Organize files, terminal sessions, & multi-device sync
                           </span>
                         </div>
                       </div>
@@ -459,10 +563,209 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                   </motion.div>
                 )}
 
-                {/* ─── STEP 2: API KEY SETUP ─── */}
+                {/* ─── STEP 2: CLOUD SYNC & ACCOUNT SETUP ─── */}
                 {step === 2 && (
                   <motion.div
                     key="step-2"
+                    initial={{ opacity: 0, x: 12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -12 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex flex-col gap-4"
+                  >
+                    {/* Header */}
+                    <div className="flex items-center gap-3.5 pb-2 border-b border-black/5 dark:border-white/5">
+                      <div className="w-11 h-11 shrink-0 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/25 border border-white/20">
+                        <Cloud className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                          Connect Cloud Sync
+                        </h2>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          Automatically back up and sync files, settings, and apps across devices.
+                        </p>
+                      </div>
+                    </div>
+
+                    {isAuthenticated && authUser ? (
+                      <div className="p-4 rounded-xl bg-slate-100/70 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 space-y-3">
+                        <div className="flex items-center gap-3">
+                          {authUser.avatar ? (
+                            <img
+                              src={authUser.avatar}
+                              alt="avatar"
+                              className="w-10 h-10 rounded-full border border-border object-cover shrink-0"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 font-semibold text-sm flex items-center justify-center shrink-0 border border-indigo-500/20">
+                              {(authUser.user_metadata?.name || authUser.email || 'U').charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+                                {authUser.user_metadata?.full_name || authUser.user_metadata?.name || 'Cloud User'}
+                              </p>
+                              <span className="text-[10px] text-emerald-500 font-medium flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                Cloud Connected
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{authUser.email}</p>
+                          </div>
+                        </div>
+
+                        <div className="pt-2 border-t border-slate-200/50 dark:border-slate-700/50 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                          Your workspace is connected to MittenOS Cloud. Everything you create will stay synchronized.
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {/* Segmented Mode Switcher */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                            MittenOS Cloud Account
+                          </span>
+                          <div className="flex bg-slate-200/70 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-300/50 dark:border-slate-700">
+                            <button
+                              type="button"
+                              onClick={() => { setAuthMode('signup'); setAuthError(null); }}
+                              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                                authMode === 'signup'
+                                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                              }`}
+                            >
+                              Create Account
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setAuthMode('signin'); setAuthError(null); }}
+                              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                                authMode === 'signin'
+                                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                              }`}
+                            >
+                              Sign In
+                            </button>
+                          </div>
+                        </div>
+
+                        {authError && (
+                          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-red-500/10 border border-red-500/25 text-red-600 dark:text-red-300 text-xs">
+                            <AlertCircle className="w-4 h-4 shrink-0" />
+                            <span className="leading-tight">{authError}</span>
+                          </div>
+                        )}
+
+                        <form onSubmit={handleAuthSubmit} className="space-y-2.5">
+                          {authMode === 'signup' && (
+                            <div className="space-y-1">
+                              <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                                <UserIcon className="w-3.5 h-3.5 text-indigo-500" />
+                                Full Name (Optional)
+                              </label>
+                              <input
+                                type="text"
+                                value={authName}
+                                onChange={(e) => setAuthName(e.target.value)}
+                                placeholder="Jane Doe"
+                                className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 text-slate-800 dark:text-slate-200 transition-all"
+                              />
+                            </div>
+                          )}
+
+                          <div className="space-y-1">
+                            <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                              <Mail className="w-3.5 h-3.5 text-indigo-500" />
+                              Email Address
+                            </label>
+                            <input
+                              type="email"
+                              required
+                              value={authEmail}
+                              onChange={(e) => setAuthEmail(e.target.value)}
+                              placeholder="user@example.com"
+                              className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 text-slate-800 dark:text-slate-200 transition-all"
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                              <Lock className="w-3.5 h-3.5 text-indigo-500" />
+                              Password
+                            </label>
+                            <input
+                              type="password"
+                              required
+                              value={authPassword}
+                              onChange={(e) => setAuthPassword(e.target.value)}
+                              placeholder="••••••••"
+                              className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 text-slate-800 dark:text-slate-200 transition-all"
+                            />
+                          </div>
+
+                          {authMode === 'signup' && (
+                            <div className="space-y-1">
+                              <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                                <Lock className="w-3.5 h-3.5 text-indigo-500" />
+                                Confirm Password
+                              </label>
+                              <input
+                                type="password"
+                                required
+                                value={authPasswordConfirm}
+                                onChange={(e) => setAuthPasswordConfirm(e.target.value)}
+                                placeholder="••••••••"
+                                className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 text-slate-800 dark:text-slate-200 transition-all"
+                              />
+                            </div>
+                          )}
+
+                          <TurnstileWidget
+                            onVerify={(token) => {
+                              setTurnstileToken(token);
+                              setAuthError(null);
+                            }}
+                            onExpire={() => setTurnstileToken(null)}
+                            onError={() => setAuthError('Security verification failed. Please refresh.')}
+                          />
+
+                          <button
+                            type="submit"
+                            disabled={authSubmitting || verifyingTurnstile}
+                            className="
+                              w-full py-2 rounded-xl text-xs font-semibold
+                              bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600
+                              hover:from-blue-500 hover:to-purple-500
+                              text-white shadow-md shadow-indigo-500/25
+                              flex items-center justify-center gap-1.5
+                              cursor-pointer disabled:opacity-50 transition-all
+                            "
+                          >
+                            {authSubmitting || verifyingTurnstile ? (
+                              <>
+                                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                <span>Authenticating...</span>
+                              </>
+                            ) : authMode === 'signup' ? (
+                              <span>Create Account & Enable Sync</span>
+                            ) : (
+                              <span>Sign In & Enable Sync</span>
+                            )}
+                          </button>
+                        </form>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+
+                {/* ─── STEP 3: API KEY SETUP ─── */}
+                {step === 3 && (
+                  <motion.div
+                    key="step-3"
                     initial={{ opacity: 0, x: 12 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -12 }}
@@ -614,10 +917,10 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                   </motion.div>
                 )}
 
-                {/* ─── STEP 3: READY TO EXPLORE ─── */}
-                {step === 3 && (
+                {/* ─── STEP 4: READY TO EXPLORE ─── */}
+                {step === 4 && (
                   <motion.div
-                    key="step-3"
+                    key="step-4"
                     initial={{ opacity: 0, x: 12 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -12 }}
@@ -642,48 +945,95 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                       </p>
                     </div>
 
-                    {/* AI Configuration Status Card */}
-                    <div className="w-full p-3 rounded-xl bg-slate-100/80 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 text-left flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-2.5">
-                        <div
-                          className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
-                            keyConfigured
-                              ? 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400'
-                              : 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400'
-                          }`}
-                        >
-                          <Key className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                              {keyConfigured ? 'AI Engine Ready' : 'AI Setup Skipped'}
-                            </span>
-                            <span
-                              className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full uppercase tracking-wider ${
-                                keyConfigured
-                                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-                                  : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
-                              }`}
-                            >
-                              {keyConfigured ? 'Configured' : 'Optional'}
-                            </span>
+                    {/* Status Summary Cards */}
+                    <div className="w-full space-y-2">
+                      {/* Cloud Sync Status Card */}
+                      <div className="w-full p-2.5 sm:p-3 rounded-xl bg-slate-100/80 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 text-left flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-2.5">
+                          <div
+                            className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                              isAuthenticated
+                                ? 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400'
+                                : 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400'
+                            }`}
+                          >
+                            <Cloud className="w-4 h-4" />
                           </div>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                            {keyConfigured
-                              ? `Model: ${model || 'gpt-4o'} (${profileName || 'Active Profile'})`
-                              : 'You can add or update your API keys anytime from the Keys app.'}
-                          </p>
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                                {isAuthenticated ? 'Cloud Sync Active' : 'Local Storage Mode'}
+                              </span>
+                              <span
+                                className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full uppercase tracking-wider ${
+                                  isAuthenticated
+                                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                                    : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                                }`}
+                              >
+                                {isAuthenticated ? 'Connected' : 'Offline'}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                              {isAuthenticated && authUser
+                                ? `Signed in as ${authUser.email}`
+                                : 'All workspace data is saved offline in your browser.'}
+                            </p>
+                          </div>
                         </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setStep(2)}
+                          className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline shrink-0 cursor-pointer"
+                        >
+                          {isAuthenticated ? 'Manage' : 'Connect'}
+                        </button>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => setStep(2)}
-                        className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline shrink-0 cursor-pointer"
-                      >
-                        Edit
-                      </button>
+                      {/* AI Configuration Status Card */}
+                      <div className="w-full p-2.5 sm:p-3 rounded-xl bg-slate-100/80 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 text-left flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-2.5">
+                          <div
+                            className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                              keyConfigured
+                                ? 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400'
+                                : 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400'
+                            }`}
+                          >
+                            <Key className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                                {keyConfigured ? 'AI Engine Ready' : 'AI Setup Skipped'}
+                              </span>
+                              <span
+                                className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full uppercase tracking-wider ${
+                                  keyConfigured
+                                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                                    : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                                }`}
+                              >
+                                {keyConfigured ? 'Configured' : 'Optional'}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                              {keyConfigured
+                                ? `Model: ${model || 'gpt-4o'} (${profileName || 'Active Profile'})`
+                                : 'You can add or update your API keys anytime from the Keys app.'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setStep(3)}
+                          className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline shrink-0 cursor-pointer"
+                        >
+                          {keyConfigured ? 'Edit' : 'Setup'}
+                        </button>
+                      </div>
                     </div>
 
                     {/* Quick Launch Suggestions */}
@@ -756,7 +1106,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                       cursor-pointer
                     "
                   >
-                    <span>Configure AI Setup</span>
+                    <span>Get Started</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </>
@@ -768,6 +1118,56 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                   <button
                     type="button"
                     onClick={() => setStep(1)}
+                    className="
+                      inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold
+                      text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white
+                      hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer
+                    "
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Back</span>
+                  </button>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSkipCloudSetup}
+                      className="
+                        px-3 py-1.5 rounded-xl text-xs font-semibold
+                        text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200
+                        transition-colors cursor-pointer
+                      "
+                    >
+                      {isAuthenticated ? 'Skip' : 'Use Local Storage'}
+                    </button>
+
+                    {isAuthenticated ? (
+                      <button
+                        type="button"
+                        onClick={() => setStep(3)}
+                        className="
+                          inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold
+                          bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600
+                          hover:from-blue-500 hover:to-purple-500
+                          text-white shadow-md shadow-indigo-500/25
+                          active:scale-[0.98] transition-all duration-150
+                          cursor-pointer
+                        "
+                      >
+                        <span>Continue</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    ) : null}
+                  </div>
+                </>
+              )}
+
+              {/* Step 3 Footer */}
+              {step === 3 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setStep(2)}
                     className="
                       inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold
                       text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white
@@ -809,17 +1209,17 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                 </>
               )}
 
-              {/* Step 3 Footer */}
-              {step === 3 && (
+              {/* Step 4 Footer */}
+              {step === 4 && (
                 <>
                   <div className="flex items-center gap-2">
                     <Switch
-                      id="dont-show-again-3"
+                      id="dont-show-again-4"
                       checked={dontShowAgain}
                       onCheckedChange={setDontShowAgain}
                     />
                     <label
-                      htmlFor="dont-show-again-3"
+                      htmlFor="dont-show-again-4"
                       className="text-xs text-slate-600 dark:text-slate-300 cursor-pointer select-none font-medium"
                     >
                       Don&apos;t show again

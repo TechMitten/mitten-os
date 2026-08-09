@@ -33,6 +33,7 @@ export function StartMenu() {
   const menuRef = useRef<HTMLDivElement>(null);
   const ctxMenuRef = useRef<HTMLDivElement>(null);
   const user = useAuthStore((s) => s.user);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   const [appContextMenu, setAppContextMenu] = useState<AppContextMenuState | null>(null);
   const [justAdded, setJustAdded] = useState<string | null>(null);
@@ -211,14 +212,27 @@ export function StartMenu() {
 
           {/* Footer */}
           <div className="flex items-center gap-2.5 p-3 border-t border-black/5 dark:border-white/[0.06]">
-            <div className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center font-bold text-[10px] shrink-0">
-              {(user?.user_metadata?.name || user?.user_metadata?.full_name || 'M').charAt(0).toUpperCase()}
-            </div>
+            {isAuthenticated && user?.avatar ? (
+              <img src={user.avatar} alt="avatar" className="w-6 h-6 rounded-full border border-black/10 dark:border-white/10 shrink-0 object-cover" />
+            ) : (
+              <div className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center font-bold text-[10px] shrink-0">
+                {(user?.user_metadata?.name || user?.user_metadata?.full_name || 'M').charAt(0).toUpperCase()}
+              </div>
+            )}
             <div className="min-w-0">
               <p className="text-[11px] font-semibold text-foreground/80 dark:text-white/70 truncate leading-tight">
                 {user?.user_metadata?.full_name || user?.user_metadata?.name || 'MittenOS User'}
               </p>
-              <p className="text-[10px] text-muted-foreground/60 truncate leading-tight">Local Storage</p>
+              <p className="text-[10px] text-muted-foreground/60 truncate leading-tight flex items-center gap-1">
+                {isAuthenticated ? (
+                  <>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
+                    MittenOS Cloud
+                  </>
+                ) : (
+                  'Local Storage'
+                )}
+              </p>
             </div>
           </div>
         </motion.div>
