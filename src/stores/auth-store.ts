@@ -1,10 +1,4 @@
 import { create } from 'zustand';
-import {
-  getPB,
-  loginWithPassword,
-  signUpWithPassword,
-  logoutPB,
-} from '@/lib/pocketbase';
 
 export interface User {
   id: string;
@@ -53,196 +47,110 @@ interface AuthStore {
   isAuthenticated: boolean;
 
   initialize: () => Promise<void>;
-  signInWithPassword: (email: string, pass: string) => Promise<{ error: string | null }>;
-  signUpWithPassword: (email: string, pass: string, passConfirm: string, name?: string) => Promise<{ error: string | null }>;
+  updateProfile: (profile: { name?: string; email?: string; avatar?: string }) => void;
   signOut: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthStore>((set) => ({
+export const useAuthStore = create<AuthStore>((set, get) => ({
   user: DEFAULT_USER,
   session: DEFAULT_SESSION,
   loading: false,
-  isGuest: true,
-  isAuthenticated: false,
+  isGuest: false,
+  isAuthenticated: true,
 
   initialize: async () => {
     if (typeof window === 'undefined') return;
 
-    const pb = getPB();
-
-    // Check if PocketBase has valid stored session
-    if (pb.authStore.isValid && pb.authStore.record) {
-      const record = pb.authStore.record;
-      const avatarUrl = record.avatar
-        ? pb.files.getURL(record, record.avatar)
-        : undefined;
-
-      const pbUser: User = {
-        id: record.id,
-        email: record.email || '',
-        avatar: avatarUrl,
-        created_at: record.created,
-        user_metadata: {
-          name: record.name || record.email?.split('@')[0] || 'User',
-          full_name: record.name || record.email?.split('@')[0] || 'User',
-          avatar_url: avatarUrl,
-        },
-      };
-
-      set({
-        user: pbUser,
-        session: { user: pbUser, token: pb.authStore.token },
-        isGuest: false,
-        isAuthenticated: true,
-        loading: false,
-      });
-    } else {
-      set({
-        user: DEFAULT_USER,
-        session: DEFAULT_SESSION,
-        isGuest: true,
-        isAuthenticated: false,
-        loading: false,
-      });
-    }
-
-    // Subscribe to auth state changes
-    pb.authStore.onChange((token, model) => {
-      if (token && model) {
-        const record = model as any;
-        const avatarUrl = record.avatar
-          ? pb.files.getURL(record, record.avatar)
-          : undefined;
-
-        const pbUser: User = {
-          id: record.id,
-          email: record.email || '',
-          avatar: avatarUrl,
-          created_at: record.created,
+    try {
+      const storedProfile = localStorage.getItem('mittenos:user_profile');
+      if (storedProfile) {
+        const parsed = JSON.parse(storedProfile);
+        const localUser: User = {
+          ...DEFAULT_USER,
+          ...parsed,
           user_metadata: {
-            name: record.name || record.email?.split('@')[0] || 'User',
-            full_name: record.name || record.email?.split('@')[0] || 'User',
-            avatar_url: avatarUrl,
+            ...DEFAULT_USER.user_metadata,
+            ...(parsed.user_metadata || {}),
+            name: parsed.name || parsed.user_metadata?.name || DEFAULT_USER.user_metadata?.name,
+            full_name: parsed.name || parsed.user_metadata?.full_name || DEFAULT_USER.user_metadata?.full_name,
+            avatar_url: parsed.avatar || parsed.user_metadata?.avatar_url,
           },
         };
-
         set({
-          user: pbUser,
-          session: { user: pbUser, token },
+          user: localUser,
+          session: { user: localUser },
           isGuest: false,
           isAuthenticated: true,
+          loading: false,
         });
-      } else {
-        set({
-          user: DEFAULT_USER,
-          session: DEFAULT_SESSION,
-          isGuest: true,
-          isAuthenticated: false,
-        });
+        return;
       }
-    });
-  },
-
-  signInWithPassword: async (email: string, pass: string) => {
-    set({ loading: true });
-    try {
-      const authData = await loginWithPassword(email, pass);
-      const record = authData.record;
-      const pb = getPB();
-      const avatarUrl = record.avatar
-        ? pb.files.getURL(record, record.avatar)
-        : undefined;
-
-      const pbUser: User = {
-        id: record.id,
-        email: record.email || '',
-        avatar: avatarUrl,
-        created_at: record.created,
-        user_metadata: {
-          name: record.name || record.email?.split('@')[0] || 'User',
-          full_name: record.name || record.email?.split('@')[0] || 'User',
-          avatar_url: avatarUrl,
-        },
-      };
-
-      set({
-        user: pbUser,
-        session: { user: pbUser, token: authData.token },
-        isGuest: false,
-        isAuthenticated: true,
-        loading: false,
-      });
-
-      // Reload filesystem and desktop state for the newly logged-in user
-      if (typeof window !== 'undefined') {
-        try {
-          const { useFileSystemStore } = await import('./filesystem-store');
-          await useFileSystemStore.getState().loadFromDB(pbUser.id);
-        } catch (e) {
-          console.error('[AuthStore] Failed to reload filesystem for user:', e);
-        }
-      }
-
-      return { error: null };
-    } catch (err: any) {
-      set({ loading: false });
-      return { error: err.message || 'Failed to sign in. Please check your email and password.' };
+    } catch (e) {
+      console.warn('[AuthStore] Failed to load local profile from localStorage:', e);
     }
-  },
 
-  signUpWithPassword: async (email: string, pass: string, passConfirm: string, name?: string) => {
-    set({ loading: true });
-    try {
-      const { authData } = await signUpWithPassword(email, pass, passConfirm, name);
-      const record = authData.record;
-      const pb = getPB();
-      const avatarUrl = record.avatar
-        ? pb.files.getURL(record, record.avatar)
-        : undefined;
-
-      const pbUser: User = {
-        id: record.id,
-        email: record.email || '',
-        avatar: avatarUrl,
-        created_at: record.created,
-        user_metadata: {
-          name: record.name || name || record.email?.split('@')[0] || 'User',
-          full_name: record.name || name || record.email?.split('@')[0] || 'User',
-          avatar_url: avatarUrl,
-        },
-      };
-
-      set({
-        user: pbUser,
-        session: { user: pbUser, token: authData.token },
-        isGuest: false,
-        isAuthenticated: true,
-        loading: false,
-      });
-
-      if (typeof window !== 'undefined') {
-        try {
-          const { useFileSystemStore } = await import('./filesystem-store');
-          await useFileSystemStore.getState().loadFromDB(pbUser.id);
-        } catch (e) {
-          console.error('[AuthStore] Failed to initialize filesystem for new user:', e);
-        }
-      }
-
-      return { error: null };
-    } catch (err: any) {
-      set({ loading: false });
-      return { error: err.message || 'Failed to create account.' };
-    }
-  },
-
-  signOut: async () => {
-    logoutPB();
     set({
       user: DEFAULT_USER,
       session: DEFAULT_SESSION,
-      isGuest: true,
-      isAuthenticated: false,
+      isGuest: false,
+      isAuthenticated: true,
+      loading: false,
+    });
+  },
+
+  updateProfile: (profile: { name?: string; email?: string; avatar?: string }) => {
+    const currentUser = get().user || DEFAULT_USER;
+    const name = profile.name ?? currentUser.user_metadata?.name ?? 'MittenOS User';
+    const email = profile.email ?? currentUser.email ?? 'user@mittenos.local';
+    const avatar = profile.avatar !== undefined ? profile.avatar : currentUser.avatar;
+
+    const updatedUser: User = {
+      ...currentUser,
+      email,
+      avatar,
+      user_metadata: {
+        ...currentUser.user_metadata,
+        name,
+        full_name: name,
+        avatar_url: avatar,
+      },
+    };
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(
+          'mittenos:user_profile',
+          JSON.stringify({
+            name,
+            email,
+            avatar,
+          })
+        );
+      } catch (e) {
+        console.error('[AuthStore] Failed to persist profile to localStorage:', e);
+      }
+    }
+
+    set({
+      user: updatedUser,
+      session: { user: updatedUser },
+    });
+  },
+
+  signOut: async () => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('mittenos:user_profile');
+      } catch (e) {
+        console.error('[AuthStore] Failed to clear user profile:', e);
+      }
+    }
+
+    set({
+      user: DEFAULT_USER,
+      session: DEFAULT_SESSION,
+      isGuest: false,
+      isAuthenticated: true,
       loading: false,
     });
 
@@ -251,7 +159,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
         const { useFileSystemStore } = await import('./filesystem-store');
         await useFileSystemStore.getState().loadFromDB(DEFAULT_USER.id);
       } catch (e) {
-        console.error('[AuthStore] Failed to reload filesystem after sign out:', e);
+        console.error('[AuthStore] Failed to reload filesystem after reset:', e);
       }
     }
   },

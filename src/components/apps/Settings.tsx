@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useFileSystemStore } from '@/stores/filesystem-store';
 import { useDesktopStore } from '@/stores/desktop-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { Switch } from '@/components/ui/switch';
-import { TurnstileWidget } from '@/components/ui/TurnstileWidget';
 import {
   Palette,
   Monitor,
@@ -17,24 +16,11 @@ import {
   LayoutPanelTop,
   Key,
   Shield,
-  Eye,
-  EyeOff,
   HardDrive,
-  Database,
-  Trash2,
-  CheckCircle2,
-  RefreshCw,
-  Server,
-  FolderOpen,
-  Cloud,
-  AlertCircle,
-  Copy,
-  Check,
-  ExternalLink,
-  ChevronDown,
-  ChevronUp,
   Clock,
   Calendar,
+  Download,
+  User as UserIcon,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useWindowStore } from '@/stores/window-store';
@@ -133,7 +119,6 @@ export default function SettingsApp() {
   const setShowDateUnderTime = useDesktopStore((s) => s.setShowDateUnderTime);
 
   const user = useAuthStore((s) => s.user);
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   return (
     <div className="flex h-full bg-card dark:bg-zinc-900 text-card-foreground select-none overflow-hidden">
@@ -141,7 +126,7 @@ export default function SettingsApp() {
       <div className="w-52 bg-muted dark:bg-zinc-800/40 border-r border-border p-3 flex flex-col gap-1 shrink-0 overflow-y-auto settings-scrollbar">
         {/* User profile card */}
         <div className="flex items-center gap-2.5 px-3 py-2.5 mb-1 rounded-xl bg-black/[0.04] dark:bg-white/[0.05] border border-border/40">
-          {isAuthenticated && user?.avatar ? (
+          {user?.avatar ? (
             <img src={user.avatar} alt="avatar" className="w-7 h-7 rounded-full border border-border shrink-0 object-cover" />
           ) : (
             <div className="w-7 h-7 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center font-bold text-xs shrink-0">
@@ -153,14 +138,8 @@ export default function SettingsApp() {
               {user?.user_metadata?.full_name || user?.user_metadata?.name || 'Local User'}
             </p>
             <p className="text-[10px] text-muted-foreground truncate leading-tight flex items-center gap-1">
-              {isAuthenticated ? (
-                <>
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
-                  MittenOS Cloud
-                </>
-              ) : (
-                'Local Storage'
-              )}
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
+              Local Storage
             </p>
           </div>
         </div>
@@ -546,7 +525,7 @@ function AboutSection() {
         </div>
 
         <h4 className="text-xl font-semibold text-foreground mb-1">MittenOS</h4>
-        <p className="text-sm text-muted-foreground mb-6">Version 1.0.0</p>
+        <p className="text-sm text-muted-foreground mb-6">Version 1.0.0 (Local Storage Edition)</p>
 
         <div className="w-full max-w-xs space-y-3">
           <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted dark:bg-zinc-800/60 border border-border">
@@ -554,8 +533,8 @@ function AboutSection() {
             <span className="text-xs text-foreground/70">MittenOS</span>
           </div>
           <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted dark:bg-zinc-800/60 border border-border">
-            <span className="text-xs text-muted-foreground">Version</span>
-            <span className="text-xs text-foreground/70">1.0.0</span>
+            <span className="text-xs text-muted-foreground">Storage Backend</span>
+            <span className="text-xs text-foreground/70">Local-First (localStorage)</span>
           </div>
           <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted dark:bg-zinc-800/60 border border-border">
             <span className="text-xs text-muted-foreground">Built with</span>
@@ -595,7 +574,7 @@ function AiKeysSection() {
           <div className="space-y-1">
             <h4 className="text-sm font-semibold text-foreground">Centralized AI Keys</h4>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              AI API configurations are now managed globally in the <span className="font-semibold text-amber-500">Keys</span> app. Please use the Keys app to configure your OpenAI-compatible endpoint, API key, and model.
+              AI API configurations are managed locally in the <span className="font-semibold text-amber-500">Keys</span> app. All keys and endpoints are stored privately in your browser.
             </p>
           </div>
         </div>
@@ -613,7 +592,7 @@ function AiKeysSection() {
   );
 }
 
-/* ─── Storage & Cloud Account Section ────────────────────────── */
+/* ─── Local Storage Section ──────────────────────────────────── */
 
 interface StorageCategoryUsage {
   id: string;
@@ -626,128 +605,18 @@ function StorageSection() {
   const { toast } = useToast();
   const userId = useFileSystemStore((s) => s.userId) || 'mitten-user';
   const loadFromDB = useFileSystemStore((s) => s.loadFromDB);
-  const syncWithPocketBase = useFileSystemStore((s) => s.syncWithPocketBase);
 
   const authUser = useAuthStore((s) => s.user);
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const authLoading = useAuthStore((s) => s.loading);
-  const signInWithPassword = useAuthStore((s) => s.signInWithPassword);
-  const signUpWithPassword = useAuthStore((s) => s.signUpWithPassword);
-  const signOut = useAuthStore((s) => s.signOut);
+  const updateProfile = useAuthStore((s) => s.updateProfile);
 
-  // Auth Form states
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
-  const [authEmail, setAuthEmail] = useState('');
-  const [authPassword, setAuthPassword] = useState('');
-  const [authPasswordConfirm, setAuthPasswordConfirm] = useState('');
-  const [authName, setAuthName] = useState('');
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [verifyingTurnstile, setVerifyingTurnstile] = useState(false);
-
-  // Action states
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [editName, setEditName] = useState(authUser?.user_metadata?.name || 'MittenOS User');
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
 
   // Local storage metrics
   const [metrics, setMetrics] = useState<{
     totalBytes: number;
     categories: StorageCategoryUsage[];
   }>({ totalBytes: 0, categories: [] });
-
-  const handleAuthSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAuthError(null);
-
-    if (!authEmail.trim() || !authPassword.trim()) {
-      setAuthError('Email and password are required');
-      return;
-    }
-
-    const hasTurnstileKey = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
-
-    if (hasTurnstileKey) {
-      if (!turnstileToken) {
-        setAuthError('Please complete the security verification challenge.');
-        return;
-      }
-
-      setVerifyingTurnstile(true);
-      try {
-        const verifyRes = await fetch('/api/auth/verify-turnstile', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: turnstileToken }),
-        });
-        const verifyData = await verifyRes.json().catch(() => ({}));
-        if (!verifyRes.ok || !verifyData.success) {
-          setVerifyingTurnstile(false);
-          setAuthError(verifyData.error || 'Security check failed. Please try again.');
-          return;
-        }
-      } catch (err: any) {
-        setVerifyingTurnstile(false);
-        setAuthError('Could not verify security challenge with server.');
-        return;
-      }
-      setVerifyingTurnstile(false);
-    }
-
-    if (authMode === 'signup') {
-      if (authPassword !== authPasswordConfirm) {
-        setAuthError('Passwords do not match');
-        return;
-      }
-      if (authPassword.length < 8) {
-        setAuthError('Password must be at least 8 characters long');
-        return;
-      }
-      const res = await signUpWithPassword(authEmail, authPassword, authPasswordConfirm, authName);
-      if (res.error) {
-        setAuthError(res.error);
-      } else {
-        toast({
-          title: 'Account Created',
-          description: `Signed in as ${authEmail}. Cloud sync is now active.`,
-        });
-      }
-    } else {
-      const res = await signInWithPassword(authEmail, authPassword);
-      if (res.error) {
-        setAuthError(res.error);
-      } else {
-        toast({
-          title: 'Signed In',
-          description: `Welcome back, ${authEmail}!`,
-        });
-      }
-    }
-  };
-
-  const handleSignOut = async () => {
-    await signOut();
-    toast({
-      title: 'Signed Out',
-      description: 'Switched to offline local storage session.',
-    });
-  };
-
-  const handleManualSync = async () => {
-    setIsSyncing(true);
-    try {
-      await syncWithPocketBase();
-      toast({
-        title: 'Cloud Sync Complete',
-        description: 'Files, desktop preferences, and custom apps are up to date.',
-      });
-    } catch (err: any) {
-      toast({
-        title: 'Sync Failed',
-        description: err?.message || 'Could not sync with cloud storage.',
-      });
-    } finally {
-      setIsSyncing(false);
-    }
-  };
 
   const calculateStorage = useCallback(() => {
     if (typeof window === 'undefined') return;
@@ -851,6 +720,41 @@ function StorageSection() {
     return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
   };
 
+  const handleSaveProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editName.trim()) return;
+    updateProfile({ name: editName.trim() });
+    setIsEditingProfile(false);
+    toast({
+      title: 'Profile Updated',
+      description: `Local username set to "${editName.trim()}".`,
+    });
+  };
+
+  const handleExportWorkspace = () => {
+    if (typeof window === 'undefined') return;
+    const backupData: Record<string, string> = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('mittenos:')) {
+        backupData[key] = localStorage.getItem(key) || '';
+      }
+    }
+    const blob = new Blob([JSON.stringify(backupData, null, 2)], {
+      type: 'application/json',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `mittenos-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({
+      title: 'Backup Exported',
+      description: 'Downloaded all local workspace and file system data.',
+    });
+  };
+
   const handleResetFileSystem = async () => {
     if (typeof window === 'undefined') return;
     if (window.confirm('Are you sure you want to reset the Virtual File System? Your user files will be re-initialized to defaults.')) {
@@ -891,15 +795,15 @@ function StorageSection() {
       <div>
         <h3 className="text-lg font-medium text-foreground">Storage</h3>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Manage cloud account synchronization and local storage allocation.
+          Local browser storage allocation, virtual file system, and workspace data.
         </p>
       </div>
 
-      {/* ─── CLOUD ACCOUNT SECTION ─── */}
-      {isAuthenticated && authUser ? (
-        <div className="p-4 rounded-xl border border-border bg-card dark:bg-zinc-800/40 flex items-center justify-between gap-4">
+      {/* ─── LOCAL PROFILE CARD ─── */}
+      <div className="p-4 rounded-xl border border-border bg-card dark:bg-zinc-800/40">
+        <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            {authUser.avatar ? (
+            {authUser?.avatar ? (
               <img
                 src={authUser.avatar}
                 alt="avatar"
@@ -907,152 +811,49 @@ function StorageSection() {
               />
             ) : (
               <div className="w-10 h-10 rounded-full bg-amber-500/15 text-amber-500 font-semibold text-sm flex items-center justify-center shrink-0 border border-amber-500/20">
-                {(authUser.user_metadata?.name || authUser.email || 'U').charAt(0).toUpperCase()}
+                {(authUser?.user_metadata?.name || 'U').charAt(0).toUpperCase()}
               </div>
             )}
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="text-xs font-semibold text-foreground truncate">
-                  {authUser.user_metadata?.full_name || authUser.user_metadata?.name || 'MittenOS Cloud User'}
-                </p>
-                <span className="text-[10px] text-emerald-500 font-medium flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  Synced
-                </span>
-              </div>
-              <p className="text-[11px] text-muted-foreground truncate">{authUser.email}</p>
+              <p className="text-xs font-semibold text-foreground truncate">
+                {authUser?.user_metadata?.full_name || authUser?.user_metadata?.name || 'Local User'}
+              </p>
+              <p className="text-[11px] text-muted-foreground truncate">
+                All data is stored 100% locally and privately in your browser.
+              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={handleManualSync}
-              disabled={isSyncing}
-              className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-white text-xs font-medium transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
-            >
-              <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
-              {isSyncing ? 'Syncing...' : 'Sync'}
-            </button>
-            <button
-              onClick={handleSignOut}
-              className="px-3 py-1.5 rounded-lg border border-border hover:bg-muted text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-            >
-              Sign Out
-            </button>
-          </div>
+          <button
+            onClick={() => {
+              setEditName(authUser?.user_metadata?.name || 'MittenOS User');
+              setIsEditingProfile(!isEditingProfile);
+            }}
+            className="px-3 py-1.5 rounded-lg border border-border hover:bg-muted text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer shrink-0"
+          >
+            {isEditingProfile ? 'Cancel' : 'Edit Name'}
+          </button>
         </div>
-      ) : (
-        <div className="p-4 rounded-xl border border-border bg-card dark:bg-zinc-800/40 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <Cloud className="w-4 h-4 text-amber-500 shrink-0" />
-              <div>
-                <p className="text-xs font-semibold text-foreground">MittenOS Cloud</p>
-                <p className="text-[11px] text-muted-foreground">Sign in to sync files and workspace settings</p>
-              </div>
-            </div>
-            <div className="flex bg-muted p-0.5 rounded-md border border-border">
-              <button
-                onClick={() => { setAuthMode('signin'); setAuthError(null); }}
-                className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
-                  authMode === 'signin' ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Sign In
-              </button>
-              <button
-                onClick={() => { setAuthMode('signup'); setAuthError(null); }}
-                className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
-                  authMode === 'signup' ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Create Account
-              </button>
-            </div>
-          </div>
 
-          {authError && (
-            <div className="flex items-center gap-2 p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
-              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-              <span>{authError}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleAuthSubmit} className="space-y-2.5">
-            {authMode === 'signup' && (
-              <div>
-                <label className="block text-[11px] text-muted-foreground mb-1">Name (Optional)</label>
-                <input
-                  type="text"
-                  value={authName}
-                  onChange={(e) => setAuthName(e.target.value)}
-                  placeholder="Jane Doe"
-                  className="w-full px-3 py-1.5 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
-                />
-              </div>
-            )}
-
-            <div>
-              <label className="block text-[11px] text-muted-foreground mb-1">Email</label>
-              <input
-                type="email"
-                required
-                value={authEmail}
-                onChange={(e) => setAuthEmail(e.target.value)}
-                placeholder="user@example.com"
-                className="w-full px-3 py-1.5 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[11px] text-muted-foreground mb-1">Password</label>
-              <input
-                type="password"
-                required
-                value={authPassword}
-                onChange={(e) => setAuthPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full px-3 py-1.5 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
-              />
-            </div>
-
-            {authMode === 'signup' && (
-              <div>
-                <label className="block text-[11px] text-muted-foreground mb-1">Confirm Password</label>
-                <input
-                  type="password"
-                  required
-                  value={authPasswordConfirm}
-                  onChange={(e) => setAuthPasswordConfirm(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full px-3 py-1.5 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
-                />
-              </div>
-            )}
-
-            <TurnstileWidget
-              onVerify={(token) => {
-                setTurnstileToken(token);
-                setAuthError(null);
-              }}
-              onExpire={() => setTurnstileToken(null)}
-              onError={(code) => {
-                if (code !== '110200') {
-                  setAuthError('Security check failed. Please refresh.');
-                }
-              }}
+        {isEditingProfile && (
+          <form onSubmit={handleSaveProfile} className="mt-3 pt-3 border-t border-border flex items-center gap-2">
+            <input
+              type="text"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              placeholder="Enter local username..."
+              className="flex-1 px-3 py-1.5 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
+              autoFocus
             />
-
             <button
               type="submit"
-              disabled={authLoading || verifyingTurnstile}
-              className="w-full py-2 rounded-lg bg-amber-500 hover:bg-amber-600 font-medium text-white text-xs transition-colors cursor-pointer disabled:opacity-50"
+              className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-medium transition-colors cursor-pointer"
             >
-              {authLoading || verifyingTurnstile ? 'Verifying...' : authMode === 'signup' ? 'Create Account' : 'Sign In'}
+              Save
             </button>
           </form>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* ─── LOCAL STORAGE BREAKDOWN ─── */}
       <div className="space-y-3">
@@ -1113,9 +914,17 @@ function StorageSection() {
       <div className="p-3.5 rounded-xl border border-border bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <p className="text-xs font-medium text-foreground">Storage Management</p>
-          <p className="text-[11px] text-muted-foreground">Reset virtual file system or clear local cache</p>
+          <p className="text-[11px] text-muted-foreground">Export backup, reset virtual file system, or clear local data</p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <button
+            onClick={handleExportWorkspace}
+            className="px-3 py-1.5 rounded-lg border border-border hover:bg-muted text-xs font-medium transition-colors cursor-pointer text-foreground flex items-center gap-1.5"
+            title="Export all local data as JSON"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Export Backup</span>
+          </button>
           <button
             onClick={handleResetFileSystem}
             className="px-3 py-1.5 rounded-lg border border-border hover:bg-muted text-xs font-medium transition-colors cursor-pointer text-foreground"

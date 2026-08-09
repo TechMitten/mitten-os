@@ -4,8 +4,7 @@ MittenOS is a web-based desktop environment and operating system simulator built
 
 ## Key Features
 
-- **Desktop Shell**: Multi-window system, window manager, start menu, taskbar, desktop icons, notifications, context menus, and a customizable theme engine (including wallpapers and dark mode).
-- **Virtual File System & Cloud Sync**: A local-first virtual directory structure with offline `localStorage` caching and seamless cloud synchronization powered by self-hosted **PocketBase** (see [POCKETBASE_SETUP.md](POCKETBASE_SETUP.md)).
+- **Virtual File System**: A local-first virtual directory structure persisted entirely in the browser using `localStorage`, keeping all files and user workspace data 100% private and offline.
 - **Built-in Applications**: Includes a File Explorer, Terminal, Web Browser, Text Editor, Calculator, Weather app, Settings app, and Image Viewer.
 - **Orion App Builder**: An AI-powered app generator that creates self-contained HTML/JS applications from natural language prompts, supporting streaming generation, surgical edits, and version history.
 - **Sandboxed Runtime**: User-built apps are rendered in iframe sandboxes with custom Content Security Policies (CSP) and communicate with the host environment using a postMessage-based bridge API (`window.mittenOS`) for filesystem access and notification dispatching.

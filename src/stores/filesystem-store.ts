@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import { FSNode } from "@/types/os";
-import { isPBAuthenticated, loadUserData, debouncedSaveUserData } from "@/lib/pocketbase";
 
 function generateUUID(): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -18,7 +17,7 @@ interface FileSystemStore {
   loaded: boolean;
   loading: boolean;
   userId: string | null;
-  syncStatus: 'synced' | 'syncing' | 'local';
+  syncStatus: 'local';
 
   loadFromDB: (userId: string) => Promise<void>;
   getNode: (path: string) => FSNode | null;
@@ -31,7 +30,6 @@ interface FileSystemStore {
   updateFileContent: (id: string, content: string) => Promise<void>;
   getChildren: (parentId: string) => FSNode[];
   fetchFileContentIfNeeded: (id: string) => Promise<string>;
-  syncWithPocketBase: () => Promise<void>;
   reset: () => void;
 }
 
@@ -53,13 +51,6 @@ function persistFS(userId: string | null, root: FSNode) {
     localStorage.setItem(`mittenos:fs:${userId}`, JSON.stringify(root));
   } catch (e) {
     console.error("Failed to persist filesystem to localStorage:", e);
-  }
-
-  // Cloud sync to PocketBase if user is authenticated
-  if (isPBAuthenticated()) {
-    debouncedSaveUserData('fs', root, 1500).catch((err) => {
-      console.warn('[FSStore] PocketBase background sync error:', err);
-    });
   }
 }
 
@@ -99,7 +90,7 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
     let root = defaultRoot();
     let loadedFromLocal = false;
 
-    // 1. Instant local load
+    // Instant local load from localStorage
     if (typeof window !== 'undefined') {
       const key = `mittenos:fs:${userId}`;
       const saved = localStorage.getItem(key);
@@ -112,7 +103,7 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
             root,
             loaded: true,
             loading: false,
-            syncStatus: isPBAuthenticated() ? 'synced' : 'local',
+            syncStatus: 'local',
           });
 
           // Sync desktop store settings
@@ -135,7 +126,7 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
         root,
         loaded: true,
         loading: false,
-        syncStatus: isPBAuthenticated() ? 'synced' : 'local',
+        syncStatus: 'local',
       });
 
       try {
@@ -144,49 +135,6 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
       } catch (e) {
         console.error("[FSStore] Failed to sync desktop settings on default load:", e);
       }
-    }
-
-    // 2. Asynchronous PocketBase sync if authenticated
-    if (isPBAuthenticated()) {
-      (async () => {
-        try {
-          const cloudFS = await loadUserData<FSNode>('fs');
-          if (cloudFS && cloudFS.children && cloudFS.children.length > 0) {
-            const merged = ensureLocalSystemFolders(cloudFS);
-            set({ root: merged, syncStatus: 'synced' });
-            if (typeof window !== 'undefined') {
-              localStorage.setItem(`mittenos:fs:${userId}`, JSON.stringify(merged));
-            }
-          } else {
-            // First time cloud sync: push local state to PocketBase
-            const currentRoot = get().root;
-            await debouncedSaveUserData('fs', currentRoot, 500);
-          }
-        } catch (err) {
-          console.warn('[FSStore] Could not load PocketBase filesystem cloud copy:', err);
-        }
-      })();
-    }
-  },
-
-  syncWithPocketBase: async () => {
-    const { userId, root } = get();
-    if (!userId || !isPBAuthenticated()) return;
-
-    set({ syncStatus: 'syncing' });
-    try {
-      const cloudFS = await loadUserData<FSNode>('fs');
-      if (cloudFS && cloudFS.children) {
-        const merged = ensureLocalSystemFolders(cloudFS);
-        set({ root: merged, syncStatus: 'synced' });
-        persistFS(userId, merged);
-      } else {
-        await debouncedSaveUserData('fs', root, 0);
-        set({ syncStatus: 'synced' });
-      }
-    } catch (err) {
-      console.error('[FSStore] Manual PocketBase sync error:', err);
-      set({ syncStatus: 'local' });
     }
   },
 
