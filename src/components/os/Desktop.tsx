@@ -148,20 +148,20 @@ export function Desktop() {
       const savedWindows = persistWindows ? await loadWindowStates(user.id) : [];
       if (cancelled) return;
 
-      // Reopen windows that were non-minimized
+      // Reopen previously open windows, restoring minimized ones as minimized
       const { openWindow } = useWindowStore.getState();
       if (savedWindows.length > 0) {
         for (const sw of savedWindows) {
-          if (sw.state === 'minimized') continue;
           const id = openWindow(sw.appId, sw.title);
           if (id) {
-            const { updateWindowPosition, updateWindowSize, focusWindow } = useWindowStore.getState();
+            const { updateWindowPosition, updateWindowSize, focusWindow, minimizeWindow } = useWindowStore.getState();
             updateWindowPosition(id, { x: sw.x, y: sw.y });
             updateWindowSize(id, { width: sw.width, height: sw.height });
             if (sw.state === 'minimized') {
-              useWindowStore.getState().minimizeWindow(id);
+              minimizeWindow(id);
+            } else {
+              focusWindow(id);
             }
-            focusWindow(id);
           }
         }
       }
@@ -193,7 +193,27 @@ export function Desktop() {
     return () => clearInterval(interval);
   }, [user?.id, dataLoaded]);
 
-  // Save windows on close — use the interval above plus the logout handler in StartMenu
+  // Save windows immediately when the tab is closed/refreshed/backgrounded, since the
+  // periodic interval above can otherwise miss whatever changed in the last few seconds.
+  useEffect(() => {
+    if (!user?.id || !dataLoaded) return;
+    const persistOnExit = () => {
+      const { persistWindows } = useDesktopStore.getState();
+      if (persistWindows) {
+        saveWindowStates(user.id, windowsRef.current);
+      }
+      saveIconPositions(user.id, iconsRef.current);
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') persistOnExit();
+    };
+    window.addEventListener('pagehide', persistOnExit);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.removeEventListener('pagehide', persistOnExit);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [user?.id, dataLoaded]);
 
   const iconSize = useDesktopStore((s) => s.iconSize) || 'medium';
   const gridCellSize = {
