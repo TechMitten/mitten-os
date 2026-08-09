@@ -52,23 +52,23 @@ const WALLPAPERS = [
   },
   {
     id: 'wp-2',
-    name: 'Sunset Glow',
-    gradient: 'linear-gradient(135deg, #f093fb, #f5576c)',
+    name: 'Crimson Dusk',
+    gradient: 'linear-gradient(135deg, #1a0505, #4a0e0e, #2b0707)',
   },
   {
     id: 'wp-3',
-    name: 'Ocean Blue',
-    gradient: 'linear-gradient(135deg, #667eea, #764ba2)',
+    name: 'Deep Violet',
+    gradient: 'linear-gradient(135deg, #1a0b2e, #2d1b4e, #0f0620)',
   },
   {
     id: 'wp-4',
-    name: 'Forest Green',
-    gradient: 'linear-gradient(135deg, #11998e, #38ef7d)',
+    name: 'Emerald Depths',
+    gradient: 'linear-gradient(135deg, #022c22, #064e3b, #011a15)',
   },
   {
     id: 'wp-5',
-    name: 'Warm Flame',
-    gradient: 'linear-gradient(135deg, #f83600, #f9d423)',
+    name: 'Copper Ember',
+    gradient: 'linear-gradient(135deg, #2b1405, #5c2a0a, #1a0c03)',
   },
   {
     id: 'wp-6',
@@ -77,8 +77,8 @@ const WALLPAPERS = [
   },
   {
     id: 'wp-7',
-    name: 'Arctic',
-    gradient: 'linear-gradient(135deg, #c9d6ff, #e2e2e2)',
+    name: 'Slate Storm',
+    gradient: 'linear-gradient(135deg, #1e293b, #0f172a)',
   },
   {
     id: 'wp-8',
