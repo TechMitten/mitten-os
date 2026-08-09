@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FolderPlus,
@@ -11,9 +11,12 @@ import {
   Info,
   Edit2,
   Trash2,
+  Clock,
+  Calendar,
+  Settings,
   type LucideIcon,
 } from 'lucide-react';
-import { type ContextMenuState, type ContextMenuItem, useDesktopStore } from '@/stores/desktop-store';
+import { type ContextMenuState, type ContextMenuItem } from '@/stores/desktop-store';
 
 // Map icon string names to Lucide components for context menu items
 const CONTEXT_ICON_MAP: Record<string, LucideIcon> = {
@@ -25,6 +28,9 @@ const CONTEXT_ICON_MAP: Record<string, LucideIcon> = {
   Info,
   Edit2,
   Trash2,
+  Clock,
+  Calendar,
+  Settings,
 };
 
 interface ContextMenuProps {
@@ -34,22 +40,33 @@ interface ContextMenuProps {
 
 export function ContextMenu({ contextMenu, onClose }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
-  const theme = useDesktopStore((s) => s.theme);
 
-  // Adjust position if menu would go off-screen
-  useEffect(() => {
+  // Adjust position if menu would go off-screen or cover the taskbar
+  useLayoutEffect(() => {
     if (!menuRef.current) return;
 
     const rect = menuRef.current.getBoundingClientRect();
     const { innerWidth, innerHeight } = window;
+    const taskbarHeight = 48;
+    const bottomLimit = innerHeight - taskbarHeight;
 
     let { x, y } = contextMenu;
 
-    if (x + rect.width > innerWidth) {
+    if (x + rect.width > innerWidth - 8) {
       x = innerWidth - rect.width - 8;
     }
-    if (y + rect.height > innerHeight) {
-      y = innerHeight - rect.height - 8;
+    if (x < 8) {
+      x = 8;
+    }
+
+    // If positioning extends into or past the taskbar, position above the taskbar/cursor
+    if (y + rect.height > bottomLimit || y >= bottomLimit) {
+      const anchorY = y >= bottomLimit ? bottomLimit : y;
+      y = Math.max(8, anchorY - rect.height - 6);
+    }
+
+    if (y < 8) {
+      y = 8;
     }
 
     menuRef.current.style.left = `${x}px`;
@@ -101,13 +118,10 @@ export function ContextMenu({ contextMenu, onClose }: ContextMenuProps) {
         style={{
           left: contextMenu.x,
           top: contextMenu.y,
-          background:
-            theme === 'dark'
-              ? 'rgba(30, 30, 40, 0.82)'
-              : 'rgba(255, 255, 255, 0.88)',
+          background: 'rgba(30, 30, 40, 0.82)',
           backdropFilter: 'blur(24px) saturate(1.4)',
           WebkitBackdropFilter: 'blur(24px) saturate(1.4)',
-          border: theme === 'dark' ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(0,0,0,0.08)',
+          border: '1px solid rgba(255,255,255,0.12)',
         }}
         onContextMenu={(e) => {
           e.preventDefault();

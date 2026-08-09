@@ -25,7 +25,6 @@ export function StartMenu() {
   const setStartMenuOpen = useDesktopStore((s) => s.setStartMenuOpen);
   const searchQuery = useDesktopStore((s) => s.searchQuery);
   const setSearchQuery = useDesktopStore((s) => s.setSearchQuery);
-  const theme = useDesktopStore((s) => s.theme);
   const desktopIcons = useDesktopStore((s) => s.desktopIcons);
   const addDesktopIcon = useDesktopStore((s) => s.addDesktopIcon);
   const openWindow = useWindowStore((s) => s.openWindow);
@@ -139,13 +138,10 @@ export function StartMenu() {
           className="fixed bottom-14 left-3 w-80 max-h-[70vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col z-[9999]"
           onContextMenu={(e) => e.preventDefault()}
           style={{
-            background:
-              theme === 'dark'
-                ? 'rgba(28, 28, 38, 0.88)'
-                : 'rgba(255, 255, 255, 0.85)',
+            background: 'rgba(28, 28, 38, 0.88)',
             backdropFilter: 'blur(30px) saturate(1.5)',
             WebkitBackdropFilter: 'blur(30px) saturate(1.5)',
-            border: theme === 'dark' ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.06)',
+            border: '1px solid rgba(255,255,255,0.1)',
           }}
         >
           {/* Search */}
@@ -253,12 +249,9 @@ export function StartMenu() {
             style={{
               left: appContextMenu.x,
               top: appContextMenu.y,
-              background:
-                theme === 'dark'
-                  ? 'rgba(32, 32, 44, 0.96)'
-                  : 'rgba(255, 255, 255, 0.96)',
+              background: 'rgba(32, 32, 44, 0.96)',
               backdropFilter: 'blur(20px)',
-              border: theme === 'dark' ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.08)',
+              border: '1px solid rgba(255,255,255,0.1)',
             }}
             ref={ctxMenuRef}
             // stopPropagation not needed — outer handler checks ctxMenuRef directly

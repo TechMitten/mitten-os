@@ -7,8 +7,6 @@ import { useAuthStore } from '@/stores/auth-store';
 import { Switch } from '@/components/ui/switch';
 import { TurnstileWidget } from '@/components/ui/TurnstileWidget';
 import {
-  Sun,
-  Moon,
   Palette,
   Monitor,
   Info,
@@ -35,14 +33,17 @@ import {
   ExternalLink,
   ChevronDown,
   ChevronUp,
+  Clock,
+  Calendar,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useWindowStore } from '@/stores/window-store';
 
-type Section = 'appearance' | 'wallpaper' | 'display' | 'general' | 'storage' | 'about' | 'ai-keys';
+type Section = 'appearance' | 'wallpaper' | 'display' | 'date-time' | 'general' | 'storage' | 'about' | 'ai-keys';
 
 const SIDEBAR_ITEMS: { id: Section; label: string; icon: React.ReactNode }[] = [
   { id: 'general', label: 'General', icon: <LayoutPanelTop className="w-4 h-4" /> },
+  { id: 'date-time', label: 'Date & Time', icon: <Clock className="w-4 h-4" /> },
   { id: 'storage', label: 'Storage', icon: <HardDrive className="w-4 h-4" /> },
   { id: 'appearance', label: 'Appearance', icon: <Palette className="w-4 h-4" /> },
   { id: 'wallpaper', label: 'Wallpaper', icon: <ImageIcon className="w-4 h-4" /> },
@@ -116,29 +117,32 @@ const ACCENT_COLORS = [
 ];
 
 export default function SettingsApp() {
+  const settingsInitialSection = useDesktopStore((s) => s.settingsInitialSection);
   const [activeSection, setActiveSection] = useState<Section>(
     () => (useDesktopStore.getState().settingsInitialSection as Section) || 'general'
   );
   const [selectedAccent, setSelectedAccent] = useState('Amber');
 
   useEffect(() => {
-    if (useDesktopStore.getState().settingsInitialSection) {
+    if (settingsInitialSection) {
+      setActiveSection(settingsInitialSection as Section);
       useDesktopStore.getState().setSettingsInitialSection(null);
     }
-  }, []);
+  }, [settingsInitialSection]);
   const iconSize = useDesktopStore((s) => s.iconSize) || 'medium';
   const setIconSize = useDesktopStore((s) => s.setIconSize);
 
-  const theme = useDesktopStore((s) => s.theme);
-  const toggleTheme = useDesktopStore((s) => s.toggleTheme);
   const wallpaper = useDesktopStore((s) => s.wallpaper);
   const setWallpaper = useDesktopStore((s) => s.setWallpaper);
   const persistWindows = useDesktopStore((s) => s.persistWindows);
   const setPersistWindows = useDesktopStore((s) => s.setPersistWindows);
+  const use24HourClock = useDesktopStore((s) => s.use24HourClock);
+  const setUse24HourClock = useDesktopStore((s) => s.setUse24HourClock);
+  const showDateUnderTime = useDesktopStore((s) => s.showDateUnderTime);
+  const setShowDateUnderTime = useDesktopStore((s) => s.setShowDateUnderTime);
 
   const user = useAuthStore((s) => s.user);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const isDark = theme === 'dark';
 
   return (
     <div className="flex h-full bg-card dark:bg-zinc-900 text-card-foreground select-none overflow-hidden">
@@ -192,8 +196,6 @@ export default function SettingsApp() {
       <div className="flex-1 p-6 overflow-y-auto settings-scrollbar">
         {activeSection === 'appearance' && (
           <AppearanceSection
-            isDark={isDark}
-            toggleTheme={toggleTheme}
             selectedAccent={selectedAccent}
             setSelectedAccent={setSelectedAccent}
           />
@@ -213,6 +215,14 @@ export default function SettingsApp() {
             setPersistWindows={setPersistWindows}
           />
         )}
+        {activeSection === 'date-time' && (
+          <DateTimeSection
+            use24HourClock={use24HourClock}
+            setUse24HourClock={setUse24HourClock}
+            showDateUnderTime={showDateUnderTime}
+            setShowDateUnderTime={setShowDateUnderTime}
+          />
+        )}
         {activeSection === 'storage' && <StorageSection />}
         {activeSection === 'ai-keys' && <AiKeysSection />}
         {activeSection === 'about' && <AboutSection />}
@@ -224,37 +234,15 @@ export default function SettingsApp() {
 /* ─── Appearance Section ──────────────────────────────────── */
 
 function AppearanceSection({
-  isDark,
-  toggleTheme,
   selectedAccent,
   setSelectedAccent,
 }: {
-  isDark: boolean;
-  toggleTheme: () => void;
   selectedAccent: string;
   setSelectedAccent: (v: string) => void;
 }) {
   return (
     <div>
       <h3 className="text-lg font-medium mb-4">Appearance</h3>
-
-      {/* Theme toggle */}
-      <div className="flex items-center justify-between py-3 border-b border-border">
-        <div className="flex items-center gap-3">
-          {isDark ? (
-            <Moon className="w-4 h-4 text-muted-foreground" />
-          ) : (
-            <Sun className="w-4 h-4 text-muted-foreground" />
-          )}
-          <div>
-            <p className="text-sm text-foreground/80">Dark Mode</p>
-            <p className="text-xs text-muted-foreground">
-              Switch between light and dark theme
-            </p>
-          </div>
-        </div>
-        <Switch checked={isDark} onCheckedChange={toggleTheme} />
-      </div>
 
       {/* Accent color picker */}
       <div className="py-3 border-b border-border">
@@ -299,22 +287,20 @@ function AppearanceSection({
           <div
             className="w-20 h-14 rounded-lg"
             style={{
-              background: isDark
-                ? 'linear-gradient(135deg, #27272a, #3f3f46)'
-                : 'linear-gradient(135deg, #f4f4f5, #e4e4e7)',
+              background: 'linear-gradient(135deg, #27272a, #3f3f46)',
             }}
           />
           <div className="flex-1 flex flex-col gap-1.5 justify-center">
             <div
               className="h-2 rounded-full w-3/4"
               style={{
-                background: isDark ? '#3f3f46' : '#d4d4d8',
+                background: '#3f3f46',
               }}
             />
             <div
               className="h-2 rounded-full w-1/2"
               style={{
-                background: isDark ? '#27272a' : '#e4e4e7',
+                background: '#27272a',
               }}
             />
             <div
@@ -483,6 +469,54 @@ function GeneralSection({
           </div>
         </div>
         <Switch checked={persistWindows} onCheckedChange={setPersistWindows} />
+      </div>
+    </div>
+  );
+}
+
+/* ─── Date & Time Section ─────────────────────────────────── */
+
+function DateTimeSection({
+  use24HourClock,
+  setUse24HourClock,
+  showDateUnderTime,
+  setShowDateUnderTime,
+}: {
+  use24HourClock: boolean;
+  setUse24HourClock: (v: boolean) => void;
+  showDateUnderTime: boolean;
+  setShowDateUnderTime: (v: boolean) => void;
+}) {
+  return (
+    <div>
+      <h3 className="text-lg font-medium mb-4">Date & Time</h3>
+
+      {/* 24-Hour Clock Toggle */}
+      <div className="flex items-center justify-between py-3 border-b border-border">
+        <div className="flex items-center gap-3">
+          <Clock className="w-4 h-4 text-muted-foreground" />
+          <div>
+            <p className="text-sm text-foreground/80">24-Hour Clock</p>
+            <p className="text-xs text-muted-foreground">
+              Display time in 24-hour format (e.g. 14:00) instead of 12-hour AM/PM format
+            </p>
+          </div>
+        </div>
+        <Switch checked={use24HourClock} onCheckedChange={setUse24HourClock} />
+      </div>
+
+      {/* Show Date in Taskbar Toggle */}
+      <div className="flex items-center justify-between py-3 border-b border-border">
+        <div className="flex items-center gap-3">
+          <Calendar className="w-4 h-4 text-muted-foreground" />
+          <div>
+            <p className="text-sm text-foreground/80">Show Date Below Time</p>
+            <p className="text-xs text-muted-foreground">
+              Display the current date below the clock in the taskbar
+            </p>
+          </div>
+        </div>
+        <Switch checked={showDateUnderTime} onCheckedChange={setShowDateUnderTime} />
       </div>
     </div>
   );

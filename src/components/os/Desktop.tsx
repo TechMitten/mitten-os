@@ -52,7 +52,6 @@ const APP_COMPONENT_MAP: Record<string, React.ComponentType> = {
 export function Desktop() {
   useWeatherPoller();
   const wallpaper = useDesktopStore((s) => s.wallpaper);
-  const theme = useDesktopStore((s) => s.theme);
   const desktopIcons = useDesktopStore((s) => s.desktopIcons);
   const contextMenu = useDesktopStore((s) => s.contextMenu);
   const setContextMenu = useDesktopStore((s) => s.setContextMenu);
@@ -568,8 +567,8 @@ export function Desktop() {
   // --- Auth loading state ---
   if (loading) {
     return (
-      <div className={theme === 'dark' ? 'dark' : ''} suppressHydrationWarning>
-        <div className="fixed inset-0 flex items-center justify-center" suppressHydrationWarning style={{ background: theme === 'dark' ? 'linear-gradient(135deg, #030b20, #0d2b63, #071730)' : 'linear-gradient(135deg, #c9d6ff, #e2e2e2, #f5f7fa)' }}>
+      <div suppressHydrationWarning>
+        <div className="fixed inset-0 flex items-center justify-center" suppressHydrationWarning style={{ background: 'linear-gradient(135deg, #030b20, #0d2b63, #071730)' }}>
           <div className="flex flex-col items-center gap-3" suppressHydrationWarning>
             <Loader2 className="w-8 h-8 text-amber-400 animate-spin" suppressHydrationWarning />
             <span className="text-sm text-muted-foreground dark:text-white/40" suppressHydrationWarning>Loading...</span>
@@ -582,8 +581,8 @@ export function Desktop() {
   // --- Data still loading ---
   if (!dataLoaded) {
     return (
-      <div className={theme === 'dark' ? 'dark' : ''} suppressHydrationWarning>
-        <div className="fixed inset-0 flex items-center justify-center" suppressHydrationWarning style={{ background: theme === 'dark' ? 'linear-gradient(135deg, #030b20, #0d2b63, #071730)' : 'linear-gradient(135deg, #c9d6ff, #e2e2e2, #f5f7fa)' }}>
+      <div suppressHydrationWarning>
+        <div className="fixed inset-0 flex items-center justify-center" suppressHydrationWarning style={{ background: 'linear-gradient(135deg, #030b20, #0d2b63, #071730)' }}>
           <div className="flex flex-col items-center gap-3" suppressHydrationWarning>
             <Loader2 className="w-8 h-8 text-amber-400 animate-spin" suppressHydrationWarning />
             <span className="text-sm text-muted-foreground dark:text-white/40" suppressHydrationWarning>Loading your environment...</span>
@@ -603,7 +602,7 @@ export function Desktop() {
       : { backgroundImage: wallpaper };
 
   return (
-    <div className={theme === 'dark' ? 'dark' : ''}>
+    <div>
       <div
         className="fixed inset-0 select-none overflow-hidden"
         style={wallpaperStyle}

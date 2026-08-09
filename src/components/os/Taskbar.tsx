@@ -4,7 +4,6 @@ import { useEffect, useState, useMemo } from 'react';
 import {
   LayoutGrid,
   Sun,
-  Moon,
   Bell,
   User,
   Cloud,
@@ -31,6 +30,11 @@ import {
 
 function Clock() {
   const [now, setNow] = useState<Date | null>(null);
+  const use24HourClock = useDesktopStore((s) => s.use24HourClock);
+  const showDateUnderTime = useDesktopStore((s) => s.showDateUnderTime);
+  const setContextMenu = useDesktopStore((s) => s.setContextMenu);
+  const setSettingsInitialSection = useDesktopStore((s) => s.setSettingsInitialSection);
+  const openWindow = useWindowStore((s) => s.openWindow);
 
   useEffect(() => {
     // Use rAF to schedule the first update asynchronously — avoids the
@@ -45,20 +49,43 @@ function Clock() {
     };
   }, []);
 
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    setContextMenu({
+      x: rect.right - 200,
+      y: rect.top,
+      items: [
+        {
+          label: 'Adjust date and time',
+          icon: 'Clock',
+          action: () => {
+            setSettingsInitialSection('date-time');
+            openWindow('settings');
+          },
+        },
+      ],
+    });
+  };
+
   // Placeholder that matches SSR output (no client-specific text)
   if (!now) {
     return (
-      <div className="flex flex-col items-center justify-center text-xs leading-tight px-2 cursor-default">
+      <div
+        onContextMenu={handleContextMenu}
+        className="flex flex-col items-center justify-center text-xs leading-tight px-2 py-1 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition-colors duration-150 cursor-pointer select-none"
+      >
         <span className="font-medium text-foreground/80">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
-        <span className="text-[10px] text-foreground/50">&nbsp;&nbsp;&nbsp;&nbsp;</span>
+        {showDateUnderTime && <span className="text-[10px] text-foreground/50">&nbsp;&nbsp;&nbsp;&nbsp;</span>}
       </div>
     );
   }
 
   const timeStr = now.toLocaleTimeString('en-US', {
-    hour: '2-digit',
+    hour: use24HourClock ? '2-digit' : 'numeric',
     minute: '2-digit',
-    hour12: false,
+    hour12: !use24HourClock,
   });
 
   const dateStr = now.toLocaleDateString('en-US', {
@@ -66,11 +93,31 @@ function Clock() {
     day: '2-digit',
   });
 
+  const fullDateStr = now.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+
   return (
-    <div className="flex flex-col items-center justify-center text-xs leading-tight px-2 cursor-default">
-      <span className="font-medium text-foreground/80">{timeStr}</span>
-      <span className="text-[10px] text-foreground/50">{dateStr}</span>
-    </div>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onContextMenu={handleContextMenu}
+          className="flex flex-col items-center justify-center text-xs leading-tight px-2 py-1 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition-colors duration-150 cursor-pointer select-none text-left"
+        >
+          <span className="font-medium text-foreground/80">{timeStr}</span>
+          {showDateUnderTime && (
+            <span className="text-[10px] text-foreground/50">{dateStr}</span>
+          )}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top">
+        {fullDateStr}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -132,8 +179,6 @@ export default function Taskbar() {
   const {
     startMenuOpen,
     toggleStartMenu,
-    theme,
-    toggleTheme,
     notifications,
   } = useDesktopStore();
 
@@ -272,20 +317,18 @@ export default function Taskbar() {
           })}
         </div>
 
-        {/* Right: System tray */}
+        {/* Right: System Tray */}
         <div className="flex items-center gap-1">
-          {/* Notification bell */}
+          {/* Notifications */}
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                className="relative flex items-center justify-center w-9 h-9 rounded-lg transition-colors duration-150 cursor-pointer hover:bg-black/10 dark:hover:bg-white/10"
-                aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
+                className="relative flex items-center justify-center w-9 h-9 rounded-lg transition-colors duration-150 cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 text-foreground/80"
+                aria-label="Notifications"
               >
-                <Bell className="w-4 h-4 text-foreground/80" />
+                <Bell className="w-4 h-4" />
                 {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 min-w-4 h-4 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1 leading-none">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-500" />
                 )}
               </button>
             </TooltipTrigger>
@@ -295,27 +338,6 @@ export default function Taskbar() {
                 : 'No notifications'}
             </TooltipContent>
           </Tooltip>
-
-          {/* Theme toggle */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={toggleTheme}
-                className="flex items-center justify-center w-9 h-9 rounded-lg transition-colors duration-150 cursor-pointer hover:bg-black/10 dark:hover:bg-white/10"
-                aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
-              >
-                {theme === 'dark' ? (
-                  <Sun className="w-4 h-4 text-foreground/80" />
-                ) : (
-                  <Moon className="w-4 h-4 text-foreground/80" />
-                )}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="top">
-              {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-            </TooltipContent>
-          </Tooltip>
-
 
           {/* Weather */}
           <TaskbarWeather />

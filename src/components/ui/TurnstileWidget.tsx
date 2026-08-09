@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { useDesktopStore } from '@/stores/desktop-store';
 import { ShieldCheck, AlertCircle } from 'lucide-react';
 
 declare global {
@@ -63,7 +62,6 @@ export function TurnstileWidget({
 }: TurnstileWidgetProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
-  const theme = useDesktopStore((s) => s.theme) || 'dark';
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const [devBypassed, setDevBypassed] = useState(false);
@@ -82,53 +80,54 @@ export function TurnstileWidget({
       return;
     }
 
-    // Define global callback for script load
-    window.onloadTurnstileCallback = () => {
-      setScriptLoaded(true);
-    };
+    const scriptId = 'cf-turnstile-script';
+    let script = document.getElementById(scriptId) as HTMLScriptElement | null;
 
-    const existingScript = document.getElementById('cf-turnstile-script');
-    if (!existingScript) {
-      const script = document.createElement('script');
-      script.id = 'cf-turnstile-script';
-      script.src =
-        'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onloadTurnstileCallback';
-      script.async = true;
-      script.defer = true;
-      script.onload = () => {
+    if (!script) {
+      window.onloadTurnstileCallback = () => {
         setScriptLoaded(true);
       };
+
+      script = document.createElement('script');
+      script.id = scriptId;
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback';
+      script.async = true;
+      script.defer = true;
       script.onerror = () => {
-        if (isDevOrigin()) {
-          console.warn(
-            '[Turnstile] Failed to load Cloudflare Turnstile script in dev environment. Bypassing verification.'
-          );
+        console.warn('[Cloudflare Turnstile] Script failed to load.');
+        const isDev = isDevOrigin();
+        if (isDev) {
+          console.warn('[Cloudflare Turnstile] Local development origin detected; bypassing Turnstile verification.');
+          setDomainError(null);
           setDevBypassed(true);
-          onVerify('bypassed-script-load-error');
-        } else if (onError) {
-          onError('Failed to load Cloudflare Turnstile script');
+          onVerify('bypassed-dev-domain-script-error');
+        } else {
+          setDomainError('Turnstile script failed to load. Please check your network or ad-blocker.');
+          if (onError) onError('script-failed-to-load');
         }
       };
       document.head.appendChild(script);
     } else {
-      const checkInterval = setInterval(() => {
-        if (window.turnstile) {
-          clearInterval(checkInterval);
+      if (window.turnstile) {
+        setScriptLoaded(true);
+      } else {
+        const prevOnload = window.onloadTurnstileCallback;
+        window.onloadTurnstileCallback = () => {
+          if (prevOnload) prevOnload();
           setScriptLoaded(true);
-        }
-      }, 100);
-      return () => clearInterval(checkInterval);
+        };
+      }
     }
   }, [siteKey, onVerify, onError]);
 
+  // Render or re-render widget
   useEffect(() => {
-    if (
-      !scriptLoaded ||
-      !siteKey ||
-      !siteKey.trim() ||
-      !containerRef.current ||
-      !window.turnstile
-    ) {
+    if (!scriptLoaded || !containerRef.current || !window.turnstile || !siteKey || !siteKey.trim()) {
+      return;
+    }
+
+    // If already bypassed or errored in dev, do not attempt to render
+    if (devBypassed) {
       return;
     }
 
@@ -147,7 +146,7 @@ export function TurnstileWidget({
     try {
       const id = window.turnstile.render(containerRef.current, {
         sitekey: siteKey.trim(),
-        theme: theme === 'dark' ? 'dark' : 'light',
+        theme: 'dark',
         size: 'flexible',
         callback: (token: string) => {
           setDomainError(null);
@@ -199,7 +198,7 @@ export function TurnstileWidget({
         widgetIdRef.current = null;
       }
     };
-  }, [scriptLoaded, siteKey, theme, onVerify, onExpire, onError]);
+  }, [scriptLoaded, siteKey, onVerify, onExpire, onError, devBypassed]);
 
   if (!siteKey || !siteKey.trim()) {
     return null;

@@ -43,42 +43,9 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-:root {
-  --radius: 0.625rem;
-  --background: oklch(0.965 0.005 260);
-  --foreground: oklch(0.18 0.01 260);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.01 260);
-  --popover: oklch(0.985 0.005 260);
-  --popover-foreground: oklch(0.18 0.01 260);
-  --primary: oklch(0.44 0.2 255);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.935 0.01 260);
-  --secondary-foreground: oklch(0.22 0.02 260);
-  --muted: oklch(0.94 0.01 260);
-  --muted-foreground: oklch(0.48 0.02 260);
-  --accent: oklch(0.92 0.04 255);
-  --accent-foreground: oklch(0.22 0.02 260);
-  --destructive: oklch(0.55 0.25 25);
-  --border: oklch(0.87 0.01 260);
-  --input: oklch(0.87 0.01 260);
-  --ring: oklch(0.44 0.2 255);
-  --chart-1: oklch(0.55 0.22 30);
-  --chart-2: oklch(0.55 0.15 190);
-  --chart-3: oklch(0.44 0.18 260);
-  --chart-4: oklch(0.65 0.18 120);
-  --chart-5: oklch(0.65 0.2 80);
-  --sidebar: oklch(0.95 0.01 260);
-  --sidebar-foreground: oklch(0.18 0.01 260);
-  --sidebar-primary: oklch(0.44 0.2 255);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.92 0.04 255);
-  --sidebar-accent-foreground: oklch(0.22 0.02 260);
-  --sidebar-border: oklch(0.87 0.01 260);
-  --sidebar-ring: oklch(0.44 0.2 255);
-}
-
+:root,
 .dark {
+  --radius: 0.625rem;
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -125,11 +92,6 @@
 .settings-scrollbar,
 .os-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
-}
-
-.dark .settings-scrollbar,
-.dark .os-scrollbar {
   scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
 
@@ -147,7 +109,7 @@
 
 .settings-scrollbar::-webkit-scrollbar-thumb,
 .os-scrollbar::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 0, 0, 0.15);
+  background-color: rgba(255, 255, 255, 0.15);
   border-radius: 9999px;
   border: 1px solid transparent;
   background-clip: padding-box;
@@ -155,20 +117,10 @@
 
 .settings-scrollbar::-webkit-scrollbar-thumb:hover,
 .os-scrollbar::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(0, 0, 0, 0.3);
-}
-
-.dark .settings-scrollbar::-webkit-scrollbar-thumb,
-.dark .os-scrollbar::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.15);
-}
-
-.dark .settings-scrollbar::-webkit-scrollbar-thumb:hover,
-.dark .os-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: rgba(255, 255, 255, 0.3);
 }
 
-/* Weather App Scrollbar (always uses light/semi-transparent styling because of the dark gradient backgrounds) */
+/* Weather App Scrollbar */
 .weather-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
@@ -197,10 +149,6 @@
 /* About App Scrollbar (MittenOS amber/orange theme) */
 .about-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: rgba(245, 158, 11, 0.3) transparent;
-}
-
-.dark .about-scrollbar {
   scrollbar-color: rgba(251, 146, 60, 0.25) transparent;
 }
 
@@ -214,24 +162,13 @@
 }
 
 .about-scrollbar::-webkit-scrollbar-thumb {
-  background-color: rgba(245, 158, 11, 0.25);
-  border-radius: 9999px;
-  border: 1px solid transparent;
-  background-clip: padding-box;
-}
-
-.about-scrollbar::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(217, 119, 6, 0.5);
-}
-
-.dark .about-scrollbar::-webkit-scrollbar-thumb {
   background-color: rgba(251, 146, 60, 0.25);
   border-radius: 9999px;
   border: 1px solid transparent;
   background-clip: padding-box;
 }
 
-.dark .about-scrollbar::-webkit-scrollbar-thumb:hover {
+.about-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: rgba(249, 115, 22, 0.5);
 }
 

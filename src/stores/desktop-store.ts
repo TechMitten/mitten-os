@@ -3,7 +3,6 @@ import { APP_REGISTRY, DesktopIcon, DESKTOP_GRID_CELL, DESKTOP_GRID_OFFSET_X, DE
 
 interface DesktopStore {
   wallpaper: string;
-  theme: "light" | "dark";
   desktopIcons: DesktopIcon[];
   customDesktopIcons: DesktopIcon[];
   notifications: Notification[];
@@ -15,14 +14,14 @@ interface DesktopStore {
   welcomeDismissed: boolean;
   persistWindows: boolean;
   iconSize: "small" | "medium" | "large";
+  use24HourClock: boolean;
+  showDateUnderTime: boolean;
   deletedIconIds: string[];
   renamedIconLabels: Record<string, string>;
   settingsInitialSection: string | null;
 
   loadSettings: (userId: string) => Promise<void>;
   setWallpaper: (url: string) => void;
-  setTheme: (theme: "light" | "dark") => void;
-  toggleTheme: () => void;
   setStartMenuOpen: (open: boolean) => void;
   toggleStartMenu: () => void;
   setContextMenu: (menu: ContextMenuState | null) => void;
@@ -33,6 +32,8 @@ interface DesktopStore {
   setWelcomeDismissed: (dismissed: boolean) => void;
   setPersistWindows: (persist: boolean) => void;
   setIconSize: (size: "small" | "medium" | "large") => void;
+  setUse24HourClock: (use24Hour: boolean) => void;
+  setShowDateUnderTime: (showDate: boolean) => void;
   updateIconPosition: (id: string, position: WindowPosition) => void;
   loadIconPositions: (positions: Record<string, WindowPosition>) => void;
   reset: () => void;
@@ -77,17 +78,6 @@ const defaultIcons: DesktopIcon[] = [
 
 let notificationCounter = 0;
 
-function getSettingsJson(state: DesktopStore) {
-  return {
-    welcomeDismissed: state.welcomeDismissed,
-    persistWindows: state.persistWindows,
-    iconSize: state.iconSize,
-    deletedIconIds: state.deletedIconIds || [],
-    renamedIconLabels: state.renamedIconLabels || {},
-    customDesktopIcons: state.customDesktopIcons || [],
-  };
-}
-
 async function writeVFSFile(path: string, content: string, mimeType = 'application/json') {
   try {
     const { useFileSystemStore } = await import("./filesystem-store");
@@ -119,11 +109,12 @@ async function persistDesktopState(userId: string | null, state: DesktopStore, i
   }
 
   const settings = {
-    theme: state.theme,
     wallpaper: state.wallpaper,
     welcomeDismissed: state.welcomeDismissed,
     persistWindows: state.persistWindows,
     iconSize: state.iconSize,
+    use24HourClock: state.use24HourClock,
+    showDateUnderTime: state.showDateUnderTime,
     deletedIconIds: state.deletedIconIds || [],
     renamedIconLabels: state.renamedIconLabels || {},
     customDesktopIcons: state.customDesktopIcons || [],
@@ -159,7 +150,6 @@ async function persistSettings(userId: string | null, state: DesktopStore) {
 
 export const useDesktopStore = create<DesktopStore>((set, get) => ({
   wallpaper: "/default_wallpaper.png",
-  theme: "dark",
   desktopIcons: defaultIcons,
   customDesktopIcons: [],
   notifications: [],
@@ -171,6 +161,8 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   welcomeDismissed: false,
   persistWindows: false,
   iconSize: "medium",
+  use24HourClock: true,
+  showDateUnderTime: true,
   deletedIconIds: [],
   renamedIconLabels: {},
   settingsInitialSection: null,
@@ -247,11 +239,12 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     const settings = desktopState.settings || {};
     const positions = desktopState.positions || {};
 
-    const theme = settings.theme || "dark";
     const wallpaper = settings.wallpaper || "/default_wallpaper.png";
     const welcomeDismissed = localStorage.getItem(`mittenos:welcomeDismissed:${userId}`) === "true" || (settings.welcomeDismissed ?? false);
     const persistWindows = settings.persistWindows ?? false;
     const iconSize = settings.iconSize || "medium";
+    const use24HourClock = settings.use24HourClock ?? true;
+    const showDateUnderTime = settings.showDateUnderTime ?? true;
     const deletedIconIds = settings.deletedIconIds || [];
     const renamedIconLabels = settings.renamedIconLabels || {};
     const customDesktopIcons = settings.customDesktopIcons || [];
@@ -270,11 +263,12 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     }));
 
     set({
-      theme,
       wallpaper,
       welcomeDismissed,
       persistWindows,
       iconSize,
+      use24HourClock,
+      showDateUnderTime,
       userId,
       loaded: true,
       deletedIconIds,
@@ -291,26 +285,6 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
 
   setSettingsInitialSection: (section: string | null) => {
     set({ settingsInitialSection: section });
-  },
-
-  setTheme: (theme: "light" | "dark") => {
-    const wallpaper =
-      theme === "light"
-        ? "linear-gradient(135deg, #c9d6ff, #e2e2e2, #f5f7fa)"
-        : "/default_wallpaper.png";
-    set({ theme, wallpaper });
-    persistSettings(get().userId, get());
-  },
-
-  toggleTheme: () => {
-    const current = get().theme;
-    const next = current === "dark" ? "light" : "dark";
-    const wallpaper =
-      next === "light"
-        ? "linear-gradient(135deg, #c9d6ff, #e2e2e2, #f5f7fa)"
-        : "/default_wallpaper.png";
-    set({ theme: next, wallpaper });
-    persistSettings(get().userId, get());
   },
 
   setStartMenuOpen: (open: boolean) => set({ startMenuOpen: open }),
@@ -377,11 +351,20 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     persistSettings(get().userId, get());
   },
 
+  setUse24HourClock: (use24Hour: boolean) => {
+    set({ use24HourClock: use24Hour });
+    persistSettings(get().userId, get());
+  },
+
+  setShowDateUnderTime: (showDate: boolean) => {
+    set({ showDateUnderTime: showDate });
+    persistSettings(get().userId, get());
+  },
+
   reset: () => {
-    const { theme, wallpaper } = get();
+    const { wallpaper } = get();
     set({
       wallpaper,
-      theme,
       desktopIcons: defaultIcons,
       customDesktopIcons: [],
       notifications: [],
@@ -393,6 +376,8 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
       welcomeDismissed: false,
       persistWindows: false,
       iconSize: "medium",
+      use24HourClock: true,
+      showDateUnderTime: true,
       deletedIconIds: [],
       renamedIconLabels: {},
     });

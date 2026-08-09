@@ -21,7 +21,6 @@ import {
 } from 'lucide-react';
 import { useFileSystemStore } from '@/stores/filesystem-store';
 import { useWindowStore } from '@/stores/window-store';
-import { useDesktopStore } from '@/stores/desktop-store';
 
 type ViewMode = 'list' | 'grid';
 
@@ -61,7 +60,6 @@ function formatDate(timestamp: number): string {
 export function FileExplorer() {
   const fsStore = useFileSystemStore();
   const openWindow = useWindowStore((s) => s.openWindow);
-  const theme = useDesktopStore((s) => s.theme);
 
   const [currentFolderId, setCurrentFolderId] = useState('root');
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -672,7 +670,7 @@ export function FileExplorer() {
 
       {/* Context Menu */}
       {contextMenu && typeof document !== 'undefined' && createPortal(
-        <div className={theme === 'dark' ? 'dark' : ''}>
+        <div>
           <div
             className="fixed bg-card dark:bg-zinc-800/95 backdrop-blur-sm border border-border rounded-lg shadow-xl py-1 min-w-[150px] z-[99999]"
             style={{
