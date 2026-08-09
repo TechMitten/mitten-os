@@ -215,10 +215,6 @@ export function StartMenu() {
               <p className="text-[11px] font-semibold text-foreground/80 dark:text-white/70 truncate leading-tight">
                 {user?.user_metadata?.full_name || user?.user_metadata?.name || 'MittenOS User'}
               </p>
-              <p className="text-[10px] text-muted-foreground/60 truncate leading-tight flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
-                Local Storage
-              </p>
             </div>
           </div>
         </motion.div>

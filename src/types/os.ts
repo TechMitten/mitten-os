@@ -223,6 +223,7 @@ export const APP_REGISTRY: Record<string, Omit<AppDefinition, "component">> = {
     defaultWindowSize: { width: 450, height: 592 },
     minWindowSize: { width: 350, height: 350 },
     singleton: true,
+    hidden: true,
   },
   "app-builder": {
     id: "app-builder",

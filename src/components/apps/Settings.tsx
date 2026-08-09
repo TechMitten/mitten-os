@@ -137,10 +137,6 @@ export default function SettingsApp() {
             <p className="text-xs font-semibold text-foreground truncate leading-tight">
               {user?.user_metadata?.full_name || user?.user_metadata?.name || 'Local User'}
             </p>
-            <p className="text-[10px] text-muted-foreground truncate leading-tight flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
-              Local Storage
-            </p>
           </div>
         </div>
         <h2 className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60 mb-1">
