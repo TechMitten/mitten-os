@@ -147,6 +147,15 @@ export const APP_REGISTRY: Record<string, Omit<AppDefinition, "component">> = {
     defaultWindowSize: { width: 650, height: 500 },
     minWindowSize: { width: 350, height: 250 },
   },
+  pencil: {
+    id: "pencil",
+    name: "Pencil",
+    icon: "NotebookPen",
+    description: "Write and format rich documents",
+    category: "productivity",
+    defaultWindowSize: { width: 960, height: 720 },
+    minWindowSize: { width: 560, height: 420 },
+  },
   calculator: {
     id: "calculator",
     name: "Calculator",

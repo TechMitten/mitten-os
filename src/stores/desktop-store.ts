@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { APP_REGISTRY, DesktopIcon, DESKTOP_GRID_CELL, DESKTOP_GRID_OFFSET_X, DESKTOP_GRID_OFFSET_Y, Notification, WindowPosition } from "@/types/os";
-import { applyAccentColorToDocument } from "@/lib/theme";
+import { applyAccentColorToDocument, DEFAULT_ACCENT_COLOR } from "@/lib/theme";
 
 interface DesktopStore {
   wallpaper: string;
@@ -154,7 +154,7 @@ async function persistSettings(userId: string | null, state: DesktopStore) {
 
 export const useDesktopStore = create<DesktopStore>((set, get) => ({
   wallpaper: "/default_wallpaper.png",
-  accentColor: "Amber",
+  accentColor: DEFAULT_ACCENT_COLOR,
   desktopIcons: defaultIcons,
   customDesktopIcons: [],
   notifications: [],
@@ -245,7 +245,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     const positions = desktopState.positions || {};
 
     const wallpaper = settings.wallpaper || "/default_wallpaper.png";
-    const accentColor = settings.accentColor || "Amber";
+    const accentColor = settings.accentColor || DEFAULT_ACCENT_COLOR;
     const welcomeDismissed = localStorage.getItem(`mittenos:welcomeDismissed:${userId}`) === "true" || (settings.welcomeDismissed ?? false);
     const persistWindows = settings.persistWindows ?? false;
     const iconSize = settings.iconSize || "medium";
@@ -380,7 +380,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     const { wallpaper, accentColor } = get();
     set({
       wallpaper,
-      accentColor: accentColor || "Amber",
+      accentColor: accentColor || DEFAULT_ACCENT_COLOR,
       desktopIcons: defaultIcons,
       customDesktopIcons: [],
       notifications: [],

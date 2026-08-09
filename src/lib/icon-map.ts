@@ -24,6 +24,7 @@ import {
   Search,
   LayoutDashboard,
   CheckCircle2,
+  NotebookPen,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -53,4 +54,5 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   Search,
   LayoutDashboard,
   CheckCircle2,
+  NotebookPen,
 };

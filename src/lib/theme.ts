@@ -15,10 +15,11 @@ export const ACCENT_COLORS: AccentColorOption[] = [
   { name: 'Teal', value: '#14b8a6' },
 ];
 
-export const DEFAULT_ACCENT_COLOR = 'Amber';
+export const DEFAULT_ACCENT_COLOR = 'Orange';
 
 export function getAccentColor(nameOrValue?: string | null): AccentColorOption {
-  if (!nameOrValue) return ACCENT_COLORS[0];
+  const fallback = ACCENT_COLORS.find((c) => c.name === DEFAULT_ACCENT_COLOR) ?? ACCENT_COLORS[0];
+  if (!nameOrValue) return fallback;
   const normalized = nameOrValue.toLowerCase();
   const found = ACCENT_COLORS.find(
     (c) => c.name.toLowerCase() === normalized || c.value.toLowerCase() === normalized
@@ -27,7 +28,7 @@ export function getAccentColor(nameOrValue?: string | null): AccentColorOption {
   if (nameOrValue.startsWith('#')) {
     return { name: 'Custom', value: nameOrValue };
   }
-  return ACCENT_COLORS[0];
+  return fallback;
 }
 
 export function applyAccentColorToDocument(accentColorNameOrValue?: string | null) {
