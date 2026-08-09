@@ -3,13 +3,25 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useEditor, EditorContent, type JSONContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import { TextStyle } from '@tiptap/extension-text-style';
+import { TextStyle, FontSize } from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
 import FontFamily from '@tiptap/extension-font-family';
 import Highlight from '@tiptap/extension-highlight';
 import TextAlign from '@tiptap/extension-text-align';
 import Placeholder from '@tiptap/extension-placeholder';
 import CharacterCount from '@tiptap/extension-character-count';
+import {
+  Roboto,
+  Open_Sans,
+  Lato,
+  Montserrat,
+  Poppins,
+  Merriweather,
+  Playfair_Display,
+  Nunito,
+  Oswald,
+  Source_Code_Pro,
+} from 'next/font/google';
 import {
   Search,
   Plus,
@@ -60,11 +72,50 @@ const HIGHLIGHT_COLORS = [
   { label: 'Orange', value: '#fed7aa' },
 ];
 
+const roboto = Roboto({ subsets: ['latin'], weight: ['400', '700'], variable: '--font-roboto' });
+const openSans = Open_Sans({ subsets: ['latin'], weight: ['400', '700'], variable: '--font-open-sans' });
+const lato = Lato({ subsets: ['latin'], weight: ['400', '700'], variable: '--font-lato' });
+const montserrat = Montserrat({ subsets: ['latin'], weight: ['400', '700'], variable: '--font-montserrat' });
+const poppins = Poppins({ subsets: ['latin'], weight: ['400', '700'], variable: '--font-poppins' });
+const merriweather = Merriweather({ subsets: ['latin'], weight: ['400', '700'], variable: '--font-merriweather' });
+const playfairDisplay = Playfair_Display({ subsets: ['latin'], weight: ['400', '700'], variable: '--font-playfair-display' });
+const nunito = Nunito({ subsets: ['latin'], weight: ['400', '700'], variable: '--font-nunito' });
+const oswald = Oswald({ subsets: ['latin'], weight: ['400', '700'], variable: '--font-oswald' });
+const sourceCodePro = Source_Code_Pro({ subsets: ['latin'], weight: ['400', '700'], variable: '--font-source-code-pro' });
+
+const PENCIL_FONT_VARIABLES = [
+  roboto.variable,
+  openSans.variable,
+  lato.variable,
+  montserrat.variable,
+  poppins.variable,
+  merriweather.variable,
+  playfairDisplay.variable,
+  nunito.variable,
+  oswald.variable,
+  sourceCodePro.variable,
+].join(' ');
+
 const FONT_FAMILIES = [
   { label: 'Sans Serif', value: 'ui-sans-serif, system-ui, sans-serif' },
   { label: 'Serif', value: 'Georgia, "Times New Roman", serif' },
   { label: 'Monospace', value: '"Courier New", monospace' },
+  { label: 'Roboto', value: 'var(--font-roboto), sans-serif' },
+  { label: 'Open Sans', value: 'var(--font-open-sans), sans-serif' },
+  { label: 'Lato', value: 'var(--font-lato), sans-serif' },
+  { label: 'Montserrat', value: 'var(--font-montserrat), sans-serif' },
+  { label: 'Poppins', value: 'var(--font-poppins), sans-serif' },
+  { label: 'Merriweather', value: 'var(--font-merriweather), serif' },
+  { label: 'Playfair Display', value: 'var(--font-playfair-display), serif' },
+  { label: 'Nunito', value: 'var(--font-nunito), sans-serif' },
+  { label: 'Oswald', value: 'var(--font-oswald), sans-serif' },
+  { label: 'Source Code Pro', value: 'var(--font-source-code-pro), monospace' },
 ];
+
+const FONT_SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 48, 60, 72, 96];
+const DEFAULT_FONT_SIZE_PT = 12;
+const MIN_FONT_SIZE_PT = 6;
+const MAX_FONT_SIZE_PT = 400;
 
 type ParagraphStyle = 'p' | 'h1' | 'h2' | 'h3';
 
@@ -186,11 +237,13 @@ export default function Pencil() {
 
   const editor = useEditor({
     immediatelyRender: false,
+    shouldRerenderOnTransaction: true,
     extensions: [
       StarterKit,
       TextStyle,
       Color,
       FontFamily,
+      FontSize,
       Highlight.configure({ multicolor: true }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Placeholder.configure({ placeholder: 'Start typing your document…' }),
@@ -325,6 +378,50 @@ export default function Pencil() {
     [editor]
   );
 
+  const currentFontSizePt = useMemo(() => {
+    const raw = editor?.getAttributes('textStyle').fontSize as string | undefined;
+    const parsed = raw ? parseFloat(raw) : NaN;
+    return Number.isFinite(parsed) ? Math.round(parsed) : DEFAULT_FONT_SIZE_PT;
+  }, [editor, editor?.state]);
+
+  const [fontSizeInput, setFontSizeInput] = useState(String(DEFAULT_FONT_SIZE_PT));
+  const [customFontSizeMode, setCustomFontSizeMode] = useState(false);
+  const fontSizeInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setFontSizeInput(String(currentFontSizePt));
+  }, [currentFontSizePt]);
+
+  // Focusing synchronously on mount loses to the browser's own focus
+  // restoration to the <select> right after a native option pick, so defer
+  // it a tick and re-focus once that settles.
+  useEffect(() => {
+    if (!customFontSizeMode) return;
+    const id = window.setTimeout(() => {
+      fontSizeInputRef.current?.focus();
+      fontSizeInputRef.current?.select();
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [customFontSizeMode]);
+
+  const applyFontSize = useCallback(
+    (pt: number) => {
+      if (!editor || !Number.isFinite(pt)) return;
+      const clamped = Math.min(MAX_FONT_SIZE_PT, Math.max(MIN_FONT_SIZE_PT, Math.round(pt)));
+      editor.chain().focus().setFontSize(`${clamped}pt`).run();
+    },
+    [editor]
+  );
+
+  const commitFontSizeInput = useCallback(() => {
+    const parsed = parseFloat(fontSizeInput);
+    if (Number.isFinite(parsed)) {
+      applyFontSize(parsed);
+    } else {
+      setFontSizeInput(String(currentFontSizePt));
+    }
+  }, [fontSizeInput, applyFontSize, currentFontSizePt]);
+
   const applyLink = useCallback(() => {
     if (!editor) return;
     const url = linkUrl.trim();
@@ -408,7 +505,7 @@ export default function Pencil() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-muted/40 dark:bg-zinc-900 text-card-foreground select-none">
+    <div className={cn('flex flex-col h-full bg-muted/40 dark:bg-zinc-900 text-card-foreground select-none', PENCIL_FONT_VARIABLES)}>
       {/* Header */}
       <div className="h-12 border-b border-border flex items-center gap-3 px-3 shrink-0 bg-card dark:bg-zinc-900">
         <button
@@ -453,26 +550,85 @@ export default function Pencil() {
         <select
           value={currentParagraphStyle}
           onChange={(e) => applyParagraphStyle(e.target.value as ParagraphStyle)}
-          className="h-7 text-xs rounded px-1.5 bg-transparent border border-border hover:bg-accent dark:hover:bg-white/10 outline-none cursor-pointer"
+          className="h-7 text-xs rounded px-1.5 bg-transparent text-foreground border border-border hover:bg-accent dark:hover:bg-white/10 outline-none cursor-pointer"
         >
-          <option value="p">Paragraph</option>
-          <option value="h1">Heading 1</option>
-          <option value="h2">Heading 2</option>
-          <option value="h3">Heading 3</option>
+          <option className="bg-background text-foreground" value="p">Paragraph</option>
+          <option className="bg-background text-foreground" value="h1">Heading 1</option>
+          <option className="bg-background text-foreground" value="h2">Heading 2</option>
+          <option className="bg-background text-foreground" value="h3">Heading 3</option>
         </select>
 
         <select
           defaultValue=""
           onChange={(e) => applyFontFamily(e.target.value)}
-          className="h-7 text-xs rounded px-1.5 ml-1 bg-transparent border border-border hover:bg-accent dark:hover:bg-white/10 outline-none cursor-pointer"
+          className="h-7 text-xs rounded px-1.5 ml-1 bg-transparent text-foreground border border-border hover:bg-accent dark:hover:bg-white/10 outline-none cursor-pointer"
         >
-          <option value="">Default font</option>
+          <option className="bg-background text-foreground" value="">Default font</option>
           {FONT_FAMILIES.map((f) => (
-            <option key={f.value} value={f.value}>
+            <option
+              className="bg-background text-foreground"
+              key={f.value}
+              value={f.value}
+              style={{ fontFamily: f.value }}
+            >
               {f.label}
             </option>
           ))}
         </select>
+
+        {customFontSizeMode ? (
+          <input
+            ref={fontSizeInputRef}
+            type="text"
+            inputMode="decimal"
+            title="Custom font size (pt)"
+            value={fontSizeInput}
+            onChange={(e) => setFontSizeInput(e.target.value.replace(/[^0-9.]/g, ''))}
+            onBlur={() => {
+              commitFontSizeInput();
+              setCustomFontSizeMode(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                commitFontSizeInput();
+                setCustomFontSizeMode(false);
+              } else if (e.key === 'Escape') {
+                setFontSizeInput(String(currentFontSizePt));
+                setCustomFontSizeMode(false);
+              }
+            }}
+            className="h-7 w-14 text-xs text-center rounded px-1 ml-1 bg-transparent text-foreground border border-border outline-none"
+          />
+        ) : (
+          <select
+            value={FONT_SIZES.includes(currentFontSizePt) ? String(currentFontSizePt) : 'current'}
+            onChange={(e) => {
+              if (e.target.value === 'custom') {
+                setFontSizeInput(String(currentFontSizePt));
+                setCustomFontSizeMode(true);
+              } else {
+                applyFontSize(Number(e.target.value));
+              }
+            }}
+            title="Font size"
+            className="h-7 text-xs rounded px-1 ml-1 bg-transparent text-foreground border border-border hover:bg-accent dark:hover:bg-white/10 outline-none cursor-pointer"
+          >
+            {!FONT_SIZES.includes(currentFontSizePt) && (
+              <option className="bg-background text-foreground" value="current">
+                {currentFontSizePt}pt
+              </option>
+            )}
+            {FONT_SIZES.map((s) => (
+              <option className="bg-background text-foreground" key={s} value={s}>
+                {s}pt
+              </option>
+            ))}
+            <option className="bg-background text-foreground" value="custom">
+              Custom…
+            </option>
+          </select>
+        )}
 
         <ToolbarDivider />
 
@@ -499,7 +655,7 @@ export default function Pencil() {
             <Palette className="w-4 h-4" />
           </ToolbarButton>
           {openPopover === 'color' && (
-            <div className="absolute top-full left-0 mt-1 bg-popover dark:bg-zinc-800 border border-border rounded-lg shadow-xl p-2 grid grid-cols-5 gap-1.5 z-50">
+            <div className="absolute top-full left-0 mt-1 bg-popover dark:bg-zinc-800 border border-border rounded-lg shadow-xl p-2 grid grid-cols-5 gap-2 z-50">
               {TEXT_COLORS.map((c) => (
                 <button
                   key={c.value}
@@ -508,7 +664,7 @@ export default function Pencil() {
                     editor?.chain().focus().setColor(c.value).run();
                     setOpenPopover(null);
                   }}
-                  className="w-5 h-5 rounded-full border border-black/10 hover:scale-110 transition-transform"
+                  className="w-5 h-5 rounded-full border border-black/10 hover:ring-2 hover:ring-offset-1 hover:ring-offset-popover dark:hover:ring-offset-zinc-800 hover:ring-[var(--accent-color)] transition-shadow"
                   style={{ backgroundColor: c.value }}
                 />
               ))}
@@ -526,7 +682,7 @@ export default function Pencil() {
             <Highlighter className="w-4 h-4" />
           </ToolbarButton>
           {openPopover === 'highlight' && (
-            <div className="absolute top-full left-0 mt-1 bg-popover dark:bg-zinc-800 border border-border rounded-lg shadow-xl p-2 grid grid-cols-3 gap-1.5 z-50">
+            <div className="absolute top-full left-0 mt-1 bg-popover dark:bg-zinc-800 border border-border rounded-lg shadow-xl p-2 grid grid-cols-3 gap-2 z-50">
               {HIGHLIGHT_COLORS.map((c) => (
                 <button
                   key={c.value}
@@ -535,7 +691,7 @@ export default function Pencil() {
                     editor?.chain().focus().toggleHighlight({ color: c.value }).run();
                     setOpenPopover(null);
                   }}
-                  className="w-5 h-5 rounded-full border border-black/10 hover:scale-110 transition-transform"
+                  className="w-5 h-5 rounded-full border border-black/10 hover:ring-2 hover:ring-offset-1 hover:ring-offset-popover dark:hover:ring-offset-zinc-800 hover:ring-[var(--accent-color)] transition-shadow"
                   style={{ backgroundColor: c.value }}
                 />
               ))}
