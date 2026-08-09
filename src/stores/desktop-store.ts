@@ -165,7 +165,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   loaded: false,
   userId: null,
   welcomeDismissed: false,
-  persistWindows: false,
+  persistWindows: true,
   iconSize: "medium",
   use24HourClock: true,
   showDateUnderTime: true,
@@ -248,7 +248,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     const wallpaper = settings.wallpaper || "/default_wallpaper.png";
     const accentColor = settings.accentColor || DEFAULT_ACCENT_COLOR;
     const welcomeDismissed = localStorage.getItem(`mittenos:welcomeDismissed:${userId}`) === "true" || (settings.welcomeDismissed ?? false);
-    const persistWindows = settings.persistWindows ?? false;
+    const persistWindows = settings.persistWindows ?? true;
     const iconSize = settings.iconSize || "medium";
     const use24HourClock = settings.use24HourClock ?? true;
     const showDateUnderTime = settings.showDateUnderTime ?? true;
@@ -391,7 +391,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
       loaded: false,
       userId: null,
       welcomeDismissed: false,
-      persistWindows: false,
+      persistWindows: true,
       iconSize: "medium",
       use24HourClock: true,
       showDateUnderTime: true,
