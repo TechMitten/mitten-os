@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import { FSNode } from "@/types/os";
-import { gdriveVFS } from "@/lib/gdrive";
 
 function generateUUID(): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -18,8 +17,6 @@ interface FileSystemStore {
   loaded: boolean;
   loading: boolean;
   userId: string | null;
-  storageBackend: 'local' | 'gdrive';
-  gdriveConnected: boolean;
 
   loadFromDB: (userId: string) => Promise<void>;
   getNode: (path: string) => FSNode | null;
@@ -32,9 +29,6 @@ interface FileSystemStore {
   updateFileContent: (id: string, content: string) => Promise<void>;
   getChildren: (parentId: string) => FSNode[];
   fetchFileContentIfNeeded: (id: string) => Promise<string>;
-  setStorageBackend: (backend: 'local' | 'gdrive') => Promise<void>;
-  connectGDrive: (tokens: { accessToken: string; refreshToken: string | null; expiresIn: number }) => Promise<void>;
-  disconnectGDrive: () => void;
   reset: () => void;
 }
 
@@ -52,7 +46,11 @@ function defaultRoot(): FSNode {
 
 function persistFS(userId: string | null, root: FSNode) {
   if (!userId || typeof window === 'undefined') return;
-  localStorage.setItem(`mittenos:fs:${userId}`, JSON.stringify(root));
+  try {
+    localStorage.setItem(`mittenos:fs:${userId}`, JSON.stringify(root));
+  } catch (e) {
+    console.error("Failed to persist filesystem to localStorage:", e);
+  }
 }
 
 function ensureLocalSystemFolders(root: FSNode): FSNode {
@@ -83,59 +81,11 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
   loaded: false,
   loading: false,
   userId: null,
-  storageBackend: 'local',
-  gdriveConnected: typeof window !== 'undefined' ? gdriveVFS.isConnected() : false,
 
   loadFromDB: async (userId: string) => {
     set({ loading: true, userId });
 
     if (typeof window !== 'undefined') {
-      const backend = (localStorage.getItem('mittenos:fs_backend') || 'local') as 'local' | 'gdrive';
-      const isGDrive = backend === 'gdrive' && gdriveVFS.isConnected();
-
-      if (isGDrive) {
-        try {
-          console.log('[FSStore] Loading filesystem from Google Drive...');
-          let root = await gdriveVFS.loadRoot();
-          
-          // Ensure system folders exist in Google Drive
-          const systemFolders = ['Desktop', 'Documents', 'Pictures', 'Music', 'Downloads', '.system'];
-          
-          for (const name of systemFolders) {
-            const exists = root.children?.some(
-              (c) => c.name.toLowerCase() === name.toLowerCase() && c.type === 'folder'
-            );
-            if (!exists) {
-              console.log(`[FSStore] Auto-creating missing system folder '${name}' in Google Drive...`);
-              const gNode = await gdriveVFS.createFolder('root', name);
-              if (!root.children) root.children = [];
-              root.children.push(gNode);
-            }
-          }
-
-          set({
-            root,
-            storageBackend: 'gdrive',
-            gdriveConnected: true,
-            loaded: true,
-            loading: false,
-          });
-
-          // Sync desktop store state
-          try {
-            const { useDesktopStore } = await import("./desktop-store");
-            await useDesktopStore.getState().loadSettings(userId);
-          } catch (e) {
-            console.error("[FSStore] Failed to sync desktop settings on Google Drive load:", e);
-          }
-
-          return;
-        } catch (e) {
-          console.error('[FSStore] Failed to load filesystem from Google Drive, falling back to local:', e);
-        }
-      }
-
-      // Local storage fallback
       const key = `mittenos:fs:${userId}`;
       const saved = localStorage.getItem(key);
       if (saved) {
@@ -145,8 +95,6 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
           persistFS(userId, root);
           set({
             root,
-            storageBackend: 'local',
-            gdriveConnected: gdriveVFS.isConnected(),
             loaded: true,
             loading: false,
           });
@@ -156,12 +104,12 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
             const { useDesktopStore } = await import("./desktop-store");
             await useDesktopStore.getState().loadSettings(userId);
           } catch (e) {
-            console.error("[FSStore] Failed to sync desktop settings on local fallback load:", e);
+            console.error("[FSStore] Failed to sync desktop settings on local load:", e);
           }
 
           return;
         } catch (e) {
-          console.error("Failed to parse saved filesystem:", e);
+          console.error("Failed to parse saved filesystem from localStorage:", e);
         }
       }
     }
@@ -171,8 +119,6 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
     persistFS(userId, root);
     set({
       root,
-      storageBackend: 'local',
-      gdriveConnected: typeof window !== 'undefined' ? gdriveVFS.isConnected() : false,
       loaded: true,
       loading: false,
     });
@@ -215,30 +161,8 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
   },
 
   createFile: async (parentId: string, name: string, content = "", mimeType = "text/plain") => {
-    const { userId, storageBackend } = get();
+    const { userId } = get();
     if (!userId) return;
-
-    if (storageBackend === 'gdrive') {
-      try {
-        set({ loading: true });
-        const gNode = await gdriveVFS.createFile(parentId, name, content, mimeType);
-        set((state) => {
-          const newRoot = JSON.parse(JSON.stringify(state.root)) as FSNode;
-          const parent = findNodeInTree(newRoot, parentId);
-          if (parent && parent.type === "folder") {
-            if (!parent.children) parent.children = [];
-            parent.children.push(gNode);
-            parent.modifiedAt = Date.now();
-          }
-          return { root: newRoot, loading: false };
-        });
-      } catch (err) {
-        console.error('[FSStore] Failed to create file in Google Drive:', err);
-        set({ loading: false });
-        throw err;
-      }
-      return;
-    }
 
     const newNode: FSNode = {
       id: generateUUID(),
@@ -265,30 +189,8 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
   },
 
   createFolder: async (parentId: string, name: string) => {
-    const { userId, storageBackend } = get();
+    const { userId } = get();
     if (!userId) return;
-
-    if (storageBackend === 'gdrive') {
-      try {
-        set({ loading: true });
-        const gNode = await gdriveVFS.createFolder(parentId, name);
-        set((state) => {
-          const newRoot = JSON.parse(JSON.stringify(state.root)) as FSNode;
-          const parent = findNodeInTree(newRoot, parentId);
-          if (parent && parent.type === "folder") {
-            if (!parent.children) parent.children = [];
-            parent.children.push(gNode);
-            parent.modifiedAt = Date.now();
-          }
-          return { root: newRoot, loading: false };
-        });
-      } catch (err) {
-        console.error('[FSStore] Failed to create folder in Google Drive:', err);
-        set({ loading: false });
-        throw err;
-      }
-      return;
-    }
 
     const newNode: FSNode = {
       id: generateUUID(),
@@ -313,27 +215,8 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
   },
 
   deleteNode: async (id: string) => {
-    const { userId, storageBackend } = get();
+    const { userId } = get();
     if (!userId) return;
-
-    if (storageBackend === 'gdrive') {
-      try {
-        // Optimistic delete
-        set((state) => {
-          const newRoot = JSON.parse(JSON.stringify(state.root)) as FSNode;
-          deleteNodeInTree(newRoot, id);
-          return { root: newRoot };
-        });
-        await gdriveVFS.deleteNode(id);
-      } catch (err) {
-        console.error('[FSStore] Failed to delete node in Google Drive:', err);
-        // Reload from drive to revert
-        const root = await gdriveVFS.loadRoot();
-        set({ root });
-        throw err;
-      }
-      return;
-    }
 
     set((state) => {
       const newRoot = JSON.parse(JSON.stringify(state.root)) as FSNode;
@@ -344,31 +227,8 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
   },
 
   renameNode: async (id: string, newName: string) => {
-    const { userId, storageBackend } = get();
+    const { userId } = get();
     if (!userId) return;
-
-    if (storageBackend === 'gdrive') {
-      try {
-        // Optimistic rename
-        set((state) => {
-          const newRoot = JSON.parse(JSON.stringify(state.root)) as FSNode;
-          const node = findNodeInTree(newRoot, id);
-          if (node) {
-            node.name = newName;
-            node.modifiedAt = Date.now();
-          }
-          return { root: newRoot };
-        });
-        await gdriveVFS.renameNode(id, newName);
-      } catch (err) {
-        console.error('[FSStore] Failed to rename node in Google Drive:', err);
-        // Reload from drive to revert
-        const root = await gdriveVFS.loadRoot();
-        set({ root });
-        throw err;
-      }
-      return;
-    }
 
     set((state) => {
       const newRoot = JSON.parse(JSON.stringify(state.root)) as FSNode;
@@ -383,27 +243,8 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
   },
 
   updateFileContent: async (id: string, content: string) => {
-    const { userId, storageBackend } = get();
+    const { userId } = get();
     if (!userId) return;
-
-    if (storageBackend === 'gdrive') {
-      let mimeType = 'text/plain';
-      set((state) => {
-        const newRoot = JSON.parse(JSON.stringify(state.root)) as FSNode;
-        const node = findNodeInTree(newRoot, id);
-        if (node && node.type === "file") {
-          node.content = content;
-          node.modifiedAt = Date.now();
-          mimeType = node.mimeType || 'text/plain';
-        }
-        return { root: newRoot };
-      });
-
-      gdriveVFS.updateFileContent(id, content, mimeType).catch((err) => {
-        console.error('[FSStore] Background update content error:', err);
-      });
-      return;
-    }
 
     set((state) => {
       const newRoot = JSON.parse(JSON.stringify(state.root)) as FSNode;
@@ -423,72 +264,13 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
   },
 
   fetchFileContentIfNeeded: async (id: string) => {
-    const { storageBackend } = get();
     const node = get().getNodeById(id);
     if (!node || node.type !== 'file') return '';
-
-    if (storageBackend === 'local') {
-      return node.content || '';
-    }
-
-    if (node.content !== undefined) {
-      return node.content;
-    }
-
-    try {
-      set({ loading: true });
-      const content = await gdriveVFS.fetchFileContent(id);
-      set((state) => {
-        const newRoot = JSON.parse(JSON.stringify(state.root)) as FSNode;
-        const targetNode = findNodeInTree(newRoot, id);
-        if (targetNode && targetNode.type === 'file') {
-          targetNode.content = content;
-        }
-        return { root: newRoot, loading: false };
-      });
-      return content;
-    } catch (e) {
-      console.error('[FSStore] Failed to lazy load file content:', e);
-      set({ loading: false });
-      return '';
-    }
-  },
-
-  setStorageBackend: async (backend: 'local' | 'gdrive') => {
-    const { userId } = get();
-    if (!userId) return;
-
-    if (backend === 'gdrive') {
-      if (!gdriveVFS.isConnected()) {
-        throw new Error('Google Drive is not connected');
-      }
-      localStorage.setItem('mittenos:fs_backend', 'gdrive');
-    } else {
-      localStorage.setItem('mittenos:fs_backend', 'local');
-    }
-    await get().loadFromDB(userId);
-  },
-
-  connectGDrive: async (tokens: { accessToken: string; refreshToken: string | null; expiresIn: number }) => {
-    const { userId } = get();
-    gdriveVFS.connect(tokens);
-    set({ gdriveConnected: true });
-    if (userId) {
-      await get().setStorageBackend('gdrive');
-    }
-  },
-
-  disconnectGDrive: () => {
-    const { userId } = get();
-    gdriveVFS.disconnect();
-    set({ gdriveConnected: false, storageBackend: 'local' });
-    if (userId) {
-      get().loadFromDB(userId);
-    }
+    return node.content || '';
   },
 
   reset: () => {
-    set({ root: defaultRoot(), loaded: false, loading: false, userId: null, storageBackend: 'local', gdriveConnected: false });
+    set({ root: defaultRoot(), loaded: false, loading: false, userId: null });
   },
 }));
 

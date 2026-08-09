@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useFileSystemStore } from '@/stores/filesystem-store';
 import { useDesktopStore } from '@/stores/desktop-store';
 import { Switch } from '@/components/ui/switch';
@@ -19,7 +19,13 @@ import {
   Shield,
   Eye,
   EyeOff,
-  Cloud,
+  HardDrive,
+  Database,
+  Trash2,
+  CheckCircle2,
+  RefreshCw,
+  Server,
+  FolderOpen,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useWindowStore } from '@/stores/window-store';
@@ -28,7 +34,7 @@ type Section = 'appearance' | 'wallpaper' | 'display' | 'general' | 'storage' | 
 
 const SIDEBAR_ITEMS: { id: Section; label: string; icon: React.ReactNode }[] = [
   { id: 'general', label: 'General', icon: <LayoutPanelTop className="w-4 h-4" /> },
-  { id: 'storage', label: 'Storage', icon: <Cloud className="w-4 h-4" /> },
+  { id: 'storage', label: 'Storage', icon: <HardDrive className="w-4 h-4" /> },
   { id: 'appearance', label: 'Appearance', icon: <Palette className="w-4 h-4" /> },
   { id: 'wallpaper', label: 'Wallpaper', icon: <ImageIcon className="w-4 h-4" /> },
   { id: 'display', label: 'Display', icon: <Monitor className="w-4 h-4" /> },
@@ -116,35 +122,22 @@ export default function SettingsApp() {
   const persistWindows = useDesktopStore((s) => s.persistWindows);
   const setPersistWindows = useDesktopStore((s) => s.setPersistWindows);
 
-  const gdriveConnected = useFileSystemStore((s) => s.gdriveConnected);
-  const sidebarProfile = useMemo<{ name: string; email: string; picture: string } | null>(() => {
-    if (typeof window === 'undefined') return null;
-    const saved = localStorage.getItem('mittenos:gdrive:profile');
-    return saved ? JSON.parse(saved) : null;
-  }, [gdriveConnected]);
-
   const isDark = theme === 'dark';
 
   return (
     <div className="flex h-full bg-card dark:bg-zinc-900 text-card-foreground select-none overflow-hidden">
       {/* Sidebar */}
       <div className="w-52 bg-muted dark:bg-zinc-800/40 border-r border-border p-3 flex flex-col gap-1 shrink-0 overflow-y-auto settings-scrollbar">
-        {/* Signed-in user card */}
-        {gdriveConnected && sidebarProfile && (
-          <div className="flex items-center gap-2.5 px-3 py-2.5 mb-1 rounded-xl bg-black/[0.04] dark:bg-white/[0.05] border border-border/40">
-            {sidebarProfile.picture ? (
-              <img src={sidebarProfile.picture} alt="avatar" className="w-7 h-7 rounded-full border border-border shrink-0" />
-            ) : (
-              <div className="w-7 h-7 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center font-bold text-xs shrink-0">
-                {sidebarProfile.name.charAt(0)}
-              </div>
-            )}
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-foreground truncate leading-tight">{sidebarProfile.name}</p>
-              <p className="text-[10px] text-muted-foreground truncate leading-tight">{sidebarProfile.email}</p>
-            </div>
+        {/* Local user card */}
+        <div className="flex items-center gap-2.5 px-3 py-2.5 mb-1 rounded-xl bg-black/[0.04] dark:bg-white/[0.05] border border-border/40">
+          <div className="w-7 h-7 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center font-bold text-xs shrink-0">
+            M
           </div>
-        )}
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-foreground truncate leading-tight">MittenOS User</p>
+            <p className="text-[10px] text-muted-foreground truncate leading-tight">Local Storage</p>
+          </div>
+        </div>
         <h2 className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60 mb-1">
           Settings
         </h2>
@@ -547,91 +540,260 @@ function AiKeysSection() {
 
 /* ─── Storage Section ─────────────────────────────────────── */
 
+interface StorageCategoryUsage {
+  id: string;
+  name: string;
+  bytes: number;
+  description: string;
+  icon: React.ReactNode;
+}
+
 function StorageSection() {
-  const {
-    gdriveConnected,
-    disconnectGDrive,
-  } = useFileSystemStore();
+  const { toast } = useToast();
+  const userId = useFileSystemStore((s) => s.userId) || 'mitten-user';
+  const loadFromDB = useFileSystemStore((s) => s.loadFromDB);
 
-  const [profile, setProfile] = useState<{ name: string; email: string; picture: string } | null>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('mittenos:gdrive:profile');
-      return saved ? JSON.parse(saved) : null;
+  const [metrics, setMetrics] = useState<{
+    totalBytes: number;
+    categories: StorageCategoryUsage[];
+  }>({ totalBytes: 0, categories: [] });
+
+  const calculateStorage = useCallback(() => {
+    if (typeof window === 'undefined') return;
+
+    let fsBytes = 0;
+    let desktopBytes = 0;
+    let keysBytes = 0;
+    let appsBytes = 0;
+    let chatBytes = 0;
+    let otherBytes = 0;
+    let totalBytes = 0;
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+      const val = localStorage.getItem(key) || '';
+      const itemBytes = (key.length + val.length) * 2; // UTF-16 approximate
+      totalBytes += itemBytes;
+
+      if (key.startsWith('mittenos:fs:')) {
+        fsBytes += itemBytes;
+      } else if (
+        key.startsWith('mittenos:settings:') ||
+        key.startsWith('mittenos:icon_positions:') ||
+        key.startsWith('mittenos:window_states:') ||
+        key.startsWith('mittenos:welcomeDismissed:')
+      ) {
+        desktopBytes += itemBytes;
+      } else if (
+        key.startsWith('mittenos:ai_profiles') ||
+        key.startsWith('mittenos:active_ai_profile')
+      ) {
+        keysBytes += itemBytes;
+      } else if (
+        key.startsWith('mittenos:user_apps') ||
+        key.startsWith('mittenos:orion_projects')
+      ) {
+        appsBytes += itemBytes;
+      } else if (
+        key.startsWith('mittenos:chat_sessions:') ||
+        key.startsWith('mittenos:chat_messages:')
+      ) {
+        chatBytes += itemBytes;
+      } else if (key.startsWith('mittenos:')) {
+        otherBytes += itemBytes;
+      }
     }
-    return null;
-  });
 
-  const handleConnect = () => {
-    const width = 500;
-    const height = 650;
-    const left = window.screen.width / 2 - width / 2;
-    const top = window.screen.height / 2 - height / 2;
-    window.open(
-      '/api/auth/google/login',
-      'Connect Google Drive',
-      `width=${width},height=${height},left=${left},top=${top}`
-    );
-  };
+    const categories: StorageCategoryUsage[] = [
+      {
+        id: 'fs',
+        name: 'Virtual File System',
+        bytes: fsBytes,
+        description: 'User files, documents, pictures, and folders',
+        icon: <FolderOpen className="w-4 h-4 text-emerald-500" />,
+      },
+      {
+        id: 'desktop',
+        name: 'Desktop & Workspace State',
+        bytes: desktopBytes,
+        description: 'Icon positions, theme, wallpaper, and window positions',
+        icon: <LayoutPanelTop className="w-4 h-4 text-blue-500" />,
+      },
+      {
+        id: 'keys',
+        name: 'AI Keys & Profiles',
+        bytes: keysBytes,
+        description: 'Configured LLM providers and endpoint secrets',
+        icon: <Shield className="w-4 h-4 text-amber-500" />,
+      },
+      {
+        id: 'apps',
+        name: 'Custom Apps & Projects',
+        bytes: appsBytes,
+        description: 'Orion app builder source codes and custom apps',
+        icon: <Box className="w-4 h-4 text-purple-500" />,
+      },
+      {
+        id: 'chat',
+        name: 'AI Chat History',
+        bytes: chatBytes,
+        description: 'Coding assistant conversations and sessions',
+        icon: <Cpu className="w-4 h-4 text-cyan-500" />,
+      },
+    ];
 
-  const handleDisconnect = () => {
-    disconnectGDrive();
-    setProfile(null);
-  };
+    if (otherBytes > 0) {
+      categories.push({
+        id: 'other',
+        name: 'Other System Cache',
+        bytes: otherBytes,
+        description: 'Misc OS cache and settings',
+        icon: <Database className="w-4 h-4 text-zinc-400" />,
+      });
+    }
 
-  // Sync profile data on change
+    setMetrics({ totalBytes, categories });
+  }, []);
+
   useEffect(() => {
-    if (gdriveConnected) {
-      const saved = localStorage.getItem('mittenos:gdrive:profile');
-      if (saved) setProfile(JSON.parse(saved));
+    calculateStorage();
+  }, [calculateStorage]);
+
+  const formatSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  };
+
+  const handleResetFileSystem = async () => {
+    if (typeof window === 'undefined') return;
+    if (window.confirm('Are you sure you want to reset the Virtual File System? Your user files will be re-initialized to defaults.')) {
+      localStorage.removeItem(`mittenos:fs:${userId}`);
+      await loadFromDB(userId);
+      calculateStorage();
+      toast({
+        title: 'File System Reset',
+        description: 'File system re-initialized to default system folders.',
+      });
     }
-  }, [gdriveConnected]);
+  };
+
+  const handleClearAllStorage = () => {
+    if (typeof window === 'undefined') return;
+    if (window.confirm('⚠️ WARNING: This will delete ALL MittenOS local data, files, AI keys, and custom apps. Are you sure?')) {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('mittenos:')) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach((k) => localStorage.removeItem(k));
+      toast({
+        title: 'Storage Cleared',
+        description: 'All local MittenOS data has been removed. Reloading system...',
+      });
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    }
+  };
 
   return (
     <div className="space-y-6 max-w-xl">
       <div>
         <h3 className="text-lg font-medium mb-1">Storage</h3>
         <p className="text-xs text-muted-foreground">
-          Manage your Google Drive connection. Your files are synced to Google Drive.
+          Manage your browser storage. All files, AI keys, and OS configurations are stored locally on this device.
         </p>
       </div>
 
-      {/* Connection Status Card */}
-      <div className="p-4 rounded-xl border border-border bg-muted/20 space-y-4">
+      {/* Storage Backend Card */}
+      <div className="p-4 rounded-xl border border-border bg-muted/20 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${gdriveConnected ? 'bg-emerald-500/10 text-emerald-500' : 'bg-zinc-500/10 text-zinc-500'}`}>
-              <Cloud className="w-5 h-5" />
+            <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-500">
+              <HardDrive className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="text-sm font-semibold">Google Drive Connection</h4>
-              <p className="text-xs text-muted-foreground">
-                {gdriveConnected 
-                  ? 'Connected to Google Drive API' 
-                  : 'Not connected. Connect to store your files in the cloud.'}
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-semibold">Browser LocalStorage</h4>
+                <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                  <CheckCircle2 className="w-3 h-3" />
+                  Active
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Offline-first persistence. Total used: <span className="font-semibold text-foreground">{formatSize(metrics.totalBytes)}</span>
               </p>
             </div>
           </div>
-          {gdriveConnected ? (
-            <button
-              onClick={handleDisconnect}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors"
-            >
-              Disconnect
-            </button>
-          ) : (
-            <button
-              onClick={handleConnect}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition-colors"
-            >
-              Connect
-            </button>
-          )}
+          <button
+            onClick={calculateStorage}
+            title="Refresh Storage Metrics"
+            className="p-2 rounded-lg border border-border hover:bg-muted transition-colors text-muted-foreground hover:text-foreground cursor-pointer"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
         </div>
-
-
       </div>
 
+      {/* Storage Breakdown */}
+      <div className="space-y-3">
+        <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Storage Breakdown
+        </h4>
+        <div className="space-y-2">
+          {metrics.categories.map((cat) => (
+            <div
+              key={cat.id}
+              className="flex items-center justify-between p-3 rounded-xl border border-border bg-card dark:bg-zinc-800/30"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2 rounded-lg bg-muted shrink-0">
+                  {cat.icon}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-foreground truncate">{cat.name}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{cat.description}</p>
+                </div>
+              </div>
+              <span className="text-xs font-mono font-medium text-muted-foreground shrink-0 ml-2">
+                {formatSize(cat.bytes)}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
 
+      {/* Storage Maintenance & Privacy */}
+      <div className="p-4 rounded-xl border border-border bg-muted/10 space-y-4">
+        <div className="flex items-start gap-2.5">
+          <Shield className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-xs font-semibold text-foreground">Zero Cloud Dependency & Privacy</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+              No files or secrets are synced to external cloud services or remote servers. Everything is sandboxed within your browser.
+            </p>
+          </div>
+        </div>
+
+        <div className="pt-2 border-t border-border flex flex-wrap gap-2">
+          <button
+            onClick={handleResetFileSystem}
+            className="px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-muted transition-colors cursor-pointer text-foreground"
+          >
+            Reset File System
+          </button>
+          <button
+            onClick={handleClearAllStorage}
+            className="px-3 py-1.5 rounded-lg border border-red-500/30 text-red-500 dark:text-red-400 text-xs font-medium hover:bg-red-500/10 transition-colors cursor-pointer"
+          >
+            Clear All OS Data
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

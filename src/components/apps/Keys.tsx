@@ -1,16 +1,15 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Key, Globe, Cpu, Eye, EyeOff, Save, CheckCircle, XCircle, Loader2, Plus, Trash2, Check } from 'lucide-react';
+import { Key, Globe, Cpu, Eye, EyeOff, Save, CheckCircle, XCircle, Loader2, Plus, Trash2, Check, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-interface KeyProfile {
-  id: string;
-  name: string;
-  endpoint: string;
-  apiKey: string;
-  model: string;
-}
+import {
+  AI_PRESETS,
+  STORAGE_KEYS,
+  testKeyConnection,
+  type KeyProfile,
+  type AIPreset,
+} from '@/lib/keys';
 
 export default function KeysApp() {
   const { toast } = useToast();
@@ -33,8 +32,8 @@ export default function KeysApp() {
   // Load saved keys on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const savedProfiles = localStorage.getItem('mittenOS_keys_profiles');
-      const activeId = localStorage.getItem('mittenOS_keys_active_profile_id');
+      const savedProfiles = localStorage.getItem(STORAGE_KEYS.PROFILES);
+      const activeId = localStorage.getItem(STORAGE_KEYS.ACTIVE_PROFILE_ID);
 
       let loadedProfiles: KeyProfile[] = [];
       if (savedProfiles) {
@@ -47,9 +46,9 @@ export default function KeysApp() {
 
       // Migration check: if no profiles exist but they have some legacy keys, migrate them!
       if (loadedProfiles.length === 0) {
-        const legacyEndpoint = localStorage.getItem('mittenOS_keys_endpoint') || '';
-        const legacyApiKey = localStorage.getItem('mittenOS_keys_apikey') || '';
-        const legacyModel = localStorage.getItem('mittenOS_keys_model') || '';
+        const legacyEndpoint = localStorage.getItem(STORAGE_KEYS.ENDPOINT) || '';
+        const legacyApiKey = localStorage.getItem(STORAGE_KEYS.API_KEY) || '';
+        const legacyModel = localStorage.getItem(STORAGE_KEYS.MODEL) || '';
 
         const defaultProfile: KeyProfile = {
           id: 'default',
@@ -59,8 +58,8 @@ export default function KeysApp() {
           model: legacyModel,
         };
         loadedProfiles = [defaultProfile];
-        localStorage.setItem('mittenOS_keys_profiles', JSON.stringify(loadedProfiles));
-        localStorage.setItem('mittenOS_keys_active_profile_id', 'default');
+        localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(loadedProfiles));
+        localStorage.setItem(STORAGE_KEYS.ACTIVE_PROFILE_ID, 'default');
       }
 
       setProfiles(loadedProfiles);
@@ -91,6 +90,20 @@ export default function KeysApp() {
     setTestResult(null);
   };
 
+  const handleApplyPreset = (preset: AIPreset) => {
+    if (preset.id === 'custom') return;
+    setEndpoint(preset.endpoint);
+    setModel(preset.defaultModel);
+    if (!profileName || profileName.startsWith('Profile ') || profileName === 'Default Config') {
+      setProfileName(`${preset.name} Profile`);
+    }
+    setTestResult(null);
+    toast({
+      title: `${preset.name} Preset Applied`,
+      description: `Endpoint and default model configured. Enter your API key.`,
+    });
+  };
+
   const handleAddProfile = () => {
     const newProfile: KeyProfile = {
       id: `profile-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
@@ -102,7 +115,7 @@ export default function KeysApp() {
 
     const updatedProfiles = [...profiles, newProfile];
     setProfiles(updatedProfiles);
-    localStorage.setItem('mittenOS_keys_profiles', JSON.stringify(updatedProfiles));
+    localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(updatedProfiles));
 
     // Select the new profile
     setSelectedProfileId(newProfile.id);
@@ -131,7 +144,7 @@ export default function KeysApp() {
 
     const updatedProfiles = profiles.filter((p) => p.id !== profileId);
     setProfiles(updatedProfiles);
-    localStorage.setItem('mittenOS_keys_profiles', JSON.stringify(updatedProfiles));
+    localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(updatedProfiles));
 
     // If we deleted the selected profile, load another one
     if (selectedProfileId === profileId) {
@@ -143,10 +156,10 @@ export default function KeysApp() {
     if (activeProfileId === profileId) {
       const fallbackActive = updatedProfiles[0];
       setActiveProfileId(fallbackActive.id);
-      localStorage.setItem('mittenOS_keys_active_profile_id', fallbackActive.id);
-      localStorage.setItem('mittenOS_keys_endpoint', fallbackActive.endpoint);
-      localStorage.setItem('mittenOS_keys_apikey', fallbackActive.apiKey);
-      localStorage.setItem('mittenOS_keys_model', fallbackActive.model);
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_PROFILE_ID, fallbackActive.id);
+      localStorage.setItem(STORAGE_KEYS.ENDPOINT, fallbackActive.endpoint);
+      localStorage.setItem(STORAGE_KEYS.API_KEY, fallbackActive.apiKey);
+      localStorage.setItem(STORAGE_KEYS.MODEL, fallbackActive.model);
     }
 
     toast({
@@ -179,13 +192,13 @@ export default function KeysApp() {
     });
 
     setProfiles(updatedProfiles);
-    localStorage.setItem('mittenOS_keys_profiles', JSON.stringify(updatedProfiles));
+    localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(updatedProfiles));
 
     // If the saved profile is the currently active one, sync global storage
     if (selectedProfileId === activeProfileId) {
-      localStorage.setItem('mittenOS_keys_endpoint', endpoint.trim());
-      localStorage.setItem('mittenOS_keys_apikey', apiKey.trim());
-      localStorage.setItem('mittenOS_keys_model', model.trim());
+      localStorage.setItem(STORAGE_KEYS.ENDPOINT, endpoint.trim());
+      localStorage.setItem(STORAGE_KEYS.API_KEY, apiKey.trim());
+      localStorage.setItem(STORAGE_KEYS.MODEL, model.trim());
     }
 
     toast({
@@ -196,10 +209,10 @@ export default function KeysApp() {
 
   const handleSetActive = () => {
     setActiveProfileId(selectedProfileId);
-    localStorage.setItem('mittenOS_keys_active_profile_id', selectedProfileId);
-    localStorage.setItem('mittenOS_keys_endpoint', endpoint.trim());
-    localStorage.setItem('mittenOS_keys_apikey', apiKey.trim());
-    localStorage.setItem('mittenOS_keys_model', model.trim());
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_PROFILE_ID, selectedProfileId);
+    localStorage.setItem(STORAGE_KEYS.ENDPOINT, endpoint.trim());
+    localStorage.setItem(STORAGE_KEYS.API_KEY, apiKey.trim());
+    localStorage.setItem(STORAGE_KEYS.MODEL, model.trim());
 
     toast({
       title: 'Active Profile Switched',
@@ -208,66 +221,14 @@ export default function KeysApp() {
   };
 
   const handleTestConnection = async () => {
-    if (!endpoint.trim() || !apiKey.trim() || !model.trim()) {
-      setTestResult({
-        success: false,
-        message: 'Please fill in all endpoint fields before testing connection.',
-      });
-      return;
-    }
-
     setTesting(true);
     setTestResult(null);
 
-    try {
-      const cleanedUrl = endpoint.trim();
-      const targetUrl = cleanedUrl.endsWith('/chat/completions')
-        ? cleanedUrl
-        : `${cleanedUrl.replace(/\/$/, '')}/chat/completions`;
-
-      const response = await fetch(targetUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey.trim()}`,
-        },
-        body: JSON.stringify({
-          model: model.trim(),
-          messages: [{ role: 'user', content: 'Ping' }],
-          max_tokens: 5,
-        }),
-      });
-
-      if (response.ok) {
-        setTestResult({
-          success: true,
-          message: 'Connection successful! Model responded correctly.',
-        });
-      } else {
-        const text = await response.text();
-        let errMsg = `HTTP Error ${response.status}`;
-        try {
-          const json = JSON.parse(text);
-          errMsg = json.error?.message || errMsg;
-        } catch {
-          if (text) errMsg += ` - ${text.substring(0, 100)}`;
-        }
-        setTestResult({
-          success: false,
-          message: `Failed: ${errMsg}`,
-        });
-      }
-    } catch (err) {
-      setTestResult({
-        success: false,
-        message: `Failed: ${err instanceof Error ? err.message : 'Network error'}`,
-      });
-    } finally {
-      setTesting(false);
-    }
+    const res = await testKeyConnection(endpoint, apiKey, model);
+    setTestResult(res);
+    setTesting(false);
   };
 
-  const selectedProfile = profiles.find((p) => p.id === selectedProfileId);
   const isActive = selectedProfileId === activeProfileId;
 
   return (
@@ -352,8 +313,29 @@ export default function KeysApp() {
           </div>
 
           {/* Storage Info */}
-          <div className="p-3.5 rounded-xl border border-border bg-muted/20 text-sm text-muted-foreground/80 leading-relaxed font-sans">
-            <span className="font-semibold text-foreground">Storage Info:</span> All configuration profiles and API keys are stored strictly in your browser's local storage. They are never sent to our servers or synced to the Virtual File System (VFS), keeping your credentials private and secure on this device.
+          <div className="p-3 rounded-xl border border-border bg-muted/20 text-xs text-muted-foreground/80 leading-relaxed font-sans">
+            <span className="font-semibold text-foreground">Storage Info:</span> All configuration profiles and API keys are stored strictly in your browser&apos;s local storage. They are never sent to our servers or synced to the Virtual File System (VFS), keeping your credentials private and secure on this device.
+          </div>
+
+          {/* Quick Presets */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5 font-sans">
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              Quick Presets
+            </label>
+            <div className="grid grid-cols-3 gap-1.5">
+              {AI_PRESETS.filter((p) => p.id !== 'custom').map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => handleApplyPreset(preset)}
+                  className="px-2 py-1.5 rounded-lg border border-border bg-muted/40 hover:bg-muted text-[11px] font-medium text-foreground text-center truncate transition-colors cursor-pointer"
+                  title={`${preset.name}: ${preset.endpoint}`}
+                >
+                  {preset.name}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Form */}
@@ -398,13 +380,13 @@ export default function KeysApp() {
                   type={showKey ? 'text' : 'password'}
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="sk-..."
+                  placeholder={AI_PRESETS.find((p) => p.endpoint === endpoint)?.placeholderKey || 'sk-...'}
                   className="w-full bg-muted dark:bg-zinc-800/60 border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500 pr-10 font-mono"
                 />
                 <button
                   type="button"
                   onClick={() => setShowKey(!showKey)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
                 >
                   {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>

@@ -12,6 +12,7 @@ import {
   CloudRain,
   Snowflake,
   Loader2,
+  Info,
 } from 'lucide-react';
 import { ICON_MAP } from '@/lib/icon-map';
 import { useWindowStore } from '@/stores/window-store';

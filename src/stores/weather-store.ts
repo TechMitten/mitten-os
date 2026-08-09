@@ -165,8 +165,8 @@ export const useWeatherStore = create<WeatherStore>((set, get) => ({
         const fsStore = useFileSystemStore.getState();
         
         let node = fsStore.getNode("/.system/.settings");
-        let oldNode = null;
-        let content = null;
+        let oldNode: any = null;
+        let content: string | null = null;
         
         if (node) {
           content = await fsStore.fetchFileContentIfNeeded(node.id);
@@ -379,7 +379,7 @@ export const useWeatherStore = create<WeatherStore>((set, get) => ({
       if (currentHourIndex === -1) currentHourIndex = 0;
 
       // Process hourly (next 8 hours)
-      const hourlyForecasts = [];
+      const hourlyForecasts: { time: string; temp: number; condition: WeatherCondition }[] = [];
       for (let i = 0; i < 8; i++) {
         const idx = currentHourIndex + i;
         if (idx < hourly.time.length) {
@@ -397,7 +397,7 @@ export const useWeatherStore = create<WeatherStore>((set, get) => ({
       }
 
       // Process daily (next 8 days, starting from tomorrow as index 1)
-      const dailyForecasts = [];
+      const dailyForecasts: { day: string; high: number; low: number; condition: WeatherCondition }[] = [];
       const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       for (let i = 1; i <= 8; i++) {
         const idx = i;

@@ -140,7 +140,7 @@ async function persistDesktopState(userId: string | null, state: DesktopStore, i
     const fsStore = useFileSystemStore.getState();
     if (fsStore.loaded) {
       const currentVFSNode = fsStore.getNode("/.system/desktop_state.json");
-      let lastSavedContent = null;
+      let lastSavedContent: string | null = null;
       if (currentVFSNode) {
         lastSavedContent = currentVFSNode.content || await fsStore.fetchFileContentIfNeeded(currentVFSNode.id);
       }
@@ -178,8 +178,8 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   loadSettings: async (userId: string) => {
     let desktopState: any = {};
     if (typeof window !== 'undefined') {
-      let vfsStateStr = null;
-      let oldNode = null;
+      let vfsStateStr: string | null = null;
+      let oldNode: any = null;
       try {
         const { useFileSystemStore } = await import("./filesystem-store");
         const fsStore = useFileSystemStore.getState();

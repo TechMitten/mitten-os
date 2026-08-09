@@ -562,7 +562,7 @@ export default function Weather() {
             <p className="font-semibold text-red-200">Error loading weather</p>
             <p className="opacity-80">{error}</p>
           </div>
-          <button onClick={() => setError(null)} className="p-0.5 hover:bg-white/10 rounded-full">
+          <button onClick={() => useWeatherStore.setState({ error: null })} className="p-0.5 hover:bg-white/10 rounded-full">
             <X className="w-3.5 h-3.5" />
           </button>
         </div>

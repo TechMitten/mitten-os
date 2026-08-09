@@ -99,17 +99,19 @@ function renderInline(text: string): React.ReactNode[] {
   while (remaining.length > 0) {
     const codeMatch = remaining.match(/`([^`]+)`/);
     const boldMatch = remaining.match(/\*\*([^*]+)\*\*/);
-    const cleanBoldMatch = boldMatch && boldMatch.index !== undefined && (codeMatch === null || boldMatch.index < codeMatch.index)
-      ? boldMatch : null;
+    const codeIndex = codeMatch?.index !== undefined ? codeMatch.index : Infinity;
+    const boldIndex = boldMatch?.index !== undefined ? boldMatch.index : Infinity;
+
+    const cleanBoldMatch = boldMatch && boldIndex < codeIndex ? boldMatch : null;
     const italicMatch = remaining.match(/\*([^*]+)\*/);
-    const cleanItalicMatch = italicMatch && italicMatch.index !== undefined
-      && (codeMatch === null || italicMatch.index < codeMatch.index)
-      && (cleanBoldMatch === null || italicMatch.index < cleanBoldMatch.index)
-      ? italicMatch : null;
+    const italicIndex = italicMatch?.index !== undefined ? italicMatch.index : Infinity;
+    const cleanBoldIndex = cleanBoldMatch?.index !== undefined ? cleanBoldMatch.index : Infinity;
+
+    const cleanItalicMatch = italicMatch && italicIndex < codeIndex && italicIndex < cleanBoldIndex ? italicMatch : null;
     const linkMatch = remaining.match(/\[([^\]]+)\]\(([^)]+)\)/);
 
     const firstMatch = [codeMatch, cleanBoldMatch, cleanItalicMatch, linkMatch]
-      .filter((m): m is RegExpMatchArray => m !== null)
+      .filter((m): m is RegExpMatchArray => m !== null && m.index !== undefined)
       .sort((a, b) => (a.index ?? 0) - (b.index ?? 0))[0];
 
     if (!firstMatch || firstMatch.index === undefined) {
@@ -121,19 +123,19 @@ function renderInline(text: string): React.ReactNode[] {
       parts.push(<span key={key++}>{remaining.slice(0, firstMatch.index)}</span>);
     }
 
+    const matchLen = firstMatch[0].length;
+    const matchIdx = firstMatch.index;
+
     if (firstMatch === codeMatch && codeMatch) {
       parts.push(
         <code key={key++} className="bg-muted dark:bg-zinc-700 px-1 py-0.5 rounded text-xs font-mono">
           {codeMatch[1]}
         </code>
       );
-      remaining = remaining.slice(codeMatch.index + codeMatch[0].length);
     } else if (firstMatch === cleanBoldMatch && cleanBoldMatch) {
       parts.push(<strong key={key++}>{cleanBoldMatch[1]}</strong>);
-      remaining = remaining.slice(cleanBoldMatch.index + cleanBoldMatch[0].length);
     } else if (firstMatch === cleanItalicMatch && cleanItalicMatch) {
       parts.push(<em key={key++}>{cleanItalicMatch[1]}</em>);
-      remaining = remaining.slice(cleanItalicMatch.index + cleanItalicMatch[0].length);
     } else if (firstMatch === linkMatch && linkMatch) {
       parts.push(
         <a key={key++} href={linkMatch[2]} target="_blank" rel="noopener noreferrer"
@@ -141,8 +143,8 @@ function renderInline(text: string): React.ReactNode[] {
           {linkMatch[1]}
         </a>
       );
-      remaining = remaining.slice(linkMatch.index + linkMatch[0].length);
     }
+    remaining = remaining.slice(matchIdx + matchLen);
   }
 
   return parts;
