@@ -158,7 +158,7 @@ async function persistSettings(userId: string | null, state: DesktopStore) {
 }
 
 export const useDesktopStore = create<DesktopStore>((set, get) => ({
-  wallpaper: "linear-gradient(135deg, #030b20, #0d2b63, #071730)",
+  wallpaper: "/default_wallpaper.png",
   theme: "dark",
   desktopIcons: defaultIcons,
   customDesktopIcons: [],
@@ -248,7 +248,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     const positions = desktopState.positions || {};
 
     const theme = settings.theme || "dark";
-    const wallpaper = settings.wallpaper || "linear-gradient(135deg, #030b20, #0d2b63, #071730)";
+    const wallpaper = settings.wallpaper || "/default_wallpaper.png";
     const welcomeDismissed = localStorage.getItem(`mittenos:welcomeDismissed:${userId}`) === "true" || (settings.welcomeDismissed ?? false);
     const persistWindows = settings.persistWindows ?? false;
     const iconSize = settings.iconSize || "medium";
@@ -297,7 +297,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     const wallpaper =
       theme === "light"
         ? "linear-gradient(135deg, #c9d6ff, #e2e2e2, #f5f7fa)"
-        : "linear-gradient(135deg, #030b20, #0d2b63, #071730)";
+        : "/default_wallpaper.png";
     set({ theme, wallpaper });
     persistSettings(get().userId, get());
   },
@@ -308,7 +308,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     const wallpaper =
       next === "light"
         ? "linear-gradient(135deg, #c9d6ff, #e2e2e2, #f5f7fa)"
-        : "linear-gradient(135deg, #030b20, #0d2b63, #071730)";
+        : "/default_wallpaper.png";
     set({ theme: next, wallpaper });
     persistSettings(get().userId, get());
   },

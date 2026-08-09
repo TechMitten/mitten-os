@@ -53,6 +53,11 @@ const SIDEBAR_ITEMS: { id: Section; label: string; icon: React.ReactNode }[] = [
 
 const WALLPAPERS = [
   {
+    id: 'wp-default',
+    name: 'Default',
+    image: '/default_wallpaper.png',
+  },
+  {
     id: 'wp-1',
     name: 'Deep Space',
     gradient: 'linear-gradient(135deg, #030b20, #0d2b63, #071730)',
@@ -987,7 +992,11 @@ function StorageSection() {
                 setAuthError(null);
               }}
               onExpire={() => setTurnstileToken(null)}
-              onError={() => setAuthError('Security check failed. Please refresh.')}
+              onError={(code) => {
+                if (code !== '110200') {
+                  setAuthError('Security check failed. Please refresh.');
+                }
+              }}
             />
 
             <button

@@ -23,6 +23,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const isTestSecret = secretKey.startsWith('1x0000000000000000000000000000000AA');
+    const isDevEnv = process.env.NODE_ENV === 'development' || isTestSecret;
+
+    // Gracefully handle bypass tokens in development or testing mode
+    if (token.startsWith('bypassed-')) {
+      if (isDevEnv || !secretKey) {
+        return NextResponse.json({
+          success: true,
+          bypassed: true,
+          message: `Turnstile verification bypassed (${token}) in development mode`,
+        });
+      }
+    }
+
     // Get client IP if available
     const ip =
       req.headers.get('cf-connecting-ip') ||
@@ -47,12 +61,20 @@ export async function POST(req: NextRequest) {
     const outcome = await verifyRes.json();
 
     if (outcome.success) {
-      return NextResponse.json({ success: true, timestamp: outcome.challenge_ts });
+      return NextResponse.json({
+        success: true,
+        timestamp: outcome.challenge_ts,
+        hostname: outcome.hostname,
+      });
     } else {
       const errorCodes = outcome['error-codes'] ? outcome['error-codes'].join(', ') : 'Verification failed';
-      console.warn('[Turnstile] Verification failed:', errorCodes);
+      console.warn('[Turnstile] Verification failed:', errorCodes, outcome);
       return NextResponse.json(
-        { success: false, error: 'Security check failed. Please refresh and try again.' },
+        {
+          success: false,
+          error: `Security verification failed (${errorCodes}). Please try again.`,
+          errorCodes: outcome['error-codes'] || [],
+        },
         { status: 400 }
       );
     }

@@ -730,7 +730,11 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                               setAuthError(null);
                             }}
                             onExpire={() => setTurnstileToken(null)}
-                            onError={() => setAuthError('Security verification failed. Please refresh.')}
+                            onError={(code) => {
+                              if (code !== '110200') {
+                                setAuthError('Security verification failed. Please refresh.');
+                              }
+                            }}
                           />
 
                           <button
