@@ -77,6 +77,7 @@ const defaultIcons: DesktopIcon[] = [
   { id: "icon-5", appId: "app-builder", label: "Orion", icon: "Zap", position: gridToPixel(0, 4) },
   { id: "icon-6", appId: "settings", label: "Settings", icon: "Settings", position: gridToPixel(0, 5) },
   { id: "icon-7", appId: "coding-assistant", label: "MittenAI", icon: "Bot", position: gridToPixel(0, 6) },
+  { id: "icon-8", appId: "pencil", label: "Pencil", icon: "NotebookPen", position: gridToPixel(0, 7) },
 ];
 
 let notificationCounter = 0;
