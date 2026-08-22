@@ -32,7 +32,9 @@ import {
   AI_PRESETS,
   type KeyProfile,
   type AIPreset,
+  type LLMProviderKind,
 } from '@/lib/keys';
+import { WEBLLM_MODELS, isWebGPUSupported, checkWebGPUSupported } from '@/lib/ai/webllm';
 
 interface WelcomeWindowProps {
   open: boolean;
@@ -66,6 +68,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
   const [endpoint, setEndpoint] = useState('https://api.openai.com/v1');
   const [apiKey, setApiKey] = useState('');
   const [model, setModel] = useState('gpt-4o');
+  const [kind, setKind] = useState<LLMProviderKind>('openai-compatible');
   const [showKey, setShowKey] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
@@ -80,21 +83,27 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
     if (!open) return;
 
     const { activeProfile } = loadKeyProfiles();
-    if (activeProfile && (activeProfile.apiKey || activeProfile.endpoint)) {
+    if (activeProfile && (activeProfile.apiKey || activeProfile.endpoint || activeProfile.model || activeProfile.kind === 'webllm')) {
       setProfileName(activeProfile.name || 'Default Config');
       setEndpoint(activeProfile.endpoint || 'https://api.openai.com/v1');
       setApiKey(activeProfile.apiKey || '');
       setModel(activeProfile.model || 'gpt-4o');
-      setKeyConfigured(Boolean(activeProfile.apiKey && activeProfile.endpoint));
+      const activeKind = activeProfile.kind || 'openai-compatible';
+      setKind(activeKind);
+      setKeyConfigured(
+        activeKind === 'webllm'
+          ? Boolean(activeProfile.model)
+          : Boolean(activeProfile.apiKey && activeProfile.endpoint)
+      );
 
       // Match preset if exists
-      const matchedPreset = AI_PRESETS.find(
-        (p) => p.endpoint === activeProfile.endpoint && p.defaultModel === activeProfile.model
+      const matchedPreset = AI_PRESETS.find((p) =>
+        p.kind === activeKind && (activeKind === 'webllm' || (p.endpoint === activeProfile.endpoint && p.defaultModel === activeProfile.model))
       );
       if (matchedPreset) {
         setSelectedPresetId(matchedPreset.id);
       } else {
-        setSelectedPresetId('custom');
+        setSelectedPresetId(activeKind === 'webllm' ? 'webllm' : 'custom');
       }
     }
   }, [open]);
@@ -234,10 +243,13 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
 
   const handleSelectPreset = (preset: AIPreset) => {
     setSelectedPresetId(preset.id);
+    const presetKind = preset.kind || 'openai-compatible';
+    setKind(presetKind);
     if (preset.id !== 'custom') {
       setEndpoint(preset.endpoint);
       setModel(preset.defaultModel);
       setProfileName(`${preset.name} Config`);
+      if (presetKind === 'webllm') setApiKey('');
     } else {
       if (selectedPresetId !== 'custom') {
         setEndpoint('');
@@ -251,6 +263,19 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
   const handleTestKey = async () => {
     setTesting(true);
     setTestResult(null);
+
+    if (kind === 'webllm') {
+      const supported = await checkWebGPUSupported();
+      setTestResult({
+        success: supported,
+        message: supported
+          ? `WebGPU is available. The "${model}" model will download on first use (cached afterward).`
+          : 'WebGPU is not available in this browser. Use Chrome, Edge, or another WebGPU-enabled browser.',
+      });
+      setTesting(false);
+      return;
+    }
+
     const res = await testKeyConnection(endpoint, apiKey, model);
     setTestResult(res);
     setTesting(false);
@@ -261,13 +286,14 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
     const profileToSave: KeyProfile = {
       id: profileId,
       name: profileName.trim() || 'Default Config',
-      endpoint: endpoint.trim(),
-      apiKey: apiKey.trim(),
+      endpoint: kind === 'webllm' ? '' : endpoint.trim(),
+      apiKey: kind === 'webllm' ? '' : apiKey.trim(),
       model: model.trim(),
+      kind,
     };
 
     saveActiveProfile(profileToSave);
-    if (apiKey.trim() || endpoint.trim()) {
+    if (kind === 'webllm' ? model.trim() : (apiKey.trim() || endpoint.trim())) {
       setKeyConfigured(true);
     }
     setStep(3);
@@ -487,7 +513,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                         Choose Provider Preset
                       </label>
                       <div className="grid grid-cols-3 gap-1.5">
-                        {AI_PRESETS.map((preset) => {
+                        {AI_PRESETS.filter((p) => p.id !== 'groq').map((preset) => {
                           const isSelected = selectedPresetId === preset.id;
                           return (
                             <button
@@ -514,58 +540,94 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                     {/* Form Inputs */}
                     <div className="space-y-2.5">
                       {/* Endpoint URL */}
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
-                          <Globe className="w-3.5 h-3.5 text-amber-500" />
-                          API Endpoint URL
-                        </label>
-                        <input
-                          type="text"
-                          value={endpoint}
-                          onChange={(e) => setEndpoint(e.target.value)}
-                          placeholder="https://api.openai.com/v1"
-                          className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 font-mono text-slate-800 dark:text-slate-200 transition-all"
-                        />
-                      </div>
+                      {kind !== 'webllm' && (
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                            <Globe className="w-3.5 h-3.5 text-amber-500" />
+                            API Endpoint URL
+                          </label>
+                          <input
+                            type="text"
+                            value={endpoint}
+                            onChange={(e) => setEndpoint(e.target.value)}
+                            placeholder="https://api.openai.com/v1"
+                            className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 font-mono text-slate-800 dark:text-slate-200 transition-all"
+                          />
+                        </div>
+                      )}
 
                       {/* API Key */}
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
-                          <Key className="w-3.5 h-3.5 text-amber-500" />
-                          API Key
-                        </label>
-                        <div className="relative">
-                          <input
-                            type={showKey ? 'text' : 'password'}
-                            value={apiKey}
-                            onChange={(e) => setApiKey(e.target.value)}
-                            placeholder={AI_PRESETS.find((p) => p.id === selectedPresetId)?.placeholderKey || 'sk-...'}
-                            className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 font-mono text-slate-800 dark:text-slate-200 pr-9 transition-all"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowKey(!showKey)}
-                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-                          >
-                            {showKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                          </button>
+                      {kind !== 'webllm' && (
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                            <Key className="w-3.5 h-3.5 text-amber-500" />
+                            API Key
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={showKey ? 'text' : 'password'}
+                              value={apiKey}
+                              onChange={(e) => setApiKey(e.target.value)}
+                              placeholder={AI_PRESETS.find((p) => p.id === selectedPresetId)?.placeholderKey || 'sk-...'}
+                              className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 font-mono text-slate-800 dark:text-slate-200 pr-9 transition-all"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowKey(!showKey)}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                            >
+                              {showKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                            </button>
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                       {/* Model */}
                       <div className="space-y-1">
                         <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
                           <Cpu className="w-3.5 h-3.5 text-amber-500" />
-                          Model Name
+                          {kind === 'webllm' ? 'Local Model' : 'Model Name'}
                         </label>
-                        <input
-                          type="text"
-                          value={model}
-                          onChange={(e) => setModel(e.target.value)}
-                          placeholder="gpt-4o"
-                          className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 font-mono text-slate-800 dark:text-slate-200 transition-all"
-                        />
+                        {kind === 'webllm' ? (
+                          <select
+                            value={model}
+                            onChange={(e) => setModel(e.target.value)}
+                            className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 font-mono text-slate-800 dark:text-slate-200 transition-all"
+                          >
+                            {WEBLLM_MODELS.map((m) => (
+                              <option key={m.id} value={m.id}>
+                                {m.label} ({m.size})
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type="text"
+                            value={model}
+                            onChange={(e) => setModel(e.target.value)}
+                            placeholder="gpt-4o"
+                            className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 font-mono text-slate-800 dark:text-slate-200 transition-all"
+                          />
+                        )}
                       </div>
+
+                      {/* WebGPU support indicator */}
+                      {kind === 'webllm' && (
+                        <div
+                          className={`p-2.5 rounded-xl border flex gap-2 text-xs items-start ${
+                            isWebGPUSupported()
+                              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
+                              : 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300'
+                          }`}
+                        >
+                          <Cpu className="w-4 h-4 shrink-0 mt-0.5" />
+                          <span className="leading-tight">
+                            {isWebGPUSupported()
+                              ? 'WebGPU detected. The model runs entirely on this device and is cached after the first download.'
+                              : 'WebGPU not detected. Local inference requires a WebGPU-enabled browser (Chrome, Edge, etc.).'}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Test Result Alert */}

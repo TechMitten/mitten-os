@@ -1,9 +1,14 @@
+export type LLMProviderKind = 'openai-compatible' | 'webllm';
+
+import { DEFAULT_WEBLLM_MODEL } from './ai/webllm';
+
 export interface KeyProfile {
   id: string;
   name: string;
   endpoint: string;
   apiKey: string;
   model: string;
+  kind?: LLMProviderKind;
 }
 
 export interface AIPreset {
@@ -13,6 +18,7 @@ export interface AIPreset {
   defaultModel: string;
   placeholderKey?: string;
   description: string;
+  kind?: LLMProviderKind;
 }
 
 export const AI_PRESETS: AIPreset[] = [
@@ -64,6 +70,14 @@ export const AI_PRESETS: AIPreset[] = [
     placeholderKey: 'sk-...',
     description: 'Any OpenAI-compatible API endpoint',
   },
+  {
+    id: 'webllm',
+    name: 'Local (WebGPU)',
+    endpoint: '',
+    defaultModel: DEFAULT_WEBLLM_MODEL,
+    description: 'Run models locally in-browser via WebGPU — no API key needed',
+    kind: 'webllm',
+  },
 ];
 
 export const STORAGE_KEYS = {
@@ -72,7 +86,26 @@ export const STORAGE_KEYS = {
   ENDPOINT: 'mittenOS_keys_endpoint',
   API_KEY: 'mittenOS_keys_apikey',
   MODEL: 'mittenOS_keys_model',
+  PROVIDER: 'mittenOS_keys_provider',
 } as const;
+
+export interface ActiveLLMConfig {
+  kind: LLMProviderKind;
+  endpoint: string;
+  apiKey: string;
+  model: string;
+}
+
+export function getActiveLLMConfig(): ActiveLLMConfig {
+  if (typeof window === 'undefined') {
+    return { kind: 'openai-compatible', endpoint: '', apiKey: '', model: '' };
+  }
+  const kind = (localStorage.getItem(STORAGE_KEYS.PROVIDER) as LLMProviderKind | null) || 'openai-compatible';
+  const endpoint = localStorage.getItem(STORAGE_KEYS.ENDPOINT) || '';
+  const apiKey = localStorage.getItem(STORAGE_KEYS.API_KEY) || '';
+  const model = localStorage.getItem(STORAGE_KEYS.MODEL) || '';
+  return { kind, endpoint, apiKey, model };
+}
 
 export function loadKeyProfiles(): {
   profiles: KeyProfile[];
@@ -143,6 +176,7 @@ export function saveActiveProfile(profile: KeyProfile): void {
   localStorage.setItem(STORAGE_KEYS.ENDPOINT, profile.endpoint.trim());
   localStorage.setItem(STORAGE_KEYS.API_KEY, profile.apiKey.trim());
   localStorage.setItem(STORAGE_KEYS.MODEL, profile.model.trim());
+  localStorage.setItem(STORAGE_KEYS.PROVIDER, profile.kind || 'openai-compatible');
 }
 
 export async function testKeyConnection(

@@ -1,18 +1,5 @@
 import { create } from 'zustand';
-
-const getLLMConfig = () => {
-  if (typeof window === 'undefined') return { apiKey: '', model: '', endpoint: '' };
-  const endpoint = localStorage.getItem('mittenOS_keys_endpoint') || '';
-  const apiKey = localStorage.getItem('mittenOS_keys_apikey') || '';
-  const model = localStorage.getItem('mittenOS_keys_model') || '';
-  return { apiKey, model, endpoint };
-};
-
-const getCleanedUrl = (endpoint: string) => {
-  const url = endpoint.trim();
-  if (!url) return '';
-  return url.endsWith('/chat/completions') ? url : `${url.replace(/\/$/, '')}/chat/completions`;
-};
+import { chatCompletion } from '@/lib/ai/client';
 
 export interface CodingSession {
   id: string;
@@ -174,70 +161,17 @@ export const useCodingAssistantStore = create<CodingAssistantState>((set, get) =
     const isFirstMessage = messages.length === 0;
 
     try {
-      const apiMessages = updatedMessages.map((m) => ({ role: m.role, content: m.content }));
-      const { apiKey, model, endpoint } = getLLMConfig();
-      if (!endpoint || !apiKey || !model) {
-        throw new Error('AI API configurations are missing. Please open the Keys app and configure your endpoint, API key, and model.');
-      }
-      const targetUrl = getCleanedUrl(endpoint);
-      const response = await fetch(targetUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model,
-          messages: apiMessages,
-          stream: true,
-        }),
-      });
+      const apiMessages = updatedMessages.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
 
-      if (!response.ok) {
-        const text = await response.text();
-        let errMsg = `API error: ${response.status}`;
-        try {
-          const json = JSON.parse(text);
-          errMsg = json.error?.message || errMsg;
-        } catch {
-          if (text) errMsg += ` - ${text.substring(0, 100)}`;
-        }
-        throw new Error(errMsg);
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('No response body');
-
-      const decoder = new TextDecoder();
-      let buffer = '';
       let fullContent = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || !trimmed.startsWith('data: ')) continue;
-          const data = trimmed.slice(6);
-          if (data === '[DONE]') continue;
-
-          try {
-            const parsed = JSON.parse(data);
-            const contentChunk = parsed.choices?.[0]?.delta?.content;
-            if (contentChunk) {
-              fullContent += contentChunk;
-              set({ streamingContent: fullContent });
-            }
-          } catch {
-            // skip unparseable
-          }
-        }
-      }
+      await chatCompletion({
+        messages: apiMessages,
+        stream: true,
+        onChunk: (chunk) => {
+          fullContent += chunk;
+          set({ streamingContent: fullContent });
+        },
+      });
 
       if (fullContent) {
         const assistantMessage: CodingMessage = {
@@ -262,38 +196,25 @@ export const useCodingAssistantStore = create<CodingAssistantState>((set, get) =
         if (isFirstMessage) {
           let generatedTitle: string | null = null;
           try {
-            const titleRes = await fetch(targetUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`,
-              },
-              body: JSON.stringify({
-                model,
-                messages: [
-                  {
-                    role: 'system',
-                    content: 'Generate a concise 2-4 word title for a coding chat that starts with the following user message. Return ONLY the title. No quotes, no punctuation at the end, no explanation. Do not start with "Title:" or any label.',
-                  },
-                  { role: 'user', content: content },
-                ],
-                temperature: 0.3,
-                stream: false,
-              }),
+            const titleRes = await chatCompletion({
+              messages: [
+                {
+                  role: 'system',
+                  content: 'Generate a concise 2-4 word title for a coding chat that starts with the following user message. Return ONLY the title. No quotes, no punctuation at the end, no explanation. Do not start with "Title:" or any label.',
+                },
+                { role: 'user', content: content },
+              ],
+              temperature: 0.3,
+              stream: false,
             });
-            if (titleRes.ok) {
-              const json = await titleRes.json();
-              const rawTitle = json.choices?.[0]?.message?.content;
-              if (rawTitle) {
-                generatedTitle = rawTitle.trim()
-                  .replace(/^["']|["']$/g, '')
-                  .replace(/[.!?,;:]+$/, '')
-                  .replace(/^Title:\s*/i, '')
-                  .replace(/\n/g, ' ')
-                  .trim();
-              }
-            } else {
-              console.error('Title API returned status:', titleRes.status);
+            const rawTitle = titleRes.content;
+            if (rawTitle) {
+              generatedTitle = rawTitle.trim()
+                .replace(/^["']|["']$/g, '')
+                .replace(/[.!?,;:]+$/, '')
+                .replace(/^Title:\s*/i, '')
+                .replace(/\n/g, ' ')
+                .trim();
             }
           } catch (err) {
             console.error('Title API call failed:', err);

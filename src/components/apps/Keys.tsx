@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Key, Globe, Cpu, Eye, EyeOff, Save, CheckCircle, XCircle, Loader2, Plus, Trash2, Check, Sparkles } from 'lucide-react';
+import { Key, Globe, Cpu, Eye, EyeOff, Save, CheckCircle, XCircle, Loader2, Plus, Trash2, Check, Sparkles, Gauge } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   AI_PRESETS,
@@ -9,7 +9,9 @@ import {
   testKeyConnection,
   type KeyProfile,
   type AIPreset,
+  type LLMProviderKind,
 } from '@/lib/keys';
+import { WEBLLM_MODELS, isWebGPUSupported, checkWebGPUSupported } from '@/lib/ai/webllm';
 
 export default function KeysApp() {
   const { toast } = useToast();
@@ -23,11 +25,13 @@ export default function KeysApp() {
   const [endpoint, setEndpoint] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [model, setModel] = useState('');
+  const [kind, setKind] = useState<LLMProviderKind>('openai-compatible');
 
   // UI States
   const [showKey, setShowKey] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [webgpuSupport, setWebgpuSupport] = useState<boolean | null>(null);
 
   // Load saved keys on mount
   useEffect(() => {
@@ -74,6 +78,7 @@ export default function KeysApp() {
         setEndpoint(activeProfile.endpoint);
         setApiKey(activeProfile.apiKey);
         setModel(activeProfile.model);
+        setKind(activeProfile.kind || 'openai-compatible');
       }
     }
   }, []);
@@ -87,6 +92,7 @@ export default function KeysApp() {
     setEndpoint(profile.endpoint);
     setApiKey(profile.apiKey);
     setModel(profile.model);
+    setKind(profile.kind || 'openai-compatible');
     setTestResult(null);
   };
 
@@ -94,14 +100,23 @@ export default function KeysApp() {
     if (preset.id === 'custom') return;
     setEndpoint(preset.endpoint);
     setModel(preset.defaultModel);
+    setKind(preset.kind || 'openai-compatible');
+    if (preset.kind === 'webllm') setApiKey('');
     if (!profileName || profileName.startsWith('Profile ') || profileName === 'Default Config') {
       setProfileName(`${preset.name} Profile`);
     }
     setTestResult(null);
-    toast({
-      title: `${preset.name} Preset Applied`,
-      description: `Endpoint and default model configured. Enter your API key.`,
-    });
+    if (preset.kind === 'webllm') {
+      toast({
+        title: `${preset.name} Preset Applied`,
+        description: 'Local model selected. Choose a model and it will download on first use.',
+      });
+    } else {
+      toast({
+        title: `${preset.name} Preset Applied`,
+        description: `Endpoint and default model configured. Enter your API key.`,
+      });
+    }
   };
 
   const handleAddProfile = () => {
@@ -111,6 +126,7 @@ export default function KeysApp() {
       endpoint: '',
       apiKey: '',
       model: '',
+      kind: 'openai-compatible',
     };
 
     const updatedProfiles = [...profiles, newProfile];
@@ -123,6 +139,7 @@ export default function KeysApp() {
     setEndpoint(newProfile.endpoint);
     setApiKey(newProfile.apiKey);
     setModel(newProfile.model);
+    setKind(newProfile.kind || 'openai-compatible');
     setTestResult(null);
 
     toast({
@@ -160,6 +177,7 @@ export default function KeysApp() {
       localStorage.setItem(STORAGE_KEYS.ENDPOINT, fallbackActive.endpoint);
       localStorage.setItem(STORAGE_KEYS.API_KEY, fallbackActive.apiKey);
       localStorage.setItem(STORAGE_KEYS.MODEL, fallbackActive.model);
+      localStorage.setItem(STORAGE_KEYS.PROVIDER, fallbackActive.kind || 'openai-compatible');
     }
 
     toast({
@@ -186,6 +204,7 @@ export default function KeysApp() {
           endpoint: endpoint.trim(),
           apiKey: apiKey.trim(),
           model: model.trim(),
+          kind,
         };
       }
       return p;
@@ -199,6 +218,7 @@ export default function KeysApp() {
       localStorage.setItem(STORAGE_KEYS.ENDPOINT, endpoint.trim());
       localStorage.setItem(STORAGE_KEYS.API_KEY, apiKey.trim());
       localStorage.setItem(STORAGE_KEYS.MODEL, model.trim());
+      localStorage.setItem(STORAGE_KEYS.PROVIDER, kind);
     }
 
     toast({
@@ -213,6 +233,7 @@ export default function KeysApp() {
     localStorage.setItem(STORAGE_KEYS.ENDPOINT, endpoint.trim());
     localStorage.setItem(STORAGE_KEYS.API_KEY, apiKey.trim());
     localStorage.setItem(STORAGE_KEYS.MODEL, model.trim());
+    localStorage.setItem(STORAGE_KEYS.PROVIDER, kind);
 
     toast({
       title: 'Active Profile Switched',
@@ -224,12 +245,32 @@ export default function KeysApp() {
     setTesting(true);
     setTestResult(null);
 
+    if (kind === 'webllm') {
+      const supported = await checkWebGPUSupported();
+      setTestResult({
+        success: supported,
+        message: supported
+          ? `WebGPU is available. The "${model}" model will download on first use (cached afterward).`
+          : 'WebGPU is not available in this browser. Use Chrome, Edge, or another WebGPU-enabled browser.',
+      });
+      setTesting(false);
+      return;
+    }
+
     const res = await testKeyConnection(endpoint, apiKey, model);
     setTestResult(res);
     setTesting(false);
   };
 
   const isActive = selectedProfileId === activeProfileId;
+
+  useEffect(() => {
+    if (kind === 'webllm') {
+      setWebgpuSupport(isWebGPUSupported());
+    } else {
+      setWebgpuSupport(null);
+    }
+  }, [kind]);
 
   return (
     <div className="flex h-full bg-card dark:bg-zinc-900 text-card-foreground select-none overflow-hidden">
@@ -355,58 +396,94 @@ export default function KeysApp() {
             </div>
 
             {/* Endpoint */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 font-sans">
-                <Globe className="w-3.5 h-3.5 text-amber-500" />
-                API Endpoint URL
-              </label>
-              <input
-                type="text"
-                value={endpoint}
-                onChange={(e) => setEndpoint(e.target.value)}
-                placeholder="https://api.openai.com/v1"
-                className="w-full bg-muted dark:bg-zinc-800/60 border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500 font-mono"
-              />
-            </div>
+            {kind !== 'webllm' && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 font-sans">
+                  <Globe className="w-3.5 h-3.5 text-amber-500" />
+                  API Endpoint URL
+                </label>
+                <input
+                  type="text"
+                  value={endpoint}
+                  onChange={(e) => setEndpoint(e.target.value)}
+                  placeholder="https://api.openai.com/v1"
+                  className="w-full bg-muted dark:bg-zinc-800/60 border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500 font-mono"
+                />
+              </div>
+            )}
 
             {/* API Key */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 font-sans">
-                <Key className="w-3.5 h-3.5 text-amber-500" />
-                API Key
-              </label>
-              <div className="relative font-sans">
-                <input
-                  type={showKey ? 'text' : 'password'}
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder={AI_PRESETS.find((p) => p.endpoint === endpoint)?.placeholderKey || 'sk-...'}
-                  className="w-full bg-muted dark:bg-zinc-800/60 border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500 pr-10 font-mono"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowKey(!showKey)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
-                >
-                  {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+            {kind !== 'webllm' && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 font-sans">
+                  <Key className="w-3.5 h-3.5 text-amber-500" />
+                  API Key
+                </label>
+                <div className="relative font-sans">
+                  <input
+                    type={showKey ? 'text' : 'password'}
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder={AI_PRESETS.find((p) => p.endpoint === endpoint)?.placeholderKey || 'sk-...'}
+                    className="w-full bg-muted dark:bg-zinc-800/60 border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500 pr-10 font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowKey(!showKey)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                  >
+                    {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Model */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 font-sans">
                 <Cpu className="w-3.5 h-3.5 text-amber-500" />
-                Model Name
+                {kind === 'webllm' ? 'Local Model' : 'Model Name'}
               </label>
-              <input
-                type="text"
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-                placeholder="gpt-4o"
-                className="w-full bg-muted dark:bg-zinc-800/60 border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500 font-mono"
-              />
+              {kind === 'webllm' ? (
+                <select
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  className="w-full bg-muted dark:bg-zinc-800/60 border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500 font-mono"
+                >
+                  {WEBLLM_MODELS.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.label} ({m.size})
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  placeholder="gpt-4o"
+                  className="w-full bg-muted dark:bg-zinc-800/60 border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500 font-mono"
+                />
+              )}
             </div>
+
+            {/* WebGPU support indicator */}
+            {kind === 'webllm' && (
+              <div
+                className={`p-3 rounded-lg border flex gap-2 text-xs items-start font-sans ${
+                  webgpuSupport
+                    ? 'bg-green-500/10 border-green-500/30 text-green-600 dark:text-green-400'
+                    : 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400'
+                }`}
+              >
+                <Gauge className="w-4 h-4 shrink-0 mt-0.5" />
+                <span className="leading-relaxed">
+                  {webgpuSupport
+                    ? 'WebGPU detected. The model runs entirely on this device and is cached after the first download.'
+                    : 'WebGPU not detected. Local inference requires a WebGPU-enabled browser (Chrome, Edge, etc.).'}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Test Result Alert */}

@@ -49,6 +49,11 @@ const nextConfig: NextConfig = {
   },
   reactStrictMode: false,
   allowedDevOrigins: getAllowedDevOrigins(),
+  // Poll for file changes so HMR/Fast Refresh works inside the dev container,
+  // where inotify events don't propagate across the bind mount.
+  watchOptions: {
+    pollIntervalMs: 1000,
+  },
 };
 
 export default nextConfig;

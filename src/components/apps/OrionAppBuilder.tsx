@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useWindowStore } from '@/stores/window-store';
+import { chatCompletion } from '@/lib/ai/client';
 
 import {
   Wand2, Smartphone, Code2, Play, Loader2, History, Settings, Layout, Download,
@@ -220,111 +221,24 @@ const requestModelText = async (params: RequestModelTextParams): Promise<{ conte
   const { systemPrompt, userText, onChunk, temperature = 0.7, tools, tool_choice, retryCount = 0, signal } = params;
   const delays = [1000, 2000, 4000, 8000, 16000];
 
-  const getStorageItem = (key: string): string | null => {
-    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return null;
-    return localStorage.getItem(key);
-  };
-
-  const apiKey = getStorageItem('mittenOS_keys_apikey');
-  const model = getStorageItem('mittenOS_keys_model');
-  const endpoint = getStorageItem('mittenOS_keys_endpoint');
-
-  if (!endpoint || !apiKey || !model) {
-    throw new Error('AI API configurations are missing. Please open the Keys app and configure your endpoint, API key, and model.');
-  }
-
-  const cleanUrl = endpoint.trim();
-  const baseUrl = cleanUrl.endsWith('/chat/completions')
-    ? cleanUrl
-    : `${cleanUrl.replace(/\/$/, '')}/chat/completions`;
-
   try {
-    const headers: Record<string, string> = {
-      'Authorization': `Bearer ${apiKey.trim()}`,
-      'Content-Type': 'application/json',
-    };
-
-    const bodyObj: Record<string, unknown> = {
-      model: model.trim(),
-      stream: !!onChunk,
+    const result = await chatCompletion({
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userText },
       ],
       temperature,
-    };
-
-    if (tools) bodyObj.tools = tools;
-    if (tool_choice) bodyObj.tool_choice = tool_choice;
-
-    const response = await fetch(baseUrl, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(bodyObj),
+      stream: !!onChunk,
+      onChunk: onChunk ?? undefined,
+      tools: tools ?? undefined,
+      tool_choice: tool_choice ?? undefined,
       signal,
     });
 
-    if (!response.ok) {
-      const errText = await response.text();
-      let errMsg = `HTTP Error ${response.status}`;
-      try {
-        const errJson = JSON.parse(errText);
-        errMsg = errJson.error?.message || errMsg;
-      } catch {
-        if (errText) errMsg += ` - ${errText.substring(0, 100)}`;
-      }
-      throw new Error(errMsg);
-    }
-
-    if (!onChunk) {
-      const data = await response.json() as any;
-      return data.choices[0].message;
-    }
-
-    const STREAM_READ_TIMEOUT_MS = 60000;
-    let text = '';
-    const toolCallsBuffer: Array<{ id: string; function: { name: string; arguments: string } }> = [];
-    const reader = response.body!.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    const readWithTimeout = async () => {
-      if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-      const readPromise = reader.read();
-      const timeoutPromise = new Promise<ReadableStreamReadResult<Uint8Array>>((_, reject) =>
-        setTimeout(() => reject(new Error('Stream stalled: no data received for ' + (STREAM_READ_TIMEOUT_MS / 1000) + 's')), STREAM_READ_TIMEOUT_MS)
-      );
-      return await Promise.race([readPromise, timeoutPromise]);
+    return {
+      content: result.content,
+      tool_calls: result.toolCalls.map((tc) => ({ id: tc.id, function: tc.function })),
     };
-
-    while (true) {
-      const { done, value } = await readWithTimeout();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        const trimmedLine = line.trim();
-        if (trimmedLine.startsWith('data: ')) {
-          const data = trimmedLine.slice(6);
-          if (data === '[DONE]') continue;
-          try {
-            const json = JSON.parse(data);
-            const delta = json.choices[0]?.delta;
-            if (delta?.content) { text += delta.content; onChunk(delta.content); }
-            if (delta?.tool_calls) {
-              for (const tc of delta.tool_calls) {
-                const idx: number = tc.index || 0;
-                if (!toolCallsBuffer[idx]) toolCallsBuffer[idx] = { id: tc.id, function: { name: tc.function?.name, arguments: '' } };
-                if (tc.function?.arguments) toolCallsBuffer[idx].function.arguments += tc.function.arguments;
-              }
-            }
-          } catch { /* ignore */ }
-        }
-      }
-    }
-    return { content: text, tool_calls: toolCallsBuffer.filter(Boolean) };
   } catch (err) {
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
     if (retryCount < delays.length && !(err instanceof DOMException && err.name === 'AbortError')) {
