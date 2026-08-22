@@ -181,6 +181,8 @@ export default function Taskbar() {
     startMenuOpen,
     toggleStartMenu,
     notifications,
+    notificationsOpen,
+    toggleNotifications,
     accentColor,
   } = useDesktopStore();
 
@@ -332,15 +334,24 @@ export default function Taskbar() {
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                className="relative flex items-center justify-center w-9 h-9 rounded-lg transition-colors duration-150 cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 text-foreground/80"
+                onClick={toggleNotifications}
+                data-notification-button
                 aria-label="Notifications"
+                aria-expanded={notificationsOpen}
+                className={`relative flex items-center justify-center w-9 h-9 rounded-lg transition-colors duration-150 cursor-pointer text-foreground/80 ${
+                  notificationsOpen
+                    ? 'bg-black/15 dark:bg-white/15'
+                    : 'hover:bg-black/10 dark:hover:bg-white/10'
+                }`}
               >
                 <Bell className="w-4 h-4" />
                 {unreadCount > 0 && (
                   <span
-                    className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full"
+                    className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-semibold text-white flex items-center justify-center"
                     style={{ backgroundColor: currentAccent.value }}
-                  />
+                  >
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
                 )}
               </button>
             </TooltipTrigger>

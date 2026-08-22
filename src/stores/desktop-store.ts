@@ -8,6 +8,7 @@ interface DesktopStore {
   desktopIcons: DesktopIcon[];
   customDesktopIcons: DesktopIcon[];
   notifications: Notification[];
+  notificationsOpen: boolean;
   startMenuOpen: boolean;
   contextMenu: ContextMenuState | null;
   searchQuery: string;
@@ -27,9 +28,13 @@ interface DesktopStore {
   setAccentColor: (accent: string) => void;
   setStartMenuOpen: (open: boolean) => void;
   toggleStartMenu: () => void;
+  setNotificationsOpen: (open: boolean) => void;
+  toggleNotifications: () => void;
   setContextMenu: (menu: ContextMenuState | null) => void;
   addNotification: (notification: Omit<Notification, "id" | "timestamp" | "read">) => void;
   markNotificationRead: (id: string) => void;
+  markAllNotificationsRead: () => void;
+  dismissNotification: (id: string) => void;
   clearNotifications: () => void;
   setSearchQuery: (query: string) => void;
   setWelcomeDismissed: (dismissed: boolean) => void;
@@ -123,6 +128,7 @@ async function persistDesktopState(userId: string | null, state: DesktopStore, i
     deletedIconIds: state.deletedIconIds || [],
     renamedIconLabels: state.renamedIconLabels || {},
     customDesktopIcons: state.customDesktopIcons || [],
+    notifications: state.notifications || [],
   };
 
   const desktopState = { settings, positions };
@@ -159,6 +165,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   desktopIcons: defaultIcons,
   customDesktopIcons: [],
   notifications: [],
+  notificationsOpen: false,
   startMenuOpen: false,
   contextMenu: null,
   searchQuery: "",
@@ -167,7 +174,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   welcomeDismissed: false,
   persistWindows: true,
   iconSize: "medium",
-  use24HourClock: true,
+  use24HourClock: false,
   showDateUnderTime: true,
   deletedIconIds: [],
   renamedIconLabels: {},
@@ -250,11 +257,12 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     const welcomeDismissed = localStorage.getItem(`mittenos:welcomeDismissed:${userId}`) === "true" || (settings.welcomeDismissed ?? false);
     const persistWindows = settings.persistWindows ?? true;
     const iconSize = settings.iconSize || "medium";
-    const use24HourClock = settings.use24HourClock ?? true;
+    const use24HourClock = settings.use24HourClock ?? false;
     const showDateUnderTime = settings.showDateUnderTime ?? true;
     const deletedIconIds = settings.deletedIconIds || [];
     const renamedIconLabels = settings.renamedIconLabels || {};
     const customDesktopIcons = settings.customDesktopIcons || [];
+    const notifications = settings.notifications || [];
 
     applyAccentColorToDocument(accentColor);
 
@@ -285,6 +293,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
       renamedIconLabels,
       customDesktopIcons: customIconsWithPositions,
       desktopIcons: [...updatedIcons, ...customIconsWithPositions],
+      notifications,
     });
   },
 
@@ -305,6 +314,8 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
 
   setStartMenuOpen: (open: boolean) => set({ startMenuOpen: open }),
   toggleStartMenu: () => set((state) => ({ startMenuOpen: !state.startMenuOpen })),
+  setNotificationsOpen: (open: boolean) => set({ notificationsOpen: open }),
+  toggleNotifications: () => set((state) => ({ notificationsOpen: !state.notificationsOpen })),
   setContextMenu: (menu: ContextMenuState | null) => set({ contextMenu: menu }),
 
   addNotification: (notification) => {
@@ -318,6 +329,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     set((state) => ({
       notifications: [newNotif, ...state.notifications].slice(0, 50),
     }));
+    persistSettings(get().userId, get());
   },
 
   markNotificationRead: (id: string) => {
@@ -326,9 +338,29 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
         n.id === id ? { ...n, read: true } : n
       ),
     }));
+    persistSettings(get().userId, get());
   },
 
-  clearNotifications: () => set({ notifications: [] }),
+  markAllNotificationsRead: () => {
+    set((state) => ({
+      notifications: state.notifications.map((n) =>
+        n.read ? n : { ...n, read: true }
+      ),
+    }));
+    persistSettings(get().userId, get());
+  },
+
+  dismissNotification: (id: string) => {
+    set((state) => ({
+      notifications: state.notifications.filter((n) => n.id !== id),
+    }));
+    persistSettings(get().userId, get());
+  },
+
+  clearNotifications: () => {
+    set({ notifications: [] });
+    persistSettings(get().userId, get());
+  },
   setSearchQuery: (query: string) => set({ searchQuery: query }),
 
   updateIconPosition: (id: string, position: WindowPosition) => {
@@ -385,6 +417,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
       desktopIcons: defaultIcons,
       customDesktopIcons: [],
       notifications: [],
+      notificationsOpen: false,
       startMenuOpen: false,
       contextMenu: null,
       searchQuery: "",
@@ -393,7 +426,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
       welcomeDismissed: false,
       persistWindows: true,
       iconSize: "medium",
-      use24HourClock: true,
+      use24HourClock: false,
       showDateUnderTime: true,
       deletedIconIds: [],
       renamedIconLabels: {},

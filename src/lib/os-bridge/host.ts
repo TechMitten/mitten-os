@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import { useWindowStore } from '@/stores/window-store';
-import { useDesktopStore } from '@/stores/desktop-store';
 import { useFileSystemStore } from '@/stores/filesystem-store';
 import { chatCompletion } from '@/lib/ai/client';
+import { notify } from '@/lib/notifications';
 import type { OSBridgeRequest } from './types';
 
 interface OSPortalProps {
@@ -122,11 +122,11 @@ export function OSPortal({ windowId, children, onIframeRef }: OSPortalProps) {
             break;
           }
           case 'notifications.show': {
-            useDesktopStore.getState().addNotification({
-              title: (data.payload?.title as string) || '',
-              message: (data.payload?.message as string) || '',
-              type: (data.payload?.type as 'info' | 'warning' | 'error' | 'success') || 'info',
-            });
+            notify(
+              (data.payload?.title as string) || '',
+              (data.payload?.message as string) || '',
+              (data.payload?.type as 'info' | 'warning' | 'error' | 'success') || 'info'
+            );
             respond(true);
             break;
           }

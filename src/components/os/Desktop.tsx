@@ -11,6 +11,8 @@ import Window from '@/components/os/Window';
 import { StartMenu } from '@/components/os/StartMenu';
 import Taskbar from '@/components/os/Taskbar';
 import WelcomeWindow from '@/components/os/WelcomeWindow';
+import { NotificationCenter } from '@/components/os/NotificationCenter';
+import { NotificationToaster } from '@/components/os/NotificationToaster';
 import { Loader2 } from 'lucide-react';
 import { isWallpaperDark } from '@/lib/utils';
 import { applyAccentColorToDocument } from '@/lib/theme';
@@ -730,6 +732,9 @@ export function Desktop() {
         )}
 
         <StartMenu />
+
+        <NotificationCenter />
+        <NotificationToaster />
 
         <Taskbar />
       </div>
