@@ -1,0 +1,46 @@
+# dependencies
+node_modules
+npm-debug.log*
+
+# next.js
+.next
+out
+build
+tsconfig.tsbuildinfo
+next-env.d.ts
+
+# cloudflare / opennext
+.open-next
+.wrangler
+.dev.vars
+.dev.vars*
+cloudflare-env.d.ts
+
+# env / secrets
+.env
+.env.*
+!.env.example
+.dev.vars*
+
+# version control / tooling
+.git
+.gitignore
+.gitattributes
+.github
+.eslintcache
+.vscode
+.devcontainer
+.claude
+
+# local artifacts
+*.log
+dev.log
+server.log
+dev.out.log
+README.md
+CLAUDE.md
+.dockerignore
+Dockerfile
+docker-compose.yml
+prompt
+test
