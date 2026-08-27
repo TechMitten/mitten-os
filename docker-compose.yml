@@ -11,7 +11,7 @@ services:
     container_name: mitten-os
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3130:3130"
     environment:
       NODE_ENV: production
       HOSTNAME: 0.0.0.0
@@ -21,7 +21,7 @@ services:
       ZAI_API_KEY: ${ZAI_API_KEY}
       ZAI_MODEL: ${ZAI_MODEL}
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:3130/"]
       interval: 30s
       timeout: 5s
       retries: 3

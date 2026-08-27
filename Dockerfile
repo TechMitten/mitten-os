@@ -24,7 +24,7 @@ RUN addgroup -g 1001 -S nodejs \
   && adduser -S nextjs -u 1001
 
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=3130
 # Pin bind address; otherwise the standalone server binds to Docker's auto-set
 # $HOSTNAME (a container ID) and becomes unreachable from outside the container.
 ENV HOSTNAME=0.0.0.0
@@ -34,11 +34,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 USER nextjs
-EXPOSE 3000
+EXPOSE 3130
 
 # Runtime secrets (DEEPSEEK_API_KEY, ZAI_API_KEY, etc.) are read from the
 # container environment and passed in by Dokploy at deploy/runtime.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget -qO- http://localhost:3000/ >/dev/null 2>&1 || exit 1
+  CMD wget -qO- http://localhost:3130/ >/dev/null 2>&1 || exit 1
 
 CMD ["node", "server.js"]
