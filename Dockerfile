@@ -11,7 +11,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # NEXT_PUBLIC_* vars are inlined at build time. Provide them as build args
-# if your app needs them (e.g. NEXT_PUBLIC_APP_URL, NEXT_PUBLIC_API_URL).
+# if your app needs them (e.g. NEXT_PUBLIC_APP_URL).
 ARG NEXT_PUBLIC_APP_URL
 ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 
@@ -36,9 +36,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 USER nextjs
 EXPOSE 3130
 
-# Runtime secrets (DEEPSEEK_API_KEY, ZAI_API_KEY, etc.) are read from the
-# container environment and passed in by Dokploy at deploy/runtime.
+# Use 127.0.0.1 instead of localhost to avoid Alpine IPv6 resolution issues
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget -qO- http://localhost:3130/ >/dev/null 2>&1 || exit 1
+  CMD wget -qO- http://127.0.0.1:3130/ >/dev/null 2>&1 || exit 1
 
 CMD ["node", "server.js"]

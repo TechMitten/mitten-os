@@ -4,8 +4,6 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        # NEXT_PUBLIC_* vars are inlined at build time. Uncomment if needed.
-        # NEXT_PUBLIC_APP_URL: https://mittenai.dev
         NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-}
     image: mitten-os:latest
     container_name: mitten-os
@@ -15,14 +13,16 @@ services:
     environment:
       NODE_ENV: production
       HOSTNAME: 0.0.0.0
-      # Runtime secrets — read from the process env at request time.
-      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
-      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL}
-      ZAI_API_KEY: ${ZAI_API_KEY}
-      ZAI_MODEL: ${ZAI_MODEL}
+      PORT: 3130
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3130/"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3130/"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
+    networks:
+      - dokploy-network
+
+networks:
+  dokploy-network:
+    external: true
