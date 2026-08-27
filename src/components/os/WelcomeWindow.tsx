@@ -331,24 +331,24 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
           <div
             className="
               relative flex flex-col rounded-2xl overflow-hidden
-              bg-white/90 dark:bg-slate-900/90
+              bg-zinc-950/95
               backdrop-blur-2xl
-              border border-white/50 dark:border-slate-700/60
-              shadow-[0_20px_50px_rgba(0,0,0,0.35)]
+              border border-zinc-800
+              shadow-[0_20px_50px_rgba(0,0,0,0.6)]
               w-full max-h-[88vh]
             "
           >
             {/* Ambient Background Gradient Orbs */}
-            <div className="absolute -top-20 -left-20 w-52 h-52 bg-blue-500/20 dark:bg-blue-500/15 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-20 -right-20 w-52 h-52 bg-purple-500/20 dark:bg-purple-500/15 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-amber-500/10 dark:bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -top-20 -left-20 w-52 h-52 bg-orange-500/15 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-20 -right-20 w-52 h-52 bg-orange-600/15 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
             {/* Window Header Bar */}
             <div
               className="
                 relative h-10 flex items-center px-4 gap-2 select-none touch-none
-                bg-white/40 dark:bg-slate-800/40
-                border-b border-black/5 dark:border-white/5
+                bg-zinc-900/60
+                border-b border-zinc-800
                 cursor-grab active:cursor-grabbing shrink-0
               "
               onMouseDown={handleDragStart}
@@ -379,7 +379,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
 
               {/* Title & Progress Stepper */}
               <div className="flex-1 flex items-center justify-center gap-2">
-                <span className="text-[11px] font-semibold tracking-wide uppercase text-slate-500 dark:text-slate-400">
+                <span className="text-[11px] font-semibold tracking-wide uppercase text-zinc-400">
                   {step === 1 && 'Welcome to MittenOS'}
                   {step === 2 && 'Step 2: AI Engine Setup'}
                   {step === 3 && 'Step 3: Ready to Explore'}
@@ -394,10 +394,10 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                     onClick={() => setStep(s as 1 | 2 | 3)}
                     className={`h-1.5 rounded-full transition-all duration-200 cursor-pointer ${
                       step === s
-                        ? 'w-4 bg-indigo-600 dark:bg-indigo-400'
+                        ? 'w-4 bg-orange-500'
                         : step > s
-                        ? 'w-1.5 bg-indigo-400/60 dark:bg-indigo-400/40'
-                        : 'w-1.5 bg-slate-300 dark:bg-slate-700'
+                        ? 'w-1.5 bg-orange-400/60'
+                        : 'w-1.5 bg-zinc-700'
                     }`}
                     title={`Go to step ${s}`}
                   />
@@ -420,61 +420,61 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                   >
                     {/* Hero Icon Badge */}
                     <div className="relative flex items-center justify-center">
-                      <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 blur-lg opacity-40 animate-pulse" />
-                      <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-xl shadow-indigo-500/30 border border-white/20">
+                      <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-orange-600 to-amber-500 blur-lg opacity-40 animate-pulse" />
+                      <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-orange-600 via-orange-500 to-amber-500 flex items-center justify-center text-white shadow-xl shadow-orange-500/30 border border-white/10">
                         <Sparkles className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
                       </div>
                     </div>
 
                     {/* Title & Subtitle */}
                     <div className="text-center space-y-1 px-2">
-                      <h2 className="text-xl sm:text-2xl font-bold tracking-tight bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 dark:from-white dark:via-slate-100 dark:to-slate-300 bg-clip-text text-transparent">
+                      <h2 className="text-xl sm:text-2xl font-bold tracking-tight bg-gradient-to-r from-white via-zinc-200 to-orange-400 bg-clip-text text-transparent">
                         Welcome to MittenOS
                       </h2>
-                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-sm mx-auto">
+                      <p className="text-xs text-zinc-400 leading-relaxed max-w-sm mx-auto">
                         A next-generation local-first web operating system crafted for speed, productivity, and fluid app workflows.
                       </p>
                     </div>
 
                     {/* Feature Cards Grid */}
                     <div className="w-full grid grid-cols-1 gap-2.5 pt-1">
-                      <div className="flex items-center gap-3 p-2.5 sm:p-3 rounded-xl bg-slate-100/70 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 hover:border-indigo-500/40 dark:hover:border-indigo-500/40 transition-colors group">
-                        <div className="p-2 sm:p-2.5 rounded-lg bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 group-hover:scale-105 transition-transform">
+                      <div className="flex items-center gap-3 p-2.5 sm:p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 hover:border-orange-500/40 transition-colors group">
+                        <div className="p-2 sm:p-2.5 rounded-lg bg-orange-500/10 text-orange-400 group-hover:scale-105 transition-transform">
                           <Zap className="w-4 h-4" />
                         </div>
                         <div className="flex flex-col text-left">
-                          <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                          <span className="text-xs font-semibold text-zinc-100">
                             Orion App Builder
                           </span>
-                          <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                          <span className="text-[11px] text-zinc-400">
                             Generate, test, and run full-stack mini-apps instantly
                           </span>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3 p-2.5 sm:p-3 rounded-xl bg-slate-100/70 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 hover:border-indigo-500/40 dark:hover:border-indigo-500/40 transition-colors group">
-                        <div className="p-2 sm:p-2.5 rounded-lg bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400 group-hover:scale-105 transition-transform">
+                      <div className="flex items-center gap-3 p-2.5 sm:p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 hover:border-orange-500/40 transition-colors group">
+                        <div className="p-2 sm:p-2.5 rounded-lg bg-orange-500/10 text-orange-400 group-hover:scale-105 transition-transform">
                           <Bot className="w-4 h-4" />
                         </div>
                         <div className="flex flex-col text-left">
-                          <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                          <span className="text-xs font-semibold text-zinc-100">
                             MittenAI Assistant
                           </span>
-                          <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                          <span className="text-[11px] text-zinc-400">
                             Intelligent desktop companion for coding and tasks
                           </span>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3 p-2.5 sm:p-3 rounded-xl bg-slate-100/70 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 hover:border-indigo-500/40 dark:hover:border-indigo-500/40 transition-colors group">
-                        <div className="p-2 sm:p-2.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 group-hover:scale-105 transition-transform">
+                      <div className="flex items-center gap-3 p-2.5 sm:p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 hover:border-orange-500/40 transition-colors group">
+                        <div className="p-2 sm:p-2.5 rounded-lg bg-orange-500/10 text-orange-400 group-hover:scale-105 transition-transform">
                           <FolderOpen className="w-4 h-4" />
                         </div>
                         <div className="flex flex-col text-left">
-                          <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                          <span className="text-xs font-semibold text-zinc-100">
                             Local-First File System
                           </span>
-                          <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                          <span className="text-[11px] text-zinc-400">
                             100% private, offline browser storage with virtual directory structure
                           </span>
                         </div>
@@ -494,22 +494,22 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                     className="flex flex-col gap-4"
                   >
                     {/* Header */}
-                    <div className="flex items-center gap-3.5 pb-2 border-b border-black/5 dark:border-white/5">
-                      <div className="w-11 h-11 shrink-0 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-lg shadow-amber-500/25 border border-white/20">
+                    <div className="flex items-center gap-3.5 pb-2 border-b border-zinc-800">
+                      <div className="w-11 h-11 shrink-0 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 flex items-center justify-center text-white shadow-lg shadow-orange-500/25 border border-white/10">
                         <Key className="w-5 h-5" />
                       </div>
                       <div>
-                        <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                        <h2 className="text-base font-bold text-white">
                           Configure AI Engine
                         </h2>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        <p className="text-[11px] text-zinc-400">
                           Power AI features throughout the entire OS across all applications.
                         </p>
                       </div>
                     </div>
                     {/* Quick Preset Selector */}
                     <div className="space-y-1.5">
-                      <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                      <label className="text-[11px] font-semibold text-zinc-300">
                         Choose Provider Preset
                       </label>
                       <div className="grid grid-cols-3 gap-1.5">
@@ -524,13 +524,13 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                                 flex items-center justify-between px-2.5 py-2 rounded-xl text-left transition-all text-xs font-medium border cursor-pointer
                                 ${
                                   isSelected
-                                    ? 'bg-amber-500/10 dark:bg-amber-500/20 border-amber-500/40 text-amber-900 dark:text-amber-300 ring-1 ring-amber-500/30'
-                                    : 'bg-slate-100/70 dark:bg-slate-800/50 border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-slate-700/60'
+                                    ? 'bg-orange-500/15 border-orange-500/40 text-orange-300 ring-1 ring-orange-500/30'
+                                    : 'bg-zinc-900/60 border-zinc-800 text-zinc-300 hover:bg-zinc-800/60'
                                 }
                               `}
                             >
                               <span className="truncate">{preset.name}</span>
-                              {isSelected && <Check className="w-3 h-3 text-amber-500 shrink-0 ml-1" />}
+                              {isSelected && <Check className="w-3 h-3 text-orange-400 shrink-0 ml-1" />}
                             </button>
                           );
                         })}
@@ -542,8 +542,8 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                       {/* Endpoint URL */}
                       {kind !== 'webllm' && (
                         <div className="space-y-1">
-                          <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
-                            <Globe className="w-3.5 h-3.5 text-amber-500" />
+                          <label className="text-[11px] font-semibold text-zinc-300 flex items-center gap-1.5">
+                            <Globe className="w-3.5 h-3.5 text-orange-400" />
                             API Endpoint URL
                           </label>
                           <input
@@ -551,7 +551,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                             value={endpoint}
                             onChange={(e) => setEndpoint(e.target.value)}
                             placeholder="https://api.openai.com/v1"
-                            className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 font-mono text-slate-800 dark:text-slate-200 transition-all"
+                            className="w-full bg-zinc-900/80 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500 font-mono text-zinc-100 transition-all"
                           />
                         </div>
                       )}
@@ -559,8 +559,8 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                       {/* API Key */}
                       {kind !== 'webllm' && (
                         <div className="space-y-1">
-                          <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
-                            <Key className="w-3.5 h-3.5 text-amber-500" />
+                          <label className="text-[11px] font-semibold text-zinc-300 flex items-center gap-1.5">
+                            <Key className="w-3.5 h-3.5 text-orange-400" />
                             API Key
                           </label>
                           <div className="relative">
@@ -569,12 +569,12 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                               value={apiKey}
                               onChange={(e) => setApiKey(e.target.value)}
                               placeholder={AI_PRESETS.find((p) => p.id === selectedPresetId)?.placeholderKey || 'sk-...'}
-                              className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 font-mono text-slate-800 dark:text-slate-200 pr-9 transition-all"
+                              className="w-full bg-zinc-900/80 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500 font-mono text-zinc-100 pr-9 transition-all"
                             />
                             <button
                               type="button"
                               onClick={() => setShowKey(!showKey)}
-                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-200 cursor-pointer"
                             >
                               {showKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                             </button>
@@ -584,15 +584,15 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
 
                       {/* Model */}
                       <div className="space-y-1">
-                        <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
-                          <Cpu className="w-3.5 h-3.5 text-amber-500" />
+                        <label className="text-[11px] font-semibold text-zinc-300 flex items-center gap-1.5">
+                          <Cpu className="w-3.5 h-3.5 text-orange-400" />
                           {kind === 'webllm' ? 'Local Model' : 'Model Name'}
                         </label>
                         {kind === 'webllm' ? (
                           <select
                             value={model}
                             onChange={(e) => setModel(e.target.value)}
-                            className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 font-mono text-slate-800 dark:text-slate-200 transition-all"
+                            className="w-full bg-zinc-900/80 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500 font-mono text-zinc-100 transition-all"
                           >
                             {WEBLLM_MODELS.map((m) => (
                               <option key={m.id} value={m.id}>
@@ -606,7 +606,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                             value={model}
                             onChange={(e) => setModel(e.target.value)}
                             placeholder="gpt-4o"
-                            className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 font-mono text-slate-800 dark:text-slate-200 transition-all"
+                            className="w-full bg-zinc-900/80 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500 font-mono text-zinc-100 transition-all"
                           />
                         )}
                       </div>
@@ -650,7 +650,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
 
                     {/* Storage Security Callout & Test Button */}
                     <div className="flex items-center justify-between gap-2 pt-0.5">
-                      <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400">
+                      <div className="flex items-center gap-1.5 text-[10px] text-zinc-400">
                         <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                         <span>Stored 100% locally in browser</span>
                       </div>
@@ -661,8 +661,8 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                         disabled={testing}
                         className="
                           px-3 py-1.5 rounded-lg text-xs font-semibold
-                          bg-slate-200/80 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700
-                          text-slate-800 dark:text-slate-200 transition-colors
+                          bg-zinc-800 hover:bg-zinc-700
+                          text-zinc-100 transition-colors
                           flex items-center gap-1.5 cursor-pointer disabled:opacity-50
                         "
                       >
@@ -685,18 +685,18 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                   >
                     {/* Hero Icon */}
                     <div className="relative flex items-center justify-center">
-                      <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-emerald-500 to-indigo-600 blur-lg opacity-40 animate-pulse" />
-                      <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-600 to-indigo-600 flex items-center justify-center text-white shadow-xl shadow-emerald-500/25 border border-white/20">
+                      <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-orange-600 to-amber-500 blur-lg opacity-40 animate-pulse" />
+                      <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-orange-600 via-orange-500 to-amber-500 flex items-center justify-center text-white shadow-xl shadow-orange-500/25 border border-white/10">
                         <CheckCircle2 className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
                       </div>
                     </div>
 
                     {/* Title & Setup Summary */}
                     <div className="space-y-1">
-                      <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+                      <h2 className="text-xl font-bold tracking-tight text-white">
                         You&apos;re All Set!
                       </h2>
-                      <p className="text-xs text-slate-600 dark:text-slate-300 max-w-xs mx-auto">
+                      <p className="text-xs text-zinc-400 max-w-xs mx-auto">
                         MittenOS is primed and ready. Discover powerful built-in apps or jump straight into creation.
                       </p>
                     </div>
@@ -704,21 +704,21 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                     {/* Status Summary Cards */}
                     <div className="w-full space-y-2">
                       {/* Local Storage Status Card */}
-                      <div className="w-full p-2.5 sm:p-3 rounded-xl bg-slate-100/80 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 text-left flex items-start justify-between gap-3">
+                      <div className="w-full p-2.5 sm:p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 text-left flex items-start justify-between gap-3">
                         <div className="flex items-start gap-2.5">
-                          <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
+                          <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 bg-orange-500/10 text-orange-400">
                             <HardDrive className="w-4 h-4" />
                           </div>
                           <div>
                             <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                              <span className="text-xs font-semibold text-zinc-100">
                                 Local-First Storage
                               </span>
-                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full uppercase tracking-wider bg-orange-500/10 text-orange-400 border border-orange-500/20">
                                 100% Offline & Private
                               </span>
                             </div>
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                            <p className="text-[11px] text-zinc-400 mt-0.5">
                               Files, desktop layout, custom apps, and AI keys are saved directly in your browser.
                             </p>
                           </div>
@@ -726,33 +726,33 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                       </div>
 
                       {/* AI Configuration Status Card */}
-                      <div className="w-full p-2.5 sm:p-3 rounded-xl bg-slate-100/80 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 text-left flex items-start justify-between gap-3">
+                      <div className="w-full p-2.5 sm:p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 text-left flex items-start justify-between gap-3">
                         <div className="flex items-start gap-2.5">
                           <div
                             className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
                               keyConfigured
-                                ? 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400'
-                                : 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400'
+                                ? 'bg-emerald-500/10 text-emerald-400'
+                                : 'bg-orange-500/10 text-orange-400'
                             }`}
                           >
                             <Key className="w-4 h-4" />
                           </div>
                           <div>
                             <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                              <span className="text-xs font-semibold text-zinc-100">
                                 {keyConfigured ? 'AI Engine Ready' : 'AI Setup Skipped'}
                               </span>
                               <span
                                 className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full uppercase tracking-wider ${
                                   keyConfigured
-                                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-                                    : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                    : 'bg-orange-500/10 text-orange-400 border border-orange-500/20'
                                 }`}
                               >
                                 {keyConfigured ? 'Configured' : 'Optional'}
                               </span>
                             </div>
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                            <p className="text-[11px] text-zinc-400 mt-0.5">
                               {keyConfigured
                                 ? `Model: ${model || 'gpt-4o'} (${profileName || 'Active Profile'})`
                                 : 'You can add or update your API keys anytime from the Keys app.'}
@@ -763,7 +763,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                         <button
                           type="button"
                           onClick={() => setStep(2)}
-                          className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline shrink-0 cursor-pointer"
+                          className="text-[11px] font-semibold text-orange-400 hover:underline shrink-0 cursor-pointer"
                         >
                           {keyConfigured ? 'Edit' : 'Setup'}
                         </button>
@@ -775,32 +775,32 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                       <button
                         type="button"
                         onClick={() => handleOpenAppAndClose('app-builder')}
-                        className="p-2.5 rounded-xl bg-slate-100/70 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 hover:border-indigo-500/40 transition-all flex items-center gap-2 group cursor-pointer"
+                        className="p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800 hover:border-orange-500/40 transition-all flex items-center gap-2 group cursor-pointer"
                       >
-                        <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 group-hover:scale-105 transition-transform">
+                        <div className="p-1.5 rounded-lg bg-orange-500/10 text-orange-400 group-hover:scale-105 transition-transform">
                           <Wand2 className="w-3.5 h-3.5" />
                         </div>
                         <div className="truncate">
-                          <div className="text-[11px] font-semibold text-slate-800 dark:text-slate-200 truncate">
+                          <div className="text-[11px] font-semibold text-zinc-100 truncate">
                             Orion App Builder
                           </div>
-                          <div className="text-[9px] text-slate-400 truncate">Create AI mini-apps</div>
+                          <div className="text-[9px] text-zinc-500 truncate">Create AI mini-apps</div>
                         </div>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => handleOpenAppAndClose('coding-assistant')}
-                        className="p-2.5 rounded-xl bg-slate-100/70 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 hover:border-indigo-500/40 transition-all flex items-center gap-2 group cursor-pointer"
+                        className="p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800 hover:border-orange-500/40 transition-all flex items-center gap-2 group cursor-pointer"
                       >
-                        <div className="p-1.5 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 group-hover:scale-105 transition-transform">
+                        <div className="p-1.5 rounded-lg bg-orange-500/10 text-orange-400 group-hover:scale-105 transition-transform">
                           <Bot className="w-3.5 h-3.5" />
                         </div>
                         <div className="truncate">
-                          <div className="text-[11px] font-semibold text-slate-800 dark:text-slate-200 truncate">
+                          <div className="text-[11px] font-semibold text-zinc-100 truncate">
                             MittenAI Assistant
                           </div>
-                          <div className="text-[9px] text-slate-400 truncate">Chat & code helper</div>
+                          <div className="text-[9px] text-zinc-500 truncate">Chat & code helper</div>
                         </div>
                       </button>
                     </div>
@@ -810,7 +810,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
             </div>
 
             {/* Modal Footer Controls */}
-            <div className="flex items-center justify-between px-5 sm:px-6 py-3 sm:py-3.5 bg-slate-100/60 dark:bg-slate-800/50 border-t border-black/5 dark:border-white/5 shrink-0">
+            <div className="flex items-center justify-between px-5 sm:px-6 py-3 sm:py-3.5 bg-zinc-900/60 border-t border-zinc-800 shrink-0">
               {/* Step 1 Footer */}
               {step === 1 && (
                 <>
@@ -822,7 +822,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                     />
                     <label
                       htmlFor="dont-show-again-1"
-                      className="text-xs text-slate-600 dark:text-slate-300 cursor-pointer select-none font-medium"
+                      className="text-xs text-zinc-300 cursor-pointer select-none font-medium"
                     >
                       Don&apos;t show again
                     </label>
@@ -832,10 +832,10 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                     type="button"
                     onClick={() => setStep(2)}
                     className="
-                      inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold
-                      bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600
-                      hover:from-blue-500 hover:to-purple-500
-                      text-white shadow-md shadow-indigo-500/25
+                      inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold
+                      bg-gradient-to-r from-orange-500 to-amber-400
+                      hover:from-orange-400 hover:to-amber-300
+                      text-zinc-950 shadow-md shadow-orange-500/25
                       active:scale-[0.98] transition-all duration-150
                       cursor-pointer
                     "
@@ -854,8 +854,8 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                     onClick={() => setStep(1)}
                     className="
                       inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold
-                      text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white
-                      hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer
+                      text-zinc-300 hover:text-white
+                      hover:bg-zinc-800/70 transition-colors cursor-pointer
                     "
                   >
                     <ArrowLeft className="w-3.5 h-3.5" />
@@ -868,7 +868,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                       onClick={handleSkipKeySetup}
                       className="
                         px-3 py-1.5 rounded-xl text-xs font-semibold
-                        text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200
+                        text-zinc-300 hover:text-white
                         transition-colors cursor-pointer
                       "
                     >
@@ -879,11 +879,11 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                       type="button"
                       onClick={handleSaveAndContinue}
                       className="
-                        inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold
-                        bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500
-                        text-white shadow-md shadow-amber-500/25
-                        active:scale-[0.98] transition-all duration-150
-                        cursor-pointer
+                      inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold
+                      bg-gradient-to-r from-orange-500 to-amber-400 hover:from-orange-400 hover:to-amber-300
+                      text-zinc-950 shadow-md shadow-orange-500/25
+                      active:scale-[0.98] transition-all duration-150
+                      cursor-pointer
                       "
                     >
                       <span>Save & Continue</span>
@@ -904,7 +904,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                     />
                     <label
                       htmlFor="dont-show-again-3"
-                      className="text-xs text-slate-600 dark:text-slate-300 cursor-pointer select-none font-medium"
+                      className="text-xs text-zinc-300 cursor-pointer select-none font-medium"
                     >
                       Don&apos;t show again
                     </label>
@@ -914,10 +914,10 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                     type="button"
                     onClick={handleClose}
                     className="
-                      inline-flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-semibold
-                      bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600
-                      hover:from-blue-500 hover:to-purple-500
-                      text-white shadow-md shadow-indigo-500/25
+                      inline-flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold
+                      bg-gradient-to-r from-orange-500 to-amber-400
+                      hover:from-orange-400 hover:to-amber-300
+                      text-zinc-950 shadow-md shadow-orange-500/25
                       active:scale-[0.98] transition-all duration-150
                       cursor-pointer
                     "
