@@ -71,7 +71,7 @@ Create a `.env.local` file in the root directory and configure the required envi
 ```bash
 npm run dev
 ```
-The server will start on port `3000`. Logs are piped to `dev.log`.
+The server will start on port `3131`. Logs are piped to `dev.log`.
 
 ---
 

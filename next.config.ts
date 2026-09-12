@@ -34,8 +34,8 @@ function getAllowedDevOrigins(): string[] {
   }
 
   if (process.env.CODESPACE_NAME) {
-    origins.add(`${process.env.CODESPACE_NAME}-3000.app.github.dev`);
-    origins.add(`${process.env.CODESPACE_NAME}-3000.github.dev`);
+    origins.add(`${process.env.CODESPACE_NAME}-3131.app.github.dev`);
+    origins.add(`${process.env.CODESPACE_NAME}-3131.github.dev`);
   }
 
   return Array.from(origins);
