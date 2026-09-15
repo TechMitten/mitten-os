@@ -85,6 +85,13 @@ const defaultIcons: DesktopIcon[] = [
   { id: "icon-8", appId: "pencil", label: "Pencil", icon: "NotebookPen", position: gridToPixel(0, 7) },
 ];
 
+const OLD_DEFAULT_WALLPAPER = "/default_wallpaper.png";
+const DEFAULT_WALLPAPER = "/newwallpaperdefault.webp";
+
+function normalizeWallpaper(wallpaper?: string): string {
+  return !wallpaper || wallpaper === OLD_DEFAULT_WALLPAPER ? DEFAULT_WALLPAPER : wallpaper;
+}
+
 let notificationCounter = 0;
 
 async function writeVFSFile(path: string, content: string, mimeType = 'application/json') {
@@ -160,7 +167,7 @@ async function persistSettings(userId: string | null, state: DesktopStore) {
 }
 
 export const useDesktopStore = create<DesktopStore>((set, get) => ({
-  wallpaper: "/default_wallpaper.png",
+  wallpaper: DEFAULT_WALLPAPER,
   accentColor: DEFAULT_ACCENT_COLOR,
   desktopIcons: defaultIcons,
   customDesktopIcons: [],
@@ -238,6 +245,10 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
           try { positions = JSON.parse(savedPositions); } catch {}
         }
 
+        if (settings.wallpaper === OLD_DEFAULT_WALLPAPER) {
+          settings.wallpaper = DEFAULT_WALLPAPER;
+        }
+
         desktopState = { settings, positions };
 
         // Write the migrated state to VFS
@@ -252,7 +263,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     const settings = desktopState.settings || {};
     const positions = desktopState.positions || {};
 
-    const wallpaper = settings.wallpaper || "/default_wallpaper.png";
+    const wallpaper = normalizeWallpaper(settings.wallpaper);
     const accentColor = settings.accentColor || DEFAULT_ACCENT_COLOR;
     const welcomeDismissed = localStorage.getItem(`mittenos:welcomeDismissed:${userId}`) === "true" || (settings.welcomeDismissed ?? false);
     const persistWindows = settings.persistWindows ?? true;

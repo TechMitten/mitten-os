@@ -43,7 +43,7 @@ const WALLPAPERS = [
   {
     id: 'wp-default',
     name: 'Default',
-    image: '/default_wallpaper.png',
+    image: '/newwallpaperdefault.webp',
   },
   {
     id: 'wp-1',

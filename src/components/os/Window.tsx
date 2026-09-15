@@ -411,7 +411,7 @@ export function Window({ window: win, children, isActive }: WindowProps) {
           {/* Title Bar */}
           <div
             className={`
-              h-9 flex items-center px-3 gap-2 cursor-default select-none
+              h-9 flex flex-row-reverse items-center px-3 gap-2 cursor-default select-none
               ${isActive
                 ? 'bg-white/40 dark:bg-white/5'
                 : 'bg-white/20 dark:bg-white/[0.02]'
@@ -438,7 +438,7 @@ export function Window({ window: win, children, isActive }: WindowProps) {
 
             {/* macOS-style Window Control Buttons */}
             <div
-              className="flex items-center gap-1.5 ml-2 shrink-0"
+              className="flex items-center gap-1.5 mr-2 shrink-0"
               onMouseDown={(e) => e.stopPropagation()}
             >
               {/* Minimize - Orange */}

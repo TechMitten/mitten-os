@@ -331,24 +331,26 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
           <div
             className="
               relative flex flex-col rounded-2xl overflow-hidden
-              bg-zinc-950/95
+              bg-[#101012]
               backdrop-blur-2xl
-              border border-zinc-800
-              shadow-[0_20px_50px_rgba(0,0,0,0.6)]
+              border border-white/18
+              ring-1 ring-black/70
+              shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_28px_90px_rgba(0,0,0,0.92),0_0_70px_rgba(251,146,60,0.18)]
               w-full max-h-[88vh]
             "
           >
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/45 to-transparent pointer-events-none" />
             {/* Ambient Background Gradient Orbs */}
-            <div className="absolute -top-20 -left-20 w-52 h-52 bg-orange-500/15 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-20 -right-20 w-52 h-52 bg-orange-600/15 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -top-20 -left-20 w-52 h-52 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-20 -right-20 w-52 h-52 bg-orange-600/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
 
             {/* Window Header Bar */}
             <div
               className="
                 relative h-10 flex items-center px-4 gap-2 select-none touch-none
-                bg-zinc-900/60
-                border-b border-zinc-800
+                bg-zinc-900/95
+                border-b border-white/12
                 cursor-grab active:cursor-grabbing shrink-0
               "
               onMouseDown={handleDragStart}
@@ -386,27 +388,12 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                 </span>
               </div>
 
-              {/* Step indicator dots */}
-              <div className="flex items-center gap-1 shrink-0">
-                {[1, 2, 3].map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setStep(s as 1 | 2 | 3)}
-                    className={`h-1.5 rounded-full transition-all duration-200 cursor-pointer ${
-                      step === s
-                        ? 'w-4 bg-orange-500'
-                        : step > s
-                        ? 'w-1.5 bg-orange-400/60'
-                        : 'w-1.5 bg-zinc-700'
-                    }`}
-                    title={`Go to step ${s}`}
-                  />
-                ))}
-              </div>
+
+              <div className="w-[54px] shrink-0" aria-hidden="true" />
             </div>
 
             {/* Modal Body with Animated Step Transitions */}
-            <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar flex-1">
+            <div className="relative p-5 sm:p-6 overflow-y-auto custom-scrollbar flex-1">
               <AnimatePresence mode="wait">
                 {/* ─── STEP 1: WELCOME & OVERVIEW ─── */}
                 {step === 1 && (
@@ -438,7 +425,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
 
                     {/* Feature Cards Grid */}
                     <div className="w-full grid grid-cols-1 gap-2.5 pt-1">
-                      <div className="flex items-center gap-3 p-2.5 sm:p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 hover:border-orange-500/40 transition-colors group">
+                      <div className="flex items-center gap-3 p-2.5 sm:p-3 rounded-xl bg-zinc-900/95 border border-white/12 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:border-orange-500/50 transition-colors group">
                         <div className="p-2 sm:p-2.5 rounded-lg bg-orange-500/10 text-orange-400 group-hover:scale-105 transition-transform">
                           <Zap className="w-4 h-4" />
                         </div>
@@ -452,7 +439,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3 p-2.5 sm:p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 hover:border-orange-500/40 transition-colors group">
+                      <div className="flex items-center gap-3 p-2.5 sm:p-3 rounded-xl bg-zinc-900/95 border border-white/12 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:border-orange-500/50 transition-colors group">
                         <div className="p-2 sm:p-2.5 rounded-lg bg-orange-500/10 text-orange-400 group-hover:scale-105 transition-transform">
                           <Bot className="w-4 h-4" />
                         </div>
@@ -466,7 +453,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3 p-2.5 sm:p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 hover:border-orange-500/40 transition-colors group">
+                      <div className="flex items-center gap-3 p-2.5 sm:p-3 rounded-xl bg-zinc-900/95 border border-white/12 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:border-orange-500/50 transition-colors group">
                         <div className="p-2 sm:p-2.5 rounded-lg bg-orange-500/10 text-orange-400 group-hover:scale-105 transition-transform">
                           <FolderOpen className="w-4 h-4" />
                         </div>
@@ -494,7 +481,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                     className="flex flex-col gap-4"
                   >
                     {/* Header */}
-                    <div className="flex items-center gap-3.5 pb-2 border-b border-zinc-800">
+                    <div className="flex items-center gap-3.5 pb-2 border-b border-white/12">
                       <div className="w-11 h-11 shrink-0 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 flex items-center justify-center text-white shadow-lg shadow-orange-500/25 border border-white/10">
                         <Key className="w-5 h-5" />
                       </div>
@@ -524,8 +511,8 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                                 flex items-center justify-between px-2.5 py-2 rounded-xl text-left transition-all text-xs font-medium border cursor-pointer
                                 ${
                                   isSelected
-                                    ? 'bg-orange-500/15 border-orange-500/40 text-orange-300 ring-1 ring-orange-500/30'
-                                    : 'bg-zinc-900/60 border-zinc-800 text-zinc-300 hover:bg-zinc-800/60'
+                                    ? 'bg-orange-500/10 border-orange-500/40 text-orange-300 ring-1 ring-orange-500/30'
+                                    : 'bg-zinc-900/95 border-white/12 text-zinc-300 hover:bg-zinc-800/80'
                                 }
                               `}
                             >
@@ -551,7 +538,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                             value={endpoint}
                             onChange={(e) => setEndpoint(e.target.value)}
                             placeholder="https://api.openai.com/v1"
-                            className="w-full bg-zinc-900/80 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500 font-mono text-zinc-100 transition-all"
+                            className="w-full bg-zinc-900/95 border border-white/12 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500 font-mono text-zinc-100 transition-all"
                           />
                         </div>
                       )}
@@ -569,7 +556,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                               value={apiKey}
                               onChange={(e) => setApiKey(e.target.value)}
                               placeholder={AI_PRESETS.find((p) => p.id === selectedPresetId)?.placeholderKey || 'sk-...'}
-                              className="w-full bg-zinc-900/80 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500 font-mono text-zinc-100 pr-9 transition-all"
+                              className="w-full bg-zinc-900/95 border border-white/12 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500 font-mono text-zinc-100 pr-9 transition-all"
                             />
                             <button
                               type="button"
@@ -592,7 +579,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                           <select
                             value={model}
                             onChange={(e) => setModel(e.target.value)}
-                            className="w-full bg-zinc-900/80 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500 font-mono text-zinc-100 transition-all"
+                            className="w-full bg-zinc-900/95 border border-white/12 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500 font-mono text-zinc-100 transition-all"
                           >
                             {WEBLLM_MODELS.map((m) => (
                               <option key={m.id} value={m.id}>
@@ -606,7 +593,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                             value={model}
                             onChange={(e) => setModel(e.target.value)}
                             placeholder="gpt-4o"
-                            className="w-full bg-zinc-900/80 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500 font-mono text-zinc-100 transition-all"
+                            className="w-full bg-zinc-900/95 border border-white/12 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500 font-mono text-zinc-100 transition-all"
                           />
                         )}
                       </div>
@@ -617,7 +604,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                           className={`p-2.5 rounded-xl border flex gap-2 text-xs items-start ${
                             isWebGPUSupported()
                               ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
-                              : 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300'
+                              : 'bg-amber-500/5 border-amber-500/30 text-amber-700 dark:text-amber-300'
                           }`}
                         >
                           <Cpu className="w-4 h-4 shrink-0 mt-0.5" />
@@ -704,7 +691,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                     {/* Status Summary Cards */}
                     <div className="w-full space-y-2">
                       {/* Local Storage Status Card */}
-                      <div className="w-full p-2.5 sm:p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 text-left flex items-start justify-between gap-3">
+                      <div className="w-full p-2.5 sm:p-3 rounded-xl bg-zinc-900/95 border border-white/12 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] text-left flex items-start justify-between gap-3">
                         <div className="flex items-start gap-2.5">
                           <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 bg-orange-500/10 text-orange-400">
                             <HardDrive className="w-4 h-4" />
@@ -726,7 +713,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                       </div>
 
                       {/* AI Configuration Status Card */}
-                      <div className="w-full p-2.5 sm:p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 text-left flex items-start justify-between gap-3">
+                      <div className="w-full p-2.5 sm:p-3 rounded-xl bg-zinc-900/95 border border-white/12 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] text-left flex items-start justify-between gap-3">
                         <div className="flex items-start gap-2.5">
                           <div
                             className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
@@ -775,7 +762,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                       <button
                         type="button"
                         onClick={() => handleOpenAppAndClose('app-builder')}
-                        className="p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800 hover:border-orange-500/40 transition-all flex items-center gap-2 group cursor-pointer"
+                        className="p-2.5 rounded-xl bg-zinc-900/95 border border-white/12 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:border-orange-500/50 transition-all flex items-center gap-2 group cursor-pointer"
                       >
                         <div className="p-1.5 rounded-lg bg-orange-500/10 text-orange-400 group-hover:scale-105 transition-transform">
                           <Wand2 className="w-3.5 h-3.5" />
@@ -791,7 +778,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                       <button
                         type="button"
                         onClick={() => handleOpenAppAndClose('coding-assistant')}
-                        className="p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800 hover:border-orange-500/40 transition-all flex items-center gap-2 group cursor-pointer"
+                        className="p-2.5 rounded-xl bg-zinc-900/95 border border-white/12 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:border-orange-500/50 transition-all flex items-center gap-2 group cursor-pointer"
                       >
                         <div className="p-1.5 rounded-lg bg-orange-500/10 text-orange-400 group-hover:scale-105 transition-transform">
                           <Bot className="w-3.5 h-3.5" />
@@ -810,7 +797,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
             </div>
 
             {/* Modal Footer Controls */}
-            <div className="flex items-center justify-between px-5 sm:px-6 py-3 sm:py-3.5 bg-zinc-900/60 border-t border-zinc-800 shrink-0">
+            <div className="relative flex items-center justify-between px-5 sm:px-6 py-3 sm:py-3.5 bg-zinc-900/95 border-t border-white/12 shrink-0">
               {/* Step 1 Footer */}
               {step === 1 && (
                 <>
