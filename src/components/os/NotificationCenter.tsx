@@ -43,6 +43,7 @@ function formatRelativeTime(timestamp: number): string {
 
 export function NotificationCenter() {
   const notificationsOpen = useDesktopStore((s) => s.notificationsOpen);
+  const taskbarPosition = useDesktopStore((s) => s.taskbarPosition);
   const setNotificationsOpen = useDesktopStore((s) => s.setNotificationsOpen);
   const notifications = useDesktopStore((s) => s.notifications);
   const markAllNotificationsRead = useDesktopStore((s) => s.markAllNotificationsRead);
@@ -80,11 +81,11 @@ export function NotificationCenter() {
       {notificationsOpen && (
         <motion.div
           ref={panelRef}
-          initial={{ opacity: 0, y: 10, scale: 0.97 }}
+          initial={{ opacity: 0, y: taskbarPosition === 'top' ? -10 : 10, scale: 0.97 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 10, scale: 0.97 }}
+          exit={{ opacity: 0, y: taskbarPosition === 'top' ? -10 : 10, scale: 0.97 }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
-          className="fixed bottom-14 right-3 w-96 max-h-[70vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col z-[9999]"
+          className={`fixed ${taskbarPosition === 'top' ? 'top-14' : 'bottom-14'} right-3 w-96 max-h-[70vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col z-[9999]`}
           onContextMenu={(e) => e.preventDefault()}
           style={{
             background: 'rgba(28, 28, 38, 0.88)',

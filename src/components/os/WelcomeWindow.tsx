@@ -412,12 +412,14 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                     transition={{ duration: 0.2 }}
                     className="flex flex-col items-center gap-4 sm:gap-5"
                   >
-                    {/* Hero Icon Badge */}
-                    <div className="relative flex items-center justify-center">
-                      <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-orange-600 to-amber-500 blur-lg opacity-40 animate-pulse" />
-                      <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-orange-600 via-orange-500 to-amber-500 flex items-center justify-center text-white shadow-xl shadow-orange-500/30 border border-white/10">
-                        <Sparkles className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
-                      </div>
+                    {/* Hero Icon */}
+                    <div className="relative flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-3xl bg-[radial-gradient(circle_at_50%_35%,rgba(251,146,60,0.18),rgba(39,39,42,0.72)_58%,rgba(24,24,27,0.92))] border border-orange-300/15 shadow-[0_14px_42px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.08)]">
+                      <img
+                        src="/mittenicon.png"
+                        alt="MittenOS"
+                        className="h-[4.5rem] w-[4.5rem] sm:h-20 sm:w-20 object-contain select-none drop-shadow-[0_5px_12px_rgba(0,0,0,0.55)]"
+                        draggable={false}
+                      />
                     </div>
 
                     {/* Title & Subtitle */}

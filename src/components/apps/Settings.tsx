@@ -23,6 +23,8 @@ import {
   Maximize2,
   Minimize2,
   User as UserIcon,
+  AlignLeft,
+  AlignCenter,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useWindowStore } from '@/stores/window-store';
@@ -119,6 +121,10 @@ export default function SettingsApp() {
   const setUse24HourClock = useDesktopStore((s) => s.setUse24HourClock);
   const showDateUnderTime = useDesktopStore((s) => s.showDateUnderTime);
   const setShowDateUnderTime = useDesktopStore((s) => s.setShowDateUnderTime);
+  const taskbarPinnedAlignment = useDesktopStore((s) => s.taskbarPinnedAlignment);
+  const setTaskbarPinnedAlignment = useDesktopStore((s) => s.setTaskbarPinnedAlignment);
+  const taskbarPosition = useDesktopStore((s) => s.taskbarPosition);
+  const setTaskbarPosition = useDesktopStore((s) => s.setTaskbarPosition);
 
   const user = useAuthStore((s) => s.user);
 
@@ -176,7 +182,14 @@ export default function SettingsApp() {
           />
         )}
         {activeSection === 'display' && (
-          <DisplaySection iconSize={iconSize} setIconSize={setIconSize} />
+          <DisplaySection
+            iconSize={iconSize}
+            setIconSize={setIconSize}
+            taskbarPinnedAlignment={taskbarPinnedAlignment}
+            setTaskbarPinnedAlignment={setTaskbarPinnedAlignment}
+            taskbarPosition={taskbarPosition}
+            setTaskbarPosition={setTaskbarPosition}
+          />
         )}
         {activeSection === 'general' && (
           <GeneralSection
@@ -362,9 +375,17 @@ function WallpaperSection({
 function DisplaySection({
   iconSize,
   setIconSize,
+  taskbarPinnedAlignment,
+  setTaskbarPinnedAlignment,
+  taskbarPosition,
+  setTaskbarPosition,
 }: {
   iconSize: 'small' | 'medium' | 'large';
   setIconSize: (v: 'small' | 'medium' | 'large') => void;
+  taskbarPinnedAlignment: 'left' | 'center';
+  setTaskbarPinnedAlignment: (v: 'left' | 'center') => void;
+  taskbarPosition: 'top' | 'bottom';
+  setTaskbarPosition: (v: 'top' | 'bottom') => void;
 }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fullscreenError, setFullscreenError] = useState<string | null>(null);
@@ -407,12 +428,54 @@ function DisplaySection({
           <Layers className="w-4 h-4 text-muted-foreground" />
           <div>
             <p className="text-sm text-foreground/80">Taskbar Position</p>
-            <p className="text-xs text-muted-foreground">Bottom of screen</p>
+            <p className="text-xs text-muted-foreground">Place the taskbar at the screen edge</p>
           </div>
         </div>
-        <span className="text-xs text-muted-foreground/60 bg-accent dark:bg-white/5 px-2 py-1 rounded">
-          Bottom
-        </span>
+        <div className="flex gap-1">
+          {(['top', 'bottom'] as const).map((position) => (
+            <button
+              key={position}
+              onClick={() => setTaskbarPosition(position)}
+              className={`text-xs px-3 py-1 rounded-md transition-colors capitalize ${
+                taskbarPosition === position
+                  ? 'bg-accent dark:bg-white/15 text-foreground'
+                  : 'text-muted-foreground hover:bg-accent dark:hover:bg-white/5 hover:text-foreground/60'
+              }`}
+            >
+              {position}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Pinned taskbar icons */}
+      <div className="flex items-center justify-between py-3 border-b border-border">
+        <div className="flex items-center gap-3">
+          {taskbarPinnedAlignment === 'left' ? (
+            <AlignLeft className="w-4 h-4 text-muted-foreground" />
+          ) : (
+            <AlignCenter className="w-4 h-4 text-muted-foreground" />
+          )}
+          <div>
+            <p className="text-sm text-foreground/80">Pinned Taskbar Icons</p>
+            <p className="text-xs text-muted-foreground">Align pinned shortcuts in the taskbar</p>
+          </div>
+        </div>
+        <div className="flex gap-1">
+          {(['left', 'center'] as const).map((alignment) => (
+            <button
+              key={alignment}
+              onClick={() => setTaskbarPinnedAlignment(alignment)}
+              className={`text-xs px-3 py-1 rounded-md transition-colors capitalize ${
+                taskbarPinnedAlignment === alignment
+                  ? 'bg-accent dark:bg-white/15 text-foreground'
+                  : 'text-muted-foreground hover:bg-accent dark:hover:bg-white/5 hover:text-foreground/60'
+              }`}
+            >
+              {alignment}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Icon size */}
@@ -466,21 +529,7 @@ function DisplaySection({
         </button>
       </div>
 
-      {/* Resolution info */}
-      <div className="flex items-center justify-between py-3 border-b border-border">
-        <div className="flex items-center gap-3">
-          <Monitor className="w-4 h-4 text-muted-foreground" />
-          <div>
-            <p className="text-sm text-foreground/80">Resolution</p>
-            <p className="text-xs text-muted-foreground">Current display resolution</p>
-          </div>
-        </div>
-        <span className="text-xs text-muted-foreground/60">
-          {typeof window !== 'undefined'
-            ? `${window.screen.width} × ${window.screen.height}`
-            : '—'}
-        </span>
-      </div>
+
     </div>
   );
 }
@@ -634,7 +683,7 @@ function AiKeysSection() {
         <div className="pt-2">
           <button
             onClick={() => openWindow('keys')}
-            className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 font-semibold text-white transition-colors active:scale-[0.98] text-xs cursor-pointer"
+            className="px-4 py-2 rounded-lg bg-orange-700 hover:bg-orange-800 font-semibold text-white transition-colors active:scale-[0.98] text-xs cursor-pointer shadow-sm shadow-orange-950/20"
           >
             Open Keys App
           </button>

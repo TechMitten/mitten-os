@@ -131,7 +131,7 @@ export function StartMenu() {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 10, scale: 0.97 }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
-          className="fixed bottom-14 left-3 w-80 max-h-[70vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col z-[9999]"
+          className={`fixed ${taskbarPosition === 'top' ? 'top-14' : 'bottom-14'} left-3 w-80 max-h-[70vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col z-[9999]`}
           onContextMenu={(e) => e.preventDefault()}
           style={{
             background: 'rgba(28, 28, 38, 0.88)',

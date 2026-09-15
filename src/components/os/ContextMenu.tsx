@@ -14,6 +14,7 @@ import {
   Clock,
   Calendar,
   Settings,
+  Pin,
   type LucideIcon,
 } from 'lucide-react';
 import { type ContextMenuState, type ContextMenuItem } from '@/stores/desktop-store';
@@ -31,6 +32,7 @@ const CONTEXT_ICON_MAP: Record<string, LucideIcon> = {
   Clock,
   Calendar,
   Settings,
+  Pin,
 };
 
 interface ContextMenuProps {

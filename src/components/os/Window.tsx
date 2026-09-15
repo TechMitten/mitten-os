@@ -14,6 +14,10 @@ interface WindowProps {
 
 type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 
+const WINDOW_GEOMETRY_TRANSITION = 'width 280ms cubic-bezier(0.22, 1, 0.36, 1), height 280ms cubic-bezier(0.22, 1, 0.36, 1), left 280ms cubic-bezier(0.22, 1, 0.36, 1), top 280ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 280ms cubic-bezier(0.22, 1, 0.36, 1)';
+const WINDOW_MOTION_TRANSITION = { duration: 0.28, ease: [0.22, 1, 0.36, 1] as const };
+const WINDOW_MINIMIZE_TRANSITION = { duration: 0.34, ease: [0.32, 0.72, 0, 1] as const };
+
 interface WindowControlsProps {
   onMinimize?: () => void;
   onMaximize?: () => void;
@@ -33,7 +37,7 @@ export function WindowControls({
 }: WindowControlsProps) {
   return (
     <div
-      className={`flex items-center -space-x-2 shrink-0 ${className}`}
+      className={`flex items-center gap-1.5 shrink-0 ${className}`}
       onMouseDown={(e) => e.stopPropagation()}
       onTouchStart={(e) => e.stopPropagation()}
     >
@@ -41,53 +45,35 @@ export function WindowControls({
         type="button"
         onClick={onMinimize}
         disabled={!onMinimize}
-        className="w-6 h-6 rounded-full flex items-center justify-center transition-colors duration-150 group disabled:pointer-events-none"
+        className="w-6 h-6 rounded-full flex items-center justify-center bg-gray-200/80 text-gray-700 shadow-inner transition-colors duration-150 hover:bg-gray-300 active:bg-gray-400/80 dark:bg-white/10 dark:text-gray-200 dark:hover:bg-white/20 dark:active:bg-white/25 disabled:pointer-events-none disabled:opacity-50"
         aria-label="Minimize window"
         aria-disabled={!onMinimize}
       >
-        <span className="w-3 h-3 rounded-full flex items-center justify-center bg-orange-500 group-hover:bg-orange-600 transition-colors duration-150">
-          <Minus
-            className="w-[7px] h-[7px] text-orange-900 opacity-0 group-hover:opacity-100 transition-opacity"
-            strokeWidth={3}
-          />
-        </span>
+        <Minus className="w-3.5 h-3.5" strokeWidth={2.5} />
       </button>
 
       <button
         type="button"
         onClick={onMaximize}
         disabled={!onMaximize}
-        className="w-6 h-6 rounded-full flex items-center justify-center transition-colors duration-150 group disabled:pointer-events-none"
+        className="w-6 h-6 rounded-full flex items-center justify-center bg-gray-200/80 text-gray-700 shadow-inner transition-colors duration-150 hover:bg-gray-300 active:bg-gray-400/80 dark:bg-white/10 dark:text-gray-200 dark:hover:bg-white/20 dark:active:bg-white/25 disabled:pointer-events-none disabled:opacity-50"
         aria-label={isMaximized ? 'Restore window' : 'Maximize window'}
         aria-disabled={!onMaximize}
       >
-        <span className="w-3 h-3 rounded-full flex items-center justify-center bg-green-500 group-hover:bg-green-600 transition-colors duration-150">
-          {isMaximized ? (
-            <Copy
-              className="w-[7px] h-[7px] text-green-900 opacity-0 group-hover:opacity-100 transition-opacity"
-              strokeWidth={2.5}
-            />
-          ) : (
-            <Square
-              className="w-[6px] h-[6px] text-green-900 opacity-0 group-hover:opacity-100 transition-opacity"
-              strokeWidth={2.5}
-            />
-          )}
-        </span>
+        {isMaximized ? (
+          <Copy className="w-3 h-3" strokeWidth={2.25} />
+        ) : (
+          <Square className="w-3 h-3" strokeWidth={2.25} />
+        )}
       </button>
 
       <button
         type="button"
         onClick={onClose}
-        className="w-6 h-6 rounded-full flex items-center justify-center transition-colors duration-150 group"
+        className="w-6 h-6 rounded-full flex items-center justify-center bg-gray-200/80 text-gray-700 shadow-inner transition-colors duration-150 hover:bg-[#e95420] hover:text-white active:bg-[#c34113] dark:bg-white/10 dark:text-gray-200 dark:hover:bg-[#e95420] dark:hover:text-white dark:active:bg-[#c34113]"
         aria-label={closeLabel}
       >
-        <span className="w-3 h-3 rounded-full flex items-center justify-center bg-red-500 group-hover:bg-red-600 transition-colors duration-150">
-          <X
-            className="w-[7px] h-[7px] text-red-900 opacity-0 group-hover:opacity-100 transition-opacity"
-            strokeWidth={3}
-          />
-        </span>
+        <X className="w-3.5 h-3.5" strokeWidth={2.5} />
       </button>
     </div>
   );
@@ -139,7 +125,7 @@ export function Window({ window: win, children, isActive }: WindowProps) {
         }
         maximizingTimeoutRef.current = setTimeout(() => {
           setIsMaximizing(false);
-        }, 200);
+        }, 280);
       } else {
         if (!isInteracting) {
           setIsUnmaximizing(true);
@@ -148,7 +134,7 @@ export function Window({ window: win, children, isActive }: WindowProps) {
           }
           unmaximizeTimeoutRef.current = setTimeout(() => {
             setIsUnmaximizing(false);
-          }, 200);
+          }, 280);
         }
       }
       prevIsMaximizedRef.current = isMaximized;
@@ -197,7 +183,12 @@ export function Window({ window: win, children, isActive }: WindowProps) {
       }
 
       const handleMove = (ev: MouseEvent) => {
+        const dx = ev.clientX - startX;
+        const dy = ev.clientY - startY;
+
         if (!dragStarted) {
+          if (Math.hypot(dx, dy) < 6) return;
+
           dragStarted = true;
           const restoreW = win.preMaximizeSize?.width ?? win.size.width;
           const restoreH = win.preMaximizeSize?.height ?? win.size.height;
@@ -213,7 +204,7 @@ export function Window({ window: win, children, isActive }: WindowProps) {
           }
           unmaximizeTimeoutRef.current = setTimeout(() => {
             setIsUnmaximizing(false);
-          }, 200);
+          }, 280);
 
           const initialPos = { x: originX, y: originY };
           const initialSize = { width: restoreW, height: restoreH };
@@ -223,8 +214,6 @@ export function Window({ window: win, children, isActive }: WindowProps) {
           liveSizeRef.current = initialSize;
         }
 
-        const dx = ev.clientX - startX;
-        const dy = ev.clientY - startY;
         const newPos = {
           x: originX + dx,
           y: Math.max(0, originY + dy),
@@ -355,13 +344,35 @@ export function Window({ window: win, children, isActive }: WindowProps) {
     ]
   );
 
+  const handleToggleMaximize = useCallback(() => {
+    if (isMaximized) {
+      setIsUnmaximizing(true);
+      if (unmaximizeTimeoutRef.current) {
+        clearTimeout(unmaximizeTimeoutRef.current);
+      }
+      unmaximizeTimeoutRef.current = setTimeout(() => {
+        setIsUnmaximizing(false);
+      }, 280);
+    } else {
+      setIsMaximizing(true);
+      if (maximizingTimeoutRef.current) {
+        clearTimeout(maximizingTimeoutRef.current);
+      }
+      maximizingTimeoutRef.current = setTimeout(() => {
+        setIsMaximizing(false);
+      }, 280);
+    }
+
+    toggleMaximize(win.id);
+  }, [isMaximized, win.id, toggleMaximize]);
+
   // --- DOUBLE-CLICK TITLE BAR ---
   const handleTitleBarDoubleClick = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
-      toggleMaximize(win.id);
+      handleToggleMaximize();
     },
-    [win.id, toggleMaximize]
+    [handleToggleMaximize]
   );
 
   // --- CLOSE WITH ANIMATION ---
@@ -409,6 +420,7 @@ export function Window({ window: win, children, isActive }: WindowProps) {
         width: '100%',
         height: 'calc(100vh - 48px)',
         zIndex: win.zIndex,
+        ...(isMaximizing ? { transition: WINDOW_GEOMETRY_TRANSITION } : {}),
       }
     : {
         position: 'absolute',
@@ -417,11 +429,8 @@ export function Window({ window: win, children, isActive }: WindowProps) {
         width: currentSize.width,
         height: currentSize.height,
         zIndex: win.zIndex,
-        ...(isUnmaximizing
-          ? {
-              transition:
-                'width 200ms cubic-bezier(0.16, 1, 0.3, 1), height 200ms cubic-bezier(0.16, 1, 0.3, 1), left 200ms cubic-bezier(0.16, 1, 0.3, 1), top 200ms cubic-bezier(0.16, 1, 0.3, 1), border-radius 200ms cubic-bezier(0.16, 1, 0.3, 1)',
-            }
+        ...((isMaximizing || isUnmaximizing) && !isInteracting
+          ? { transition: WINDOW_GEOMETRY_TRANSITION }
           : {}),
       };
 
@@ -455,13 +464,13 @@ export function Window({ window: win, children, isActive }: WindowProps) {
                 ? { opacity: 0, x: 0, y: 0, scale: 1 }
                 : { opacity: 1, x: 0, y: 0, scale: 1 }
           }
-          exit={{ opacity: 0, scale: 0.92, y: 10 }}
+          exit={{ opacity: 0, scale: 0.96, y: 8 }}
           transition={
             isMinimizing
-              ? { duration: 0.3, ease: [0.4, 0, 1, 1] }
+              ? WINDOW_MINIMIZE_TRANSITION
               : isMinimized
                 ? { duration: 0 }
-                : { duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }
+                : WINDOW_MOTION_TRANSITION
           }
           onAnimationComplete={() => {
             if (isMinimizingRef.current) {
@@ -490,7 +499,7 @@ export function Window({ window: win, children, isActive }: WindowProps) {
           {/* Title Bar */}
           <div
             className={`
-              h-9 flex flex-row-reverse items-center px-3 gap-2 cursor-default select-none
+              h-9 flex items-center px-3 gap-2 cursor-default select-none
               ${isActive
                 ? 'bg-white/40 dark:bg-white/5'
                 : 'bg-white/20 dark:bg-white/[0.02]'
@@ -501,8 +510,6 @@ export function Window({ window: win, children, isActive }: WindowProps) {
             onMouseDown={handleDragStart}
             onDoubleClick={handleTitleBarDoubleClick}
           >
-            {/* Spacer to visually balance the control buttons */}
-            <div className="w-[52px] shrink-0" />
 
             {/* Title Text */}
             <span
@@ -517,10 +524,9 @@ export function Window({ window: win, children, isActive }: WindowProps) {
 
             <WindowControls
               onMinimize={handleMinimize}
-              onMaximize={() => toggleMaximize(win.id)}
+              onMaximize={handleToggleMaximize}
               onClose={handleClose}
               isMaximized={isMaximized}
-              className="mr-1"
             />
 
 

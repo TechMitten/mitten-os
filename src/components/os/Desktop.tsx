@@ -56,6 +56,7 @@ export function Desktop() {
   const wallpaper = useDesktopStore((s) => s.wallpaper);
   const accentColor = useDesktopStore((s) => s.accentColor);
   const desktopIcons = useDesktopStore((s) => s.desktopIcons);
+  const taskbarPosition = useDesktopStore((s) => s.taskbarPosition);
   const contextMenu = useDesktopStore((s) => s.contextMenu);
   const setContextMenu = useDesktopStore((s) => s.setContextMenu);
   const setStartMenuOpen = useDesktopStore((s) => s.setStartMenuOpen);
@@ -67,6 +68,8 @@ export function Desktop() {
   const renameDesktopIcon = useDesktopStore((s) => s.renameDesktopIcon);
   const deleteDesktopIcon = useDesktopStore((s) => s.deleteDesktopIcon);
   const customDesktopIcons = useDesktopStore((s) => s.customDesktopIcons);
+  const pinnedTaskbarIcons = useDesktopStore((s) => s.pinnedTaskbarIcons);
+  const pinTaskbarIcon = useDesktopStore((s) => s.pinTaskbarIcon);
   const removeCustomDesktopIcon = useDesktopStore((s) => s.removeCustomDesktopIcon);
 
   const windows = useWindowStore((s) => s.windows);
@@ -441,6 +444,7 @@ export function Desktop() {
 
       const icon = desktopIcons.find((i) => i.id === iconId);
       const isBuiltInApp = !!icon && icon.appId in APP_REGISTRY;
+      const isPinnedToTaskbar = !!icon && pinnedTaskbarIcons.some((item) => item.appId === icon.appId);
 
       const items: ContextMenuItem[] = [
         {
@@ -451,6 +455,15 @@ export function Desktop() {
             if (icon) {
               openWindowFn(icon.appId);
             }
+          },
+        },
+        {
+          label: isPinnedToTaskbar ? 'Pinned to taskbar' : 'Pin to taskbar',
+          icon: 'Pin',
+          disabled: !icon || isPinnedToTaskbar,
+          action: () => {
+            if (!icon || isPinnedToTaskbar) return;
+            pinTaskbarIcon(icon);
           },
         },
         {
@@ -487,7 +500,7 @@ export function Desktop() {
         items,
       });
     },
-    [desktopIcons, customDesktopIcons, openWindowFn, setContextMenu, deleteDesktopIcon, removeCustomDesktopIcon]
+    [desktopIcons, customDesktopIcons, pinnedTaskbarIcons, openWindowFn, setContextMenu, deleteDesktopIcon, removeCustomDesktopIcon, pinTaskbarIcon]
   );
 
   const handleIconMouseDown = useCallback(
@@ -608,12 +621,15 @@ export function Desktop() {
         style={wallpaperStyle}
       >
         <div
-          className="absolute inset-0 pb-12"
+          className={`absolute inset-0 ${taskbarPosition === 'top' ? 'pt-12' : 'pb-12'}`}
           onClick={handleDesktopClick}
           onContextMenu={handleDesktopContextMenu}
           onMouseDown={handleDesktopMouseDown}
         >
-          <div id="desktop-background-container" className="absolute top-0 left-0 w-full h-[calc(100vh-64px)]">
+          <div
+            id="desktop-background-container"
+            className={`absolute left-0 w-full h-[calc(100vh-64px)] ${taskbarPosition === 'top' ? 'top-12' : 'top-0'}`}
+          >
             {desktopIcons.map((icon) => (
               <DesktopIcon
                 key={icon.id}

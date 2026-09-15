@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import {
   LayoutGrid,
   Sun,
@@ -22,6 +23,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useWeatherStore } from '@/stores/weather-store';
 import { APP_REGISTRY } from '@/types/os';
 import { useAIModelStore } from '@/stores/ai-model-store';
+import { useAppRegistryStore } from '@/stores/app-registry-store';
 import {
   Tooltip,
   TooltipTrigger,
@@ -37,6 +39,8 @@ function Clock() {
   const showDateUnderTime = useDesktopStore((s) => s.showDateUnderTime);
   const setContextMenu = useDesktopStore((s) => s.setContextMenu);
   const setSettingsInitialSection = useDesktopStore((s) => s.setSettingsInitialSection);
+  const taskbarPosition = useDesktopStore((s) => s.taskbarPosition);
+  const tooltipSide = taskbarPosition === 'top' ? 'bottom' : 'top';
   const openWindow = useWindowStore((s) => s.openWindow);
 
   useEffect(() => {
@@ -117,7 +121,7 @@ function Clock() {
           )}
         </button>
       </TooltipTrigger>
-      <TooltipContent side="top">
+      <TooltipContent side={tooltipSide}>
         {fullDateStr}
       </TooltipContent>
     </Tooltip>
@@ -195,6 +199,8 @@ function LocalModelDownloadWidget() {
 
 function TaskbarWeather() {
   const showInTaskbar = useWeatherStore((s) => s.showInTaskbar);
+  const taskbarPosition = useDesktopStore((s) => s.taskbarPosition);
+  const tooltipSide = taskbarPosition === 'top' ? 'bottom' : 'top';
   const data = useWeatherStore((s) => s.data);
   const isLoading = useWeatherStore((s) => s.isLoading);
   const openWindow = useWindowStore((s) => s.openWindow);
@@ -239,7 +245,7 @@ function TaskbarWeather() {
           )}
         </button>
       </TooltipTrigger>
-      <TooltipContent side="top">
+      <TooltipContent side={tooltipSide}>
         {data ? `${data.location}: ${data.description}` : 'Loading Weather...'}
       </TooltipContent>
     </Tooltip>
@@ -255,41 +261,76 @@ export default function Taskbar() {
     notificationsOpen,
     toggleNotifications,
     accentColor,
+    pinnedTaskbarIcons,
+    unpinTaskbarIcon,
+    setContextMenu,
+    taskbarPinnedAlignment,
+    taskbarPosition,
   } = useDesktopStore();
 
   const currentAccent = getAccentColor(accentColor);
+  const tooltipSide = taskbarPosition === 'top' ? 'bottom' : 'top';
 
   const user = useAuthStore((s) => s.user);
+  const getUserApp = useAppRegistryStore((s) => s.getUserApp);
+  const openWindow = useWindowStore((s) => s.openWindow);
 
   const unreadCount = useMemo(
     () => notifications.filter((n) => !n.read).length,
     [notifications]
   );
 
-  // Group windows by appId
-  const groupedWindows = useMemo(() => {
+  const taskbarItems = useMemo(() => {
     const groups: Record<
       string,
-      { appId: string; windows: typeof windows; icon: string }
+      { appId: string; windows: typeof windows; icon: string; label: string; pinnedId?: string }
     > = {};
+
+    for (const pinnedIcon of pinnedTaskbarIcons) {
+      groups[pinnedIcon.appId] = {
+        appId: pinnedIcon.appId,
+        windows: [],
+        icon: pinnedIcon.icon,
+        label: pinnedIcon.label,
+        pinnedId: pinnedIcon.id,
+      };
+    }
+
     for (const win of windows) {
+      const appDef = APP_REGISTRY[win.appId];
+      const userApp = getUserApp(win.appId);
       if (!groups[win.appId]) {
-        const appDef = APP_REGISTRY[win.appId];
         groups[win.appId] = {
           appId: win.appId,
           windows: [],
-          icon: appDef?.icon || 'Info',
+          icon: appDef?.icon || userApp?.icon || 'Info',
+          label: appDef?.name || userApp?.name || win.title || win.appId,
         };
       }
       groups[win.appId].windows.push(win);
     }
+
     return Object.values(groups);
-  }, [windows]);
+  }, [getUserApp, pinnedTaskbarIcons, windows]);
+
+  const launchApp = (appId: string) => {
+    const userApp = getUserApp(appId);
+    if (userApp) {
+      openWindow(userApp.id, userApp.name, {
+        defaultSize: userApp.defaultWindowSize,
+        minSize: userApp.minWindowSize,
+        singleton: userApp.singleton,
+      });
+      return;
+    }
+
+    openWindow(appId);
+  };
 
   return (
     <TooltipProvider delayDuration={300}>
       <div
-        className="fixed bottom-0 left-0 right-0 h-12 flex items-center justify-between px-2 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border-t border-white/10 z-[9999]"
+        className={`fixed ${taskbarPosition === 'top' ? 'top-0 border-b' : 'bottom-0 border-t'} left-0 right-0 h-12 flex items-center justify-between px-2 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border-white/10 z-[9999]`}
         role="toolbar"
         aria-label="Taskbar"
       >
@@ -315,13 +356,13 @@ export default function Taskbar() {
                 />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="top">Start</TooltipContent>
+            <TooltipContent side={tooltipSide}>Start</TooltipContent>
           </Tooltip>
         </div>
 
         {/* Center: Running apps */}
-        <div className="flex items-center gap-1 flex-1 justify-center">
-          {groupedWindows.map((group) => {
+        <div className={`flex items-center gap-1 flex-1 ${taskbarPinnedAlignment === 'left' ? 'justify-start pl-2' : 'justify-center'}`}>
+          {taskbarItems.map((group) => {
             const IconComponent = ICON_MAP[group.icon] || Info;
             const isAnyActive = group.windows.some(
               (w) => w.id === activeWindowId
@@ -332,6 +373,11 @@ export default function Taskbar() {
 
             // For clicking, toggle minimize/focus behavior
             const handleAppClick = () => {
+              if (group.windows.length === 0) {
+                launchApp(group.appId);
+                return;
+              }
+
               // If the active window is in this group, minimize it
               const activeWin = group.windows.find(
                 (w) => w.id === activeWindowId
@@ -352,8 +398,27 @@ export default function Taskbar() {
             return (
               <Tooltip key={group.appId}>
                 <TooltipTrigger asChild>
-                  <button
+                  <motion.button
+                    layout
+                    layoutDependency={taskbarPinnedAlignment}
+                    transition={{ type: 'tween', duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
                     onClick={handleAppClick}
+                    onContextMenu={(e) => {
+                      if (!group.pinnedId) return;
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setContextMenu({
+                        x: e.clientX,
+                        y: e.clientY,
+                        items: [
+                          {
+                            label: 'Unpin from taskbar',
+                            icon: 'Pin',
+                            action: () => unpinTaskbarIcon(group.pinnedId!),
+                          },
+                        ],
+                      });
+                    }}
                     data-taskbar-app={group.appId}
                     style={
                       isAnyActive
@@ -369,7 +434,7 @@ export default function Taskbar() {
                       ${isAnyActive ? 'text-white' : 'text-foreground/80 hover:bg-black/10 dark:hover:bg-white/10'}
                       ${isAnyMinimized && !isAnyActive ? 'opacity-60' : ''}
                     `}
-                    aria-label={APP_REGISTRY[group.appId]?.name || group.appId}
+                    aria-label={group.label}
                   >
                     <IconComponent
                       className={`w-5 h-5 ${
@@ -386,10 +451,10 @@ export default function Taskbar() {
                     {group.windows.length > 1 && (
                       <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-foreground/40" />
                     )}
-                  </button>
+                  </motion.button>
                 </TooltipTrigger>
-                <TooltipContent side="top">
-                  {APP_REGISTRY[group.appId]?.name || group.appId}
+                <TooltipContent side={tooltipSide}>
+                  {group.label}
                   {group.windows.length > 1
                     ? ` (${group.windows.length})`
                     : ''}
@@ -426,7 +491,7 @@ export default function Taskbar() {
                 )}
               </button>
             </TooltipTrigger>
-            <TooltipContent side="top">
+            <TooltipContent side={tooltipSide}>
               {unreadCount > 0
                 ? `${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}`
                 : 'No notifications'}
@@ -438,7 +503,7 @@ export default function Taskbar() {
 
           {/* Clock + non-dismissible local AI model download */}
           <div className="relative flex items-center">
-            <div className="absolute right-0 bottom-full mb-2">
+            <div className={`absolute right-0 ${taskbarPosition === 'top' ? 'top-full mt-2' : 'bottom-full mb-2'}`}>
               <LocalModelDownloadWidget />
             </div>
             <Clock />

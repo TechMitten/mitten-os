@@ -7,6 +7,7 @@ interface DesktopStore {
   accentColor: string;
   desktopIcons: DesktopIcon[];
   customDesktopIcons: DesktopIcon[];
+  pinnedTaskbarIcons: DesktopIcon[];
   notifications: Notification[];
   notificationsOpen: boolean;
   startMenuOpen: boolean;
@@ -19,6 +20,8 @@ interface DesktopStore {
   iconSize: "small" | "medium" | "large";
   use24HourClock: boolean;
   showDateUnderTime: boolean;
+  taskbarPinnedAlignment: "left" | "center";
+  taskbarPosition: "top" | "bottom";
   deletedIconIds: string[];
   renamedIconLabels: Record<string, string>;
   settingsInitialSection: string | null;
@@ -42,6 +45,8 @@ interface DesktopStore {
   setIconSize: (size: "small" | "medium" | "large") => void;
   setUse24HourClock: (use24Hour: boolean) => void;
   setShowDateUnderTime: (showDate: boolean) => void;
+  setTaskbarPinnedAlignment: (alignment: "left" | "center") => void;
+  setTaskbarPosition: (position: "top" | "bottom") => void;
   updateIconPosition: (id: string, position: WindowPosition) => void;
   loadIconPositions: (positions: Record<string, WindowPosition>) => void;
   reset: () => void;
@@ -49,6 +54,8 @@ interface DesktopStore {
   deleteDesktopIcon: (id: string) => void;
   addDesktopIcon: (icon: Omit<DesktopIcon, "id" | "position">) => void;
   removeCustomDesktopIcon: (id: string) => void;
+  pinTaskbarIcon: (icon: DesktopIcon) => void;
+  unpinTaskbarIcon: (id: string) => void;
   setSettingsInitialSection: (section: string | null) => void;
 }
 
@@ -144,9 +151,12 @@ async function persistDesktopState(userId: string | null, state: DesktopStore, i
     iconSize: state.iconSize,
     use24HourClock: state.use24HourClock,
     showDateUnderTime: state.showDateUnderTime,
+    taskbarPinnedAlignment: state.taskbarPinnedAlignment,
+    taskbarPosition: state.taskbarPosition,
     deletedIconIds: state.deletedIconIds || [],
     renamedIconLabels: state.renamedIconLabels || {},
     customDesktopIcons: state.customDesktopIcons || [],
+    pinnedTaskbarIcons: state.pinnedTaskbarIcons || [],
     notifications: state.notifications || [],
   };
 
@@ -183,6 +193,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   accentColor: DEFAULT_ACCENT_COLOR,
   desktopIcons: defaultIcons,
   customDesktopIcons: [],
+  pinnedTaskbarIcons: [],
   notifications: [],
   notificationsOpen: false,
   startMenuOpen: false,
@@ -195,6 +206,8 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
   iconSize: "medium",
   use24HourClock: false,
   showDateUnderTime: true,
+  taskbarPinnedAlignment: "center",
+  taskbarPosition: "bottom",
   deletedIconIds: [],
   renamedIconLabels: {},
   settingsInitialSection: null,
@@ -282,9 +295,12 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     const iconSize = settings.iconSize || "medium";
     const use24HourClock = settings.use24HourClock ?? false;
     const showDateUnderTime = settings.showDateUnderTime ?? true;
+    const taskbarPinnedAlignment = settings.taskbarPinnedAlignment === "left" ? "left" : "center";
+    const taskbarPosition = settings.taskbarPosition === "top" ? "top" : "bottom";
     const deletedIconIds = settings.deletedIconIds || [];
     const renamedIconLabels = settings.renamedIconLabels || {};
     const customDesktopIcons = settings.customDesktopIcons || [];
+    const pinnedTaskbarIcons = settings.pinnedTaskbarIcons || [];
     const notifications = settings.notifications || [];
 
     applyAccentColorToDocument(accentColor);
@@ -317,12 +333,15 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
       iconSize,
       use24HourClock,
       showDateUnderTime,
+      taskbarPinnedAlignment,
+      taskbarPosition,
       userId,
       loaded: true,
       deletedIconIds,
       renamedIconLabels,
       customDesktopIcons: customIconsWithPositions,
       desktopIcons: [...updatedIcons, ...customIconsWithPositions],
+      pinnedTaskbarIcons,
       notifications,
     });
   },
@@ -439,6 +458,16 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     persistSettings(get().userId, get());
   },
 
+  setTaskbarPinnedAlignment: (alignment: "left" | "center") => {
+    set({ taskbarPinnedAlignment: alignment });
+    persistSettings(get().userId, get());
+  },
+
+  setTaskbarPosition: (position: "top" | "bottom") => {
+    set({ taskbarPosition: position });
+    persistSettings(get().userId, get());
+  },
+
   reset: () => {
     const { wallpaper, accentColor } = get();
     set({
@@ -446,6 +475,7 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
       accentColor: accentColor || DEFAULT_ACCENT_COLOR,
       desktopIcons: defaultIcons,
       customDesktopIcons: [],
+      pinnedTaskbarIcons: [],
       notifications: [],
       notificationsOpen: false,
       startMenuOpen: false,
@@ -458,6 +488,8 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
       iconSize: "medium",
       use24HourClock: false,
       showDateUnderTime: true,
+      taskbarPinnedAlignment: "center",
+      taskbarPosition: "bottom",
       deletedIconIds: [],
       renamedIconLabels: {},
     });
@@ -533,6 +565,27 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
       const nextState = { ...state, customDesktopIcons, desktopIcons };
       persistSettings(state.userId, nextState);
       return { customDesktopIcons, desktopIcons };
+    });
+  },
+
+  pinTaskbarIcon: (icon: DesktopIcon) => {
+    set((state) => {
+      const alreadyPinned = state.pinnedTaskbarIcons.some((item) => item.appId === icon.appId);
+      if (alreadyPinned) return state;
+
+      const pinnedTaskbarIcons = [...state.pinnedTaskbarIcons, icon];
+      const nextState = { ...state, pinnedTaskbarIcons };
+      persistSettings(state.userId, nextState);
+      return { pinnedTaskbarIcons };
+    });
+  },
+
+  unpinTaskbarIcon: (id: string) => {
+    set((state) => {
+      const pinnedTaskbarIcons = state.pinnedTaskbarIcons.filter((icon) => icon.id !== id);
+      const nextState = { ...state, pinnedTaskbarIcons };
+      persistSettings(state.userId, nextState);
+      return { pinnedTaskbarIcons };
     });
   },
 }));
