@@ -13,7 +13,6 @@ import Taskbar from '@/components/os/Taskbar';
 import WelcomeWindow from '@/components/os/WelcomeWindow';
 import { NotificationCenter } from '@/components/os/NotificationCenter';
 import { NotificationToaster } from '@/components/os/NotificationToaster';
-import { Loader2 } from 'lucide-react';
 import { isWallpaperDark } from '@/lib/utils';
 import { applyAccentColorToDocument } from '@/lib/theme';
 import { APP_REGISTRY, DESKTOP_GRID_OFFSET_X, DESKTOP_GRID_OFFSET_Y, DRAG_THRESHOLD, type WindowPosition } from '@/types/os';
@@ -82,7 +81,6 @@ export function Desktop() {
   const getUserApp = useAppRegistryStore((s) => s.getUserApp);
 
   const user = useAuthStore((s) => s.user);
-  const loading = useAuthStore((s) => s.loading);
   const isGuest = useAuthStore((s) => s.isGuest);
   const initialize = useAuthStore((s) => s.initialize);
 
@@ -595,33 +593,6 @@ export function Desktop() {
     [selectedIconIds, desktopIcons, snapToGrid, updateIconPosition, setContextMenu, setStartMenuOpen]
   );
 
-  // --- Auth loading state ---
-  if (loading) {
-    return (
-      <div suppressHydrationWarning>
-        <div className="fixed inset-0 flex items-center justify-center" suppressHydrationWarning style={{ background: 'linear-gradient(135deg, #030b20, #0d2b63, #071730)' }}>
-          <div className="flex flex-col items-center gap-3" suppressHydrationWarning>
-            <Loader2 className="w-8 h-8 text-amber-400 animate-spin" suppressHydrationWarning />
-            <span className="text-sm text-muted-foreground dark:text-white/40" suppressHydrationWarning>Loading...</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // --- Data still loading ---
-  if (!dataLoaded) {
-    return (
-      <div suppressHydrationWarning>
-        <div className="fixed inset-0 flex items-center justify-center" suppressHydrationWarning style={{ background: 'linear-gradient(135deg, #030b20, #0d2b63, #071730)' }}>
-          <div className="flex flex-col items-center gap-3" suppressHydrationWarning>
-            <Loader2 className="w-8 h-8 text-amber-400 animate-spin" suppressHydrationWarning />
-            <span className="text-sm text-muted-foreground dark:text-white/40" suppressHydrationWarning>Loading your environment...</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // --- Authenticated and loaded ---
   const wallpaperStyle: React.CSSProperties = wallpaper.startsWith('linear-gradient') ||

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "./orion.css";
@@ -41,6 +42,18 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-hidden`}
       >
         {children}
+        <Script
+          id="umami-analytics"
+          src="https://umami.techmitten.com/script.js"
+          strategy="afterInteractive"
+          data-website-id="275feb26-0ae3-42be-8d62-ba203d21861b"
+        />
+        <Script
+          id="umami-recorder"
+          src="https://umami.techmitten.com/recorder.js"
+          strategy="afterInteractive"
+          data-website-id="275feb26-0ae3-42be-8d62-ba203d21861b"
+        />
         <Toaster />
       </body>
     </html>
