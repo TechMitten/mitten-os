@@ -74,15 +74,27 @@ function gridToPixel(col: number, row: number): WindowPosition {
   };
 }
 
+const PREVIOUS_DESKTOP_GRID_CELL = 84;
+
+function previousGridToPixel(col: number, row: number): WindowPosition {
+  return {
+    x: col * PREVIOUS_DESKTOP_GRID_CELL + DESKTOP_GRID_OFFSET_X,
+    y: row * PREVIOUS_DESKTOP_GRID_CELL + DESKTOP_GRID_OFFSET_Y,
+  };
+}
+
+function positionMatches(a: WindowPosition | undefined, b: WindowPosition): boolean {
+  return Boolean(a && a.x === b.x && a.y === b.y);
+}
+
 const defaultIcons: DesktopIcon[] = [
   { id: "icon-1", appId: "file-explorer", label: "Files", icon: "FolderOpen", position: gridToPixel(0, 0) },
   { id: "icon-2", appId: "terminal", label: "Terminal", icon: "TerminalSquare", position: gridToPixel(0, 1) },
   { id: "icon-3", appId: "browser", label: "Browser", icon: "Globe", position: gridToPixel(0, 2) },
   { id: "icon-4", appId: "text-editor", label: "Notepad", icon: "FileText", position: gridToPixel(0, 3) },
-  { id: "icon-5", appId: "app-builder", label: "Orion", icon: "Zap", position: gridToPixel(0, 4) },
-  { id: "icon-6", appId: "settings", label: "Settings", icon: "Settings", position: gridToPixel(0, 5) },
-  { id: "icon-7", appId: "coding-assistant", label: "MittenAI", icon: "Bot", position: gridToPixel(0, 6) },
-  { id: "icon-8", appId: "pencil", label: "Pencil", icon: "NotebookPen", position: gridToPixel(0, 7) },
+  { id: "icon-5", appId: "settings", label: "Settings", icon: "Settings", position: gridToPixel(0, 4) },
+  { id: "icon-6", appId: "coding-assistant", label: "MittenAI", icon: "Bot", position: gridToPixel(0, 5) },
+  { id: "icon-7", appId: "pencil", label: "Pencil", icon: "NotebookPen", position: gridToPixel(0, 6) },
 ];
 
 const OLD_DEFAULT_WALLPAPER = "/default_wallpaper.png";
@@ -279,11 +291,18 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
 
     const updatedIcons = defaultIcons
       .filter((icon) => !deletedIconIds.includes(icon.id))
-      .map((icon) => ({
-        ...icon,
-        label: renamedIconLabels[icon.id] || icon.label,
-        position: positions[icon.id] || icon.position,
-      }));
+      .map((icon, index) => {
+        const savedPosition = positions[icon.id];
+        const oldDefaultPosition = previousGridToPixel(0, index);
+
+        return {
+          ...icon,
+          label: renamedIconLabels[icon.id] || icon.label,
+          position: positionMatches(savedPosition, oldDefaultPosition)
+            ? icon.position
+            : savedPosition || icon.position,
+        };
+      });
 
     const customIconsWithPositions = customDesktopIcons.map((icon: any) => ({
       ...icon,

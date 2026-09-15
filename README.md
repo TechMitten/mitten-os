@@ -1,12 +1,11 @@
 # MittenOS
 
-MittenOS is a web-based desktop environment and operating system simulator built on Next.js, Tailwind CSS v4, and Zustand. It provides a window manager, a virtual file system persisted to the browser, a suite of built-in utility applications, and a sandboxed application runtime with an AI-assisted application builder.
+MittenOS is a web-based desktop environment and operating system simulator built on Next.js, Tailwind CSS v4, and Zustand. It provides a window manager, a virtual file system persisted to the browser, a suite of built-in utility applications, and a sandboxed application runtime.
 
 ## Key Features
 
 - **Virtual File System**: A local-first virtual directory structure persisted entirely in the browser using `localStorage`, keeping all files and user workspace data 100% private and offline.
 - **Built-in Applications**: Includes a File Explorer, Terminal, Web Browser, Text Editor, Calculator, Weather app, Settings app, and Image Viewer.
-- **Orion App Builder**: An AI-powered app generator that creates self-contained HTML/JS applications from natural language prompts, supporting streaming generation, surgical edits, and version history.
 - **Sandboxed Runtime**: User-built apps are rendered in iframe sandboxes with custom Content Security Policies (CSP) and communicate with the host environment using a postMessage-based bridge API (`window.mittenOS`) for filesystem access and notification dispatching.
 
 ## Built-in Apps
@@ -26,7 +25,6 @@ MittenOS is a web-based desktop environment and operating system simulator built
 | **App Store** | Discover and install user-created apps. |
 | **Weather** | Check current weather conditions. |
 | **About** | System information (hidden from Start Menu/App Store, opened via right-click desktop). |
-| **Orion** | AI-powered app generator that builds self-contained HTML/JS apps from natural language prompts, with streaming generation, surgical edits, and version history. |
 | **MittenAI** | AI-powered virtual coding chat assistant. |
 | **Keys** | Manage AI API endpoints and keys (hidden from Start Menu/App Store). |
 
@@ -35,7 +33,7 @@ MittenOS is a web-based desktop environment and operating system simulator built
 The project is structured as a Next.js App Router application:
 
 - **`src/components/os/`**: Shell-level interface components, including the main `Desktop`, taskbar, start menu, window frames, context menus, and system dialogs.
-- **`src/components/apps/`**: Source files for both system utilities and specialized applications (e.g., `OrionAppBuilder.tsx`, `SandboxedApp.tsx`).
+- **`src/components/apps/`**: Source files for system utilities and specialized applications (e.g., `SandboxedApp.tsx`).
 - **`src/stores/`**: Zustand state management stores:
   - `desktop-store`: Manages wallpaper, theme, notification state, and preferences.
   - `window-store`: Manages window lifecycles (open, close, minimize, maximize).

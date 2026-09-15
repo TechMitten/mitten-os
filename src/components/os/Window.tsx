@@ -14,6 +14,85 @@ interface WindowProps {
 
 type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 
+interface WindowControlsProps {
+  onMinimize?: () => void;
+  onMaximize?: () => void;
+  onClose: () => void;
+  isMaximized?: boolean;
+  className?: string;
+  closeLabel?: string;
+}
+
+export function WindowControls({
+  onMinimize,
+  onMaximize,
+  onClose,
+  isMaximized = false,
+  className = '',
+  closeLabel = 'Close window',
+}: WindowControlsProps) {
+  return (
+    <div
+      className={`flex items-center -space-x-2 shrink-0 ${className}`}
+      onMouseDown={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
+    >
+      <button
+        type="button"
+        onClick={onMinimize}
+        disabled={!onMinimize}
+        className="w-6 h-6 rounded-full flex items-center justify-center transition-colors duration-150 group disabled:pointer-events-none"
+        aria-label="Minimize window"
+        aria-disabled={!onMinimize}
+      >
+        <span className="w-3 h-3 rounded-full flex items-center justify-center bg-orange-500 group-hover:bg-orange-600 transition-colors duration-150">
+          <Minus
+            className="w-[7px] h-[7px] text-orange-900 opacity-0 group-hover:opacity-100 transition-opacity"
+            strokeWidth={3}
+          />
+        </span>
+      </button>
+
+      <button
+        type="button"
+        onClick={onMaximize}
+        disabled={!onMaximize}
+        className="w-6 h-6 rounded-full flex items-center justify-center transition-colors duration-150 group disabled:pointer-events-none"
+        aria-label={isMaximized ? 'Restore window' : 'Maximize window'}
+        aria-disabled={!onMaximize}
+      >
+        <span className="w-3 h-3 rounded-full flex items-center justify-center bg-green-500 group-hover:bg-green-600 transition-colors duration-150">
+          {isMaximized ? (
+            <Copy
+              className="w-[7px] h-[7px] text-green-900 opacity-0 group-hover:opacity-100 transition-opacity"
+              strokeWidth={2.5}
+            />
+          ) : (
+            <Square
+              className="w-[6px] h-[6px] text-green-900 opacity-0 group-hover:opacity-100 transition-opacity"
+              strokeWidth={2.5}
+            />
+          )}
+        </span>
+      </button>
+
+      <button
+        type="button"
+        onClick={onClose}
+        className="w-6 h-6 rounded-full flex items-center justify-center transition-colors duration-150 group"
+        aria-label={closeLabel}
+      >
+        <span className="w-3 h-3 rounded-full flex items-center justify-center bg-red-500 group-hover:bg-red-600 transition-colors duration-150">
+          <X
+            className="w-[7px] h-[7px] text-red-900 opacity-0 group-hover:opacity-100 transition-opacity"
+            strokeWidth={3}
+          />
+        </span>
+      </button>
+    </div>
+  );
+}
+
 export function Window({ window: win, children, isActive }: WindowProps) {
   const {
     closeWindow,
@@ -436,69 +515,13 @@ export function Window({ window: win, children, isActive }: WindowProps) {
               {win.title}
             </span>
 
-            {/* macOS-style Window Control Buttons */}
-            <div
-              className="flex items-center gap-1.5 mr-2 shrink-0"
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              {/* Minimize - Orange */}
-              <button
-                onClick={handleMinimize}
-                className="
-                  w-3 h-3 rounded-full flex items-center justify-center
-                  bg-orange-500 hover:bg-orange-600
-                  transition-colors duration-150
-                  group
-                "
-                aria-label="Minimize window"
-              >
-                <Minus
-                  className="w-[7px] h-[7px] text-orange-900 opacity-0 group-hover:opacity-100 transition-opacity"
-                  strokeWidth={3}
-                />
-              </button>
-
-              {/* Maximize/Restore - Green */}
-              <button
-                onClick={() => toggleMaximize(win.id)}
-                className="
-                  w-3 h-3 rounded-full flex items-center justify-center
-                  bg-green-500 hover:bg-green-600
-                  transition-colors duration-150
-                  group
-                "
-                aria-label={isMaximized ? 'Restore window' : 'Maximize window'}
-              >
-                {isMaximized ? (
-                  <Copy
-                    className="w-[7px] h-[7px] text-green-900 opacity-0 group-hover:opacity-100 transition-opacity"
-                    strokeWidth={2.5}
-                  />
-                ) : (
-                  <Square
-                    className="w-[6px] h-[6px] text-green-900 opacity-0 group-hover:opacity-100 transition-opacity"
-                    strokeWidth={2.5}
-                  />
-                )}
-              </button>
-
-              {/* Close - Red */}
-              <button
-                onClick={handleClose}
-                className="
-                  w-3 h-3 rounded-full flex items-center justify-center
-                  bg-red-500 hover:bg-red-600
-                  transition-colors duration-150
-                  group
-                "
-                aria-label="Close window"
-              >
-                <X
-                  className="w-[7px] h-[7px] text-red-900 opacity-0 group-hover:opacity-100 transition-opacity"
-                  strokeWidth={3}
-                />
-              </button>
-            </div>
+            <WindowControls
+              onMinimize={handleMinimize}
+              onMaximize={() => toggleMaximize(win.id)}
+              onClose={handleClose}
+              isMaximized={isMaximized}
+              className="mr-1"
+            />
 
 
           </div>

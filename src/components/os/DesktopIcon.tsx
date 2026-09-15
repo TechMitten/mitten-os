@@ -44,9 +44,9 @@ export function DesktopIcon({
   const iconSize = useDesktopStore((s) => s.iconSize) || 'medium';
 
   const gridCellSize = {
-    small: 72,
-    medium: 84,
-    large: 96,
+    small: 60,
+    medium: DESKTOP_GRID_CELL,
+    large: 80,
   }[iconSize];
 
   const snapToGrid = useCallback((pos: WindowPosition): WindowPosition => {
@@ -58,19 +58,19 @@ export function DesktopIcon({
 
   const sizeStyles = {
     small: {
-      container: 'w-16 h-16',
+      container: 'w-16 h-[60px]',
       iconWrapper: 'w-8 h-8 mb-0.5',
       iconSize: 'w-6 h-6',
       labelSize: 'text-[10px] max-w-[60px]',
     },
     medium: {
-      container: 'w-20 h-20',
+      container: 'w-20 h-[68px]',
       iconWrapper: 'w-10 h-10 mb-1',
       iconSize: 'w-8 h-8',
       labelSize: 'text-[11px] max-w-[72px]',
     },
     large: {
-      container: 'w-24 h-24',
+      container: 'w-24 h-20',
       iconWrapper: 'w-12 h-12 mb-1.5',
       iconSize: 'w-10 h-10',
       labelSize: 'text-[12px] max-w-[88px]',

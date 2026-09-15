@@ -12,6 +12,7 @@ import {
   Snowflake,
   Loader2,
   Info,
+  AlertTriangle,
 } from 'lucide-react';
 import { ICON_MAP } from '@/lib/icon-map';
 import { getAccentColor } from '@/lib/theme';
@@ -20,6 +21,7 @@ import { useDesktopStore } from '@/stores/desktop-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { useWeatherStore } from '@/stores/weather-store';
 import { APP_REGISTRY } from '@/types/os';
+import { useAIModelStore } from '@/stores/ai-model-store';
 import {
   Tooltip,
   TooltipTrigger,
@@ -117,6 +119,75 @@ function Clock() {
       </TooltipTrigger>
       <TooltipContent side="top">
         {fullDateStr}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+
+function LocalModelDownloadWidget() {
+  const status = useAIModelStore((s) => s.status);
+  const modelId = useAIModelStore((s) => s.modelId);
+  const progress = useAIModelStore((s) => s.progress);
+  const message = useAIModelStore((s) => s.message);
+  const error = useAIModelStore((s) => s.error);
+
+  if (status === 'idle' || status === 'ready') return null;
+
+  const roundedProgress = Math.round(progress);
+  const isDownloading = status === 'downloading';
+  const isError = status === 'error';
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div
+          role="status"
+          aria-live="polite"
+          className="w-60 max-w-[42vw] px-3 py-2 rounded-xl border border-white/15 bg-zinc-950/95 shadow-xl shadow-black/30 text-zinc-100 select-none"
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            {isDownloading ? (
+              <Loader2 className="w-4 h-4 animate-spin text-amber-500 shrink-0" />
+            ) : (
+              <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
+            )}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-2 text-[11px] font-semibold leading-tight">
+                <span className="truncate">
+                  {isDownloading ? 'Downloading local AI' : 'Local AI failed'}
+                </span>
+                <span className="tabular-nums text-[10px] text-zinc-300 shrink-0">
+                  {isDownloading ? `${roundedProgress}%` : '--'}
+                </span>
+              </div>
+              <div className="mt-1.5 h-1.5 rounded-full bg-white/12 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-300 ${isError ? 'bg-red-500' : 'bg-amber-500'}`}
+                  style={{ width: `${isError ? Math.max(roundedProgress, 8) : roundedProgress}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent
+        side="top"
+        className="max-w-sm border border-white/15 bg-zinc-950 px-3 py-2.5 text-left text-zinc-100 shadow-2xl shadow-black/40"
+      >
+        <div className="space-y-1.5">
+          <div className="text-xs font-semibold text-white break-words">
+            {modelId || 'Local WebGPU model'}
+          </div>
+          <div className="text-[11px] leading-relaxed text-zinc-200 whitespace-normal break-words">
+            {error || message || 'Preparing local model...'}
+          </div>
+          {isDownloading && (
+            <div className="text-[11px] font-medium text-amber-300">
+              AI apps are locked until this completes.
+            </div>
+          )}
+        </div>
       </TooltipContent>
     </Tooltip>
   );
@@ -365,8 +436,13 @@ export default function Taskbar() {
           {/* Weather */}
           <TaskbarWeather />
 
-          {/* Clock */}
-          <Clock />
+          {/* Clock + non-dismissible local AI model download */}
+          <div className="relative flex items-center">
+            <div className="absolute right-0 bottom-full mb-2">
+              <LocalModelDownloadWidget />
+            </div>
+            <Clock />
+          </div>
         </div>
       </div>
     </TooltipProvider>

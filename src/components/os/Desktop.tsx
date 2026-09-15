@@ -28,7 +28,6 @@ import {
   AppStore,
   Weather,
   AboutSystem,
-  OrionAppBuilder,
   SandboxedApp,
   CodingAssistant,
   Keys,
@@ -48,7 +47,6 @@ const APP_COMPONENT_MAP: Record<string, React.ComponentType> = {
   'app-store': AppStore,
   weather: Weather,
   'about-system': AboutSystem,
-  'app-builder': OrionAppBuilder,
   'coding-assistant': CodingAssistant,
   keys: Keys,
 };

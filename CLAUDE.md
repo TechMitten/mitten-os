@@ -25,7 +25,7 @@ MittenOS is a Next.js App Router app that simulates a browser-based desktop envi
 **Layer structure:**
 
 - **`src/components/os/`** — Shell layer: `Desktop` (main orchestrator), `Taskbar`, `StartMenu`, `Window` (chrome), `DesktopIcon`, `ContextMenu`, `WelcomeWindow`
-- **`src/components/apps/`** — Built-in apps (FileExplorer, Terminal, Browser, TextEditor, Calculator, Settings, ImageViewer, AppStore, Weather, AboutSystem) + specialized apps (`OrionAppBuilder`, `SandboxedApp`)
+- **`src/components/apps/`** — Built-in apps (FileExplorer, Terminal, Browser, TextEditor, Calculator, Settings, ImageViewer, AppStore, Weather, AboutSystem) + specialized apps (`SandboxedApp`)
 - **`src/stores/`** — Zustand state management:
   - `desktop-store` — wallpaper, theme, notifications, desktop settings (persisted to localStorage)
   - `window-store` — window lifecycle (open, close, minimize, maximize)
@@ -72,7 +72,6 @@ Deploys via [OpenNext for Cloudflare](https://opennext.js.org/cloudflare) to cus
 - **Bun is only for production.** Dev runs via `node` + `next dev`; production server runs `bun .next/standalone/server.js`
 - **Standalone build requires manual asset copy.** The `build` script copies `.next/static` → `.next/standalone/.next/` and `public` → `.next/standalone/` because Next.js standalone output doesn't include them
 - **Auth is bypassed.** The desktop boots into a default user environment without a login flow
-- **The App Builder** (`src/components/apps/OrionAppBuilder.tsx`) is an AI-powered app generator. It creates self-contained HTML/JS applications from natural language prompts, with streaming generation, surgical edits, and version history. Projects saved to localStorage
 - **File system persisted to localStorage.** VFS operations (read, write, delete) are all in-memory + localStorage
 - **`dev.log` and `server.log` are gitignored** (output from `tee` in npm scripts)
 

@@ -1,5 +1,7 @@
 import { create } from "zustand";
 import { OSWindow, WindowPosition, WindowSize, APP_REGISTRY } from "@/types/os";
+import { isAIAppBlocked, useAIModelStore } from "@/stores/ai-model-store";
+import { notify } from "@/lib/notifications";
 
 export interface OpenWindowOverrides {
   defaultSize?: WindowSize;
@@ -34,6 +36,16 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
   nextZIndex: 1,
 
   openWindow: (appId: string, title?: string, overrides?: OpenWindowOverrides) => {
+    if (isAIAppBlocked(appId)) {
+      const progress = Math.round(useAIModelStore.getState().progress);
+      notify(
+        "Local AI is still downloading",
+        `AI apps will unlock when the selected WebGPU model finishes downloading (${progress}%).`,
+        "warning"
+      );
+      return "";
+    }
+
     const appDef = overrides ? undefined : APP_REGISTRY[appId];
     if (!appDef && !overrides) return "";
 

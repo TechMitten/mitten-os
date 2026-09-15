@@ -3,9 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  X,
   Sparkles,
-  Zap,
   Bot,
   FolderOpen,
   ArrowRight,
@@ -20,7 +18,6 @@ import {
   Loader2,
   ShieldCheck,
   Check,
-  Wand2,
   HardDrive,
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
@@ -35,6 +32,7 @@ import {
   type LLMProviderKind,
 } from '@/lib/keys';
 import { WEBLLM_MODELS, isWebGPUSupported, checkWebGPUSupported } from '@/lib/ai/webllm';
+import { useAIModelStore } from '@/stores/ai-model-store';
 
 interface WelcomeWindowProps {
   open: boolean;
@@ -73,6 +71,10 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [keyConfigured, setKeyConfigured] = useState(false);
+  const modelDownloadStatus = useAIModelStore((s) => s.status);
+  const modelDownloadModelId = useAIModelStore((s) => s.modelId);
+  const modelDownloadProgress = useAIModelStore((s) => s.progress);
+  const ensureWebLLMModel = useAIModelStore((s) => s.ensureWebLLMModel);
 
   const modalRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState(getInitialPos);
@@ -281,7 +283,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
     setTesting(false);
   };
 
-  const handleSaveAndContinue = () => {
+  const handleSaveAndContinue = async () => {
     const profileId = 'default';
     const profileToSave: KeyProfile = {
       id: profileId,
@@ -293,7 +295,37 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
     };
 
     saveActiveProfile(profileToSave);
-    if (kind === 'webllm' ? model.trim() : (apiKey.trim() || endpoint.trim())) {
+
+    if (kind === 'webllm') {
+      if (!model.trim()) {
+        setTestResult({ success: false, message: 'Choose a local WebGPU model before continuing.' });
+        return;
+      }
+
+      const supported = await checkWebGPUSupported();
+      if (!supported) {
+        setTestResult({
+          success: false,
+          message: 'WebGPU is not available in this browser. Use Chrome, Edge, or another WebGPU-enabled browser.',
+        });
+        return;
+      }
+
+      setKeyConfigured(true);
+      setTestResult({
+        success: true,
+        message: 'Downloading the local model now. Progress will continue above the clock.',
+      });
+      setStep(3);
+
+      ensureWebLLMModel(model.trim()).catch((err) => {
+        const message = err instanceof Error ? err.message : 'Local model download failed.';
+        setTestResult({ success: false, message });
+      });
+      return;
+    }
+
+    if (apiKey.trim() || endpoint.trim()) {
       setKeyConfigured(true);
     }
     setStep(3);
@@ -356,29 +388,6 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
               onMouseDown={handleDragStart}
               onTouchStart={handleTouchStart}
             >
-              {/* Window Controls */}
-              <div className="flex items-center gap-1.5 shrink-0">
-                <button
-                  onClick={handleClose}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onTouchStart={(e) => e.stopPropagation()}
-                  className="
-                    w-3 h-3 rounded-full flex items-center justify-center
-                    bg-red-500/90 hover:bg-red-600
-                    transition-colors duration-150
-                    group cursor-pointer shadow-sm
-                  "
-                  aria-label="Close welcome window"
-                >
-                  <X
-                    className="w-[7px] h-[7px] text-red-950 opacity-0 group-hover:opacity-100 transition-opacity"
-                    strokeWidth={3.5}
-                  />
-                </button>
-                <div className="w-3 h-3 rounded-full bg-yellow-400/80" />
-                <div className="w-3 h-3 rounded-full bg-green-500/80" />
-              </div>
-
               {/* Title & Progress Stepper */}
               <div className="flex-1 flex items-center justify-center gap-2">
                 <span className="text-[11px] font-semibold tracking-wide uppercase text-zinc-400">
@@ -388,8 +397,6 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                 </span>
               </div>
 
-
-              <div className="w-[54px] shrink-0" aria-hidden="true" />
             </div>
 
             {/* Modal Body with Animated Step Transitions */}
@@ -425,19 +432,6 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
 
                     {/* Feature Cards Grid */}
                     <div className="w-full grid grid-cols-1 gap-2.5 pt-1">
-                      <div className="flex items-center gap-3 p-2.5 sm:p-3 rounded-xl bg-zinc-900/95 border border-white/12 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:border-orange-500/50 transition-colors group">
-                        <div className="p-2 sm:p-2.5 rounded-lg bg-orange-500/10 text-orange-400 group-hover:scale-105 transition-transform">
-                          <Zap className="w-4 h-4" />
-                        </div>
-                        <div className="flex flex-col text-left">
-                          <span className="text-xs font-semibold text-zinc-100">
-                            Orion App Builder
-                          </span>
-                          <span className="text-[11px] text-zinc-400">
-                            Generate, test, and run full-stack mini-apps instantly
-                          </span>
-                        </div>
-                      </div>
 
                       <div className="flex items-center gap-3 p-2.5 sm:p-3 rounded-xl bg-zinc-900/95 border border-white/12 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:border-orange-500/50 transition-colors group">
                         <div className="p-2 sm:p-2.5 rounded-lg bg-orange-500/10 text-orange-400 group-hover:scale-105 transition-transform">
@@ -511,7 +505,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                                 flex items-center justify-between px-2.5 py-2 rounded-xl text-left transition-all text-xs font-medium border cursor-pointer
                                 ${
                                   isSelected
-                                    ? 'bg-orange-500/10 border-orange-500/40 text-orange-300 ring-1 ring-orange-500/30'
+                                    ? 'bg-transparent border-orange-500/40 text-orange-300 ring-1 ring-orange-500/30'
                                     : 'bg-zinc-900/95 border-white/12 text-zinc-300 hover:bg-zinc-800/80'
                                 }
                               `}
@@ -603,27 +597,41 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                         <div
                           className={`p-2.5 rounded-xl border flex gap-2 text-xs items-start ${
                             isWebGPUSupported()
-                              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
-                              : 'bg-amber-500/5 border-amber-500/30 text-amber-700 dark:text-amber-300'
+                              ? 'bg-transparent border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
+                              : 'bg-transparent border-amber-500/30 text-amber-700 dark:text-amber-300'
                           }`}
                         >
                           <Cpu className="w-4 h-4 shrink-0 mt-0.5" />
                           <span className="leading-tight">
                             {isWebGPUSupported()
-                              ? 'WebGPU detected. The model runs entirely on this device and is cached after the first download.'
+                              ? testResult?.success
+                                ? `WebGPU detected. ${testResult.message}`
+                                : 'WebGPU detected. The selected model must finish downloading before AI apps unlock.'
                               : 'WebGPU not detected. Local inference requires a WebGPU-enabled browser (Chrome, Edge, etc.).'}
                           </span>
+                        </div>
+                      )}
+
+                      {kind === 'webllm' && modelDownloadModelId === model && modelDownloadStatus === 'downloading' && (
+                        <div className="p-2.5 rounded-xl border border-amber-500/30 bg-transparent text-amber-200 text-xs space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-semibold">Downloading selected model</span>
+                            <span className="tabular-nums">{Math.round(modelDownloadProgress)}%</span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-black/30 overflow-hidden">
+                            <div className="h-full rounded-full bg-amber-400 transition-all" style={{ width: `${Math.round(modelDownloadProgress)}%` }} />
+                          </div>
                         </div>
                       )}
                     </div>
 
                     {/* Test Result Alert */}
-                    {testResult && (
+                    {testResult && !(kind === 'webllm' && testResult.success) && (
                       <div
                         className={`p-2.5 rounded-xl border flex gap-2 text-xs items-start ${
                           testResult.success
-                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
-                            : 'bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-300'
+                            ? 'bg-transparent border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
+                            : 'bg-transparent border-red-500/30 text-red-700 dark:text-red-300'
                         }`}
                       >
                         {testResult.success ? (
@@ -759,21 +767,6 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
 
                     {/* Quick Launch Suggestions */}
                     <div className="w-full grid grid-cols-2 gap-2 pt-1 text-left">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenAppAndClose('app-builder')}
-                        className="p-2.5 rounded-xl bg-zinc-900/95 border border-white/12 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:border-orange-500/50 transition-all flex items-center gap-2 group cursor-pointer"
-                      >
-                        <div className="p-1.5 rounded-lg bg-orange-500/10 text-orange-400 group-hover:scale-105 transition-transform">
-                          <Wand2 className="w-3.5 h-3.5" />
-                        </div>
-                        <div className="truncate">
-                          <div className="text-[11px] font-semibold text-zinc-100 truncate">
-                            Orion App Builder
-                          </div>
-                          <div className="text-[9px] text-zinc-500 truncate">Create AI mini-apps</div>
-                        </div>
-                      </button>
 
                       <button
                         type="button"
@@ -870,11 +863,11 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                       bg-gradient-to-r from-orange-500 to-amber-400 hover:from-orange-400 hover:to-amber-300
                       text-zinc-950 shadow-md shadow-orange-500/25
                       active:scale-[0.98] transition-all duration-150
-                      cursor-pointer
+                      cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed
                       "
                     >
-                      <span>Save & Continue</span>
                       <ArrowRight className="w-3.5 h-3.5" />
+                      <span>{kind === 'webllm' ? 'Start Download & Continue' : 'Save & Continue'}</span>
                     </button>
                   </div>
                 </>

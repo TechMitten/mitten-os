@@ -20,6 +20,8 @@ import {
   Clock,
   Calendar,
   Download,
+  Maximize2,
+  Minimize2,
   User as UserIcon,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -364,6 +366,37 @@ function DisplaySection({
   iconSize: 'small' | 'medium' | 'large';
   setIconSize: (v: 'small' | 'medium' | 'large') => void;
 }) {
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [fullscreenError, setFullscreenError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+      setFullscreenError(null);
+    };
+
+    handleFullscreenChange();
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  const handleFullscreenToggle = async () => {
+    setFullscreenError(null);
+
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch {
+      setFullscreenError('Fullscreen is unavailable in this browser context');
+    }
+  };
+
   return (
     <div>
       <h3 className="text-lg font-medium mb-4">Display</h3>
@@ -408,6 +441,29 @@ function DisplaySection({
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Full screen */}
+      <div className="flex items-center justify-between py-3 border-b border-border">
+        <div className="flex items-center gap-3">
+          {isFullscreen ? (
+            <Minimize2 className="w-4 h-4 text-muted-foreground" />
+          ) : (
+            <Maximize2 className="w-4 h-4 text-muted-foreground" />
+          )}
+          <div>
+            <p className="text-sm text-foreground/80">Full Screen</p>
+            <p className="text-xs text-muted-foreground">
+              {fullscreenError || 'Use the entire display for MittenOS'}
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={handleFullscreenToggle}
+          className="text-xs px-3 py-1 rounded-md transition-colors bg-accent dark:bg-white/10 text-foreground hover:bg-accent/80 dark:hover:bg-white/15"
+        >
+          {isFullscreen ? 'Exit' : 'Enter'}
+        </button>
       </div>
 
       {/* Resolution info */}
@@ -646,10 +702,7 @@ function StorageSection() {
         key.startsWith('mittenos:active_ai_profile')
       ) {
         keysBytes += itemBytes;
-      } else if (
-        key.startsWith('mittenos:user_apps') ||
-        key.startsWith('mittenos:orion_projects')
-      ) {
+      } else if (key.startsWith('mittenos:user_apps')) {
         appsBytes += itemBytes;
       } else if (
         key.startsWith('mittenos:chat_sessions:') ||

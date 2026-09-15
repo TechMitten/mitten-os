@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 
 export type WindowState = "normal" | "minimized" | "maximized";
 
-export const DESKTOP_GRID_CELL = 84;
+export const DESKTOP_GRID_CELL = 68;
 export const DESKTOP_GRID_OFFSET_X = 16;
 export const DESKTOP_GRID_OFFSET_Y = 16;
 export const DRAG_THRESHOLD = 3;
@@ -224,15 +224,6 @@ export const APP_REGISTRY: Record<string, Omit<AppDefinition, "component">> = {
     minWindowSize: { width: 350, height: 350 },
     singleton: true,
     hidden: true,
-  },
-  "app-builder": {
-    id: "app-builder",
-    name: "Orion",
-    icon: "Zap",
-    description: "AI-powered app generator",
-    category: "development",
-    defaultWindowSize: { width: 1200, height: 700 },
-    minWindowSize: { width: 800, height: 500 },
   },
   "coding-assistant": {
     id: "coding-assistant",

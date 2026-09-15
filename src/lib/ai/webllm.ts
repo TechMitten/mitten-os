@@ -19,7 +19,7 @@ export const WEBLLM_MODELS: WebLLMModel[] = [
   { id: 'Hermes-3-Llama-3.1-8B-q4f32_1-MLC', label: 'Hermes 3 8B (tool-calling)', size: '~4.7 GB' },
 ];
 
-export const DEFAULT_WEBLLM_MODEL = WEBLLM_MODELS[4].id;
+export const DEFAULT_WEBLLM_MODEL = 'gemma-2-2b-it-q4f16_1-MLC';
 
 export interface WebLLMLoadProgress {
   progress: number;
