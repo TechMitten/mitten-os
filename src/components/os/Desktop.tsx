@@ -34,6 +34,7 @@ import {
 } from '@/components/apps';
 import { useAppRegistryStore } from '@/stores/app-registry-store';
 import { useWeatherPoller } from '@/hooks/use-weather-poller';
+import { hasConfiguredLLM } from '@/lib/keys';
 
 const APP_COMPONENT_MAP: Record<string, React.ComponentType> = {
   'file-explorer': FileExplorer,
@@ -126,7 +127,7 @@ export function Desktop() {
     const prevUserId = prevUserIdRef.current;
     prevUserIdRef.current = currentUserId;
 
-    if (!prevUserId && currentUserId && !welcomeDismissed) {
+    if (!prevUserId && currentUserId && !welcomeDismissed && !hasConfiguredLLM()) {
       setShowWelcome(true);
     }
   }, [dataLoaded, user, welcomeDismissed]);

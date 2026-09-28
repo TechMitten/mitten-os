@@ -413,17 +413,17 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                     className="flex flex-col items-center gap-4 sm:gap-5"
                   >
                     {/* Hero Icon */}
-                    <div className="relative flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-3xl border border-orange-300/15 shadow-[0_14px_42px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.08)]">
+                    <div className="relative flex h-24 w-24 sm:h-28 sm:w-28 items-center justify-center rounded-3xl shadow-[0_14px_42px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.08)]">
                       <img
                         src="/mittenicon.png"
                         alt="MittenOS"
-                        className="h-[4.5rem] w-[4.5rem] sm:h-20 sm:w-20 object-contain select-none drop-shadow-[0_5px_12px_rgba(0,0,0,0.55)]"
+                        className="h-[5.5rem] w-[5.5rem] sm:h-24 sm:w-24 object-contain select-none drop-shadow-[0_5px_12px_rgba(0,0,0,0.55)]"
                         draggable={false}
                       />
                     </div>
 
                     {/* Title & Subtitle */}
-                    <div className="text-center space-y-1 px-2">
+                    <div className="text-center space-y-1 px-2 -mt-3 sm:-mt-4">
                       <h2 className="text-xl sm:text-2xl font-bold tracking-tight bg-gradient-to-r from-white via-zinc-200 to-orange-400 bg-clip-text text-transparent">
                         Welcome to MittenOS
                       </h2>

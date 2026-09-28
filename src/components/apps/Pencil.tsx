@@ -22,6 +22,7 @@ import {
   Oswald,
   Source_Code_Pro,
 } from 'next/font/google';
+import { marked } from 'marked';
 import {
   Search,
   Plus,
@@ -46,9 +47,17 @@ import {
   Eraser,
   Palette,
   Highlighter,
+  Sparkles,
 } from 'lucide-react';
 import { usePencilStore, type PencilDocument } from '@/stores/pencil-store';
+import { usePencilAIStore } from '@/stores/pencil-ai-store';
+import { useWindowStore } from '@/stores/window-store';
+import { getActiveLLMConfig } from '@/lib/keys';
+import { getAction, type AIActionId } from '@/lib/ai/pencil-prompts';
 import { cn } from '@/lib/utils';
+import PencilAIBubbleMenu from './pencil/PencilAIBubbleMenu';
+import PencilAIResultCard from './pencil/PencilAIResultCard';
+import PencilAIPanel from './pencil/PencilAIPanel';
 
 const TEXT_COLORS = [
   { label: 'Black', value: '#18181b' },
@@ -163,6 +172,12 @@ function extractPreviewText(content: string, maxLen = 140): string {
   return text.length > maxLen ? `${text.slice(0, maxLen)}…` : text;
 }
 
+function isAIConfigured(): boolean {
+  const config = getActiveLLMConfig();
+  if (config.kind === 'webllm') return Boolean(config.model);
+  return Boolean(config.endpoint && config.apiKey && config.model);
+}
+
 function ToolbarButton({
   onClick,
   active,
@@ -209,6 +224,14 @@ export default function Pencil() {
   const duplicateDocument = usePencilStore((s) => s.duplicateDocument);
   const getDocument = usePencilStore((s) => s.getDocument);
 
+  const openWindow = useWindowStore((s) => s.openWindow);
+  const runAI = usePencilAIStore((s) => s.run);
+  const runAICustom = usePencilAIStore((s) => s.runCustom);
+  const clearAI = usePencilAIStore((s) => s.clear);
+  const panelOpen = usePencilAIStore((s) => s.panelOpen);
+  const setPanelOpen = usePencilAIStore((s) => s.setPanelOpen);
+  const [aiConfigured, setAiConfigured] = useState(true);
+
   const [view, setView] = useState<'home' | 'editor'>('home');
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -220,6 +243,7 @@ export default function Pencil() {
   const toolbarRef = useRef<HTMLDivElement>(null);
   const loadedDocIdRef = useRef<string | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSelectionRef = useRef<{ from: number; to: number; text: string } | null>(null);
 
   useEffect(() => {
     load();
@@ -296,12 +320,37 @@ export default function Pencil() {
     };
   }, [editor, updateDocument]);
 
+  // Remember the most recent non-empty selection so AI actions fired from the
+  // bubble menu still know what text to operate on.
+  useEffect(() => {
+    if (!editor) return;
+    const handleSelection = () => {
+      const { from, to, empty } = editor.state.selection;
+      if (empty) return;
+      const text = editor.state.doc.textBetween(from, to, '\n\n');
+      if (text.trim()) lastSelectionRef.current = { from, to, text };
+    };
+    editor.on('selectionUpdate', handleSelection);
+    return () => {
+      editor.off('selectionUpdate', handleSelection);
+    };
+  }, [editor]);
+
+  useEffect(() => {
+    if (panelOpen) setAiConfigured(isAIConfigured());
+  }, [panelOpen]);
+
+  // Abort any in-flight AI request when the Pencil window closes.
+  useEffect(() => () => clearAI(), [clearAI]);
+
   const openDocument = useCallback((id: string) => {
     loadedDocIdRef.current = null;
+    lastSelectionRef.current = null;
+    clearAI();
     setActiveDocId(id);
     setView('editor');
     setOpenPopover(null);
-  }, []);
+  }, [clearAI]);
 
   const handleNewDocument = useCallback(() => {
     const id = createDocument();
@@ -312,8 +361,10 @@ export default function Pencil() {
     setView('home');
     setActiveDocId(null);
     loadedDocIdRef.current = null;
+    lastSelectionRef.current = null;
+    clearAI();
     setOpenPopover(null);
-  }, []);
+  }, [clearAI]);
 
   const commitTitle = useCallback(() => {
     if (!activeDocId) return;
@@ -434,6 +485,98 @@ export default function Pencil() {
     setOpenPopover(null);
     setLinkUrl('');
   }, [editor, linkUrl]);
+
+  const getDocumentText = useCallback(() => {
+    if (!editor) return '';
+    return editor.state.doc.textBetween(0, editor.state.doc.content.size, '\n\n');
+  }, [editor]);
+
+  const runSelectionAction = useCallback(
+    (actionId: AIActionId) => {
+      if (!editor) return;
+      const sel = lastSelectionRef.current;
+      if (!sel) return;
+      runAI(actionId, {
+        scope: 'selection',
+        text: sel.text,
+        selection: { from: sel.from, to: sel.to },
+        docVersion: editor.state.doc.content.size,
+      });
+    },
+    [editor, runAI]
+  );
+
+  const runSelectionCustom = useCallback(
+    (prompt: string) => {
+      if (!editor) return;
+      const sel = lastSelectionRef.current;
+      if (!sel) return;
+      runAICustom(prompt, {
+        scope: 'selection',
+        text: sel.text,
+        selection: { from: sel.from, to: sel.to },
+        docVersion: editor.state.doc.content.size,
+      });
+    },
+    [editor, runAICustom]
+  );
+
+  const runDocumentAction = useCallback(
+    (actionId: AIActionId) => {
+      if (!editor) return;
+      const action = getAction(actionId);
+      const docVersion = editor.state.doc.content.size;
+      if (action.scope === 'cursor') {
+        const pos = editor.state.selection.from;
+        const text = editor.state.doc.textBetween(0, pos, '\n\n');
+        runAI(actionId, { scope: 'cursor', text, docVersion });
+      } else {
+        runAI(actionId, { scope: 'document', text: getDocumentText(), docVersion });
+      }
+    },
+    [editor, runAI, getDocumentText]
+  );
+
+  const runCustomDocument = useCallback(
+    (prompt: string) => {
+      if (!editor) return;
+      runAICustom(prompt, {
+        scope: 'document',
+        text: getDocumentText(),
+        docVersion: editor.state.doc.content.size,
+      });
+    },
+    [editor, runAICustom, getDocumentText]
+  );
+
+  const applyAIResult = useCallback(
+    (mode: 'replace' | 'below') => {
+      if (!editor) return;
+      const { meta, streamingText } = usePencilAIStore.getState();
+      if (!meta || !streamingText.trim()) {
+        clearAI();
+        return;
+      }
+      const html = marked.parse(streamingText, { async: false });
+      const range = meta.range;
+      const stale = meta.docVersion !== null && meta.docVersion !== editor.state.doc.content.size;
+      if (meta.scope === 'selection' && range && !stale) {
+        if (mode === 'below') {
+          editor.chain().focus().insertContentAt(range.to, html).run();
+        } else {
+          editor.chain().focus().insertContentAt({ from: range.from, to: range.to }, html).run();
+        }
+      } else {
+        editor.chain().focus().insertContent(html).run();
+      }
+      clearAI();
+    },
+    [editor, clearAI]
+  );
+
+  const handleConfigureAI = useCallback(() => {
+    openWindow('keys');
+  }, [openWindow]);
 
   if (view === 'home') {
     return (
@@ -766,13 +909,46 @@ export default function Pencil() {
         >
           <Eraser className="w-4 h-4" />
         </ToolbarButton>
+
+        <ToolbarDivider />
+
+        <ToolbarButton
+          title="Pencil AI"
+          active={panelOpen}
+          onClick={() => setPanelOpen(!panelOpen)}
+        >
+          <Sparkles className="w-4 h-4" />
+        </ToolbarButton>
       </div>
 
-      {/* Page canvas */}
-      <div className="flex-1 overflow-y-auto os-scrollbar py-8">
-        <div className="mx-auto bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-sm shadow-lg min-h-[1056px] w-full max-w-[816px] px-[76px] py-[96px]">
-          <EditorContent editor={editor} />
+      {/* Page canvas + AI */}
+      <div className="flex flex-1 min-h-0">
+        <div className="relative flex-1 min-h-0">
+          <div className="absolute inset-0 overflow-y-auto os-scrollbar py-8">
+            <div className="mx-auto bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-sm shadow-lg min-h-[1056px] w-full max-w-[816px] px-[76px] py-[96px]">
+              <EditorContent editor={editor} />
+            </div>
+            <PencilAIBubbleMenu
+              editor={editor}
+              onRun={runSelectionAction}
+              onRunCustom={runSelectionCustom}
+            />
+          </div>
+          <PencilAIResultCard
+            onAccept={() => applyAIResult('replace')}
+            onInsertBelow={() => applyAIResult('below')}
+            onDiscard={clearAI}
+          />
         </div>
+        {panelOpen && (
+          <PencilAIPanel
+            configured={aiConfigured}
+            onConfigure={handleConfigureAI}
+            onRunDoc={runDocumentAction}
+            onRunCustom={runCustomDocument}
+            onClose={() => setPanelOpen(false)}
+          />
+        )}
       </div>
 
       {/* Status bar */}

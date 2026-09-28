@@ -158,6 +158,18 @@ export function loadKeyProfiles(): {
   };
 }
 
+export function hasConfiguredLLM(): boolean {
+  if (typeof window === 'undefined') return false;
+
+  const { activeProfile } = loadKeyProfiles();
+  if (!activeProfile) return false;
+
+  const kind = activeProfile.kind || 'openai-compatible';
+  return kind === 'webllm'
+    ? Boolean(activeProfile.model)
+    : Boolean(activeProfile.apiKey && activeProfile.endpoint);
+}
+
 export function saveActiveProfile(profile: KeyProfile): void {
   if (typeof window === 'undefined') return;
 
