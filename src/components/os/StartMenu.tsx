@@ -24,6 +24,7 @@ export function StartMenu() {
   const setSearchQuery = useDesktopStore((s) => s.setSearchQuery);
   const desktopIcons = useDesktopStore((s) => s.desktopIcons);
   const addDesktopIcon = useDesktopStore((s) => s.addDesktopIcon);
+  const taskbarPosition = useDesktopStore((s) => s.taskbarPosition);
   const openWindow = useWindowStore((s) => s.openWindow);
   const userApps = useAppRegistryStore((s) => s.userApps);
   const menuRef = useRef<HTMLDivElement>(null);

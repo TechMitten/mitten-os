@@ -331,6 +331,13 @@ export function Desktop() {
           action: () => { },
         },
         {
+          label: 'Settings',
+          icon: 'Settings',
+          action: () => {
+            openWindowFn('settings');
+          },
+        },
+        {
           label: '',
           separator: true,
           action: () => { },

@@ -413,7 +413,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                     className="flex flex-col items-center gap-4 sm:gap-5"
                   >
                     {/* Hero Icon */}
-                    <div className="relative flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-3xl bg-[radial-gradient(circle_at_50%_35%,rgba(251,146,60,0.18),rgba(39,39,42,0.72)_58%,rgba(24,24,27,0.92))] border border-orange-300/15 shadow-[0_14px_42px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.08)]">
+                    <div className="relative flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-3xl border border-orange-300/15 shadow-[0_14px_42px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.08)]">
                       <img
                         src="/mittenicon.png"
                         alt="MittenOS"
@@ -814,7 +814,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                     type="button"
                     onClick={() => setStep(2)}
                     className="
-                      inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold
+                      inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold
                       bg-gradient-to-r from-orange-500 to-amber-400
                       hover:from-orange-400 hover:to-amber-300
                       text-zinc-950 shadow-md shadow-orange-500/25
@@ -861,7 +861,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                       type="button"
                       onClick={handleSaveAndContinue}
                       className="
-                      inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold
+                      inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold
                       bg-gradient-to-r from-orange-500 to-amber-400 hover:from-orange-400 hover:to-amber-300
                       text-zinc-950 shadow-md shadow-orange-500/25
                       active:scale-[0.98] transition-all duration-150
@@ -896,7 +896,7 @@ export function WelcomeWindow({ open, onClose }: WelcomeWindowProps) {
                     type="button"
                     onClick={handleClose}
                     className="
-                      inline-flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold
+                      inline-flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-sm font-bold
                       bg-gradient-to-r from-orange-500 to-amber-400
                       hover:from-orange-400 hover:to-amber-300
                       text-zinc-950 shadow-md shadow-orange-500/25
