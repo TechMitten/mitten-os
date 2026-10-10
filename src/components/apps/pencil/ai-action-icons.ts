@@ -1,5 +1,6 @@
 import {
   Wand2,
+  SpellCheck,
   SpellCheck2,
   Scissors,
   Expand,
@@ -27,5 +28,6 @@ export const AI_ACTION_ICONS: Record<AIActionId, LucideIcon> = {
   'summarize-document': FileText,
   outline: ListTree,
   continue: PenLine,
+  spellcheck: SpellCheck,
   custom: Sparkles,
 };

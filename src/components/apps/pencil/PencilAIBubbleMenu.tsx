@@ -47,7 +47,7 @@ export default function PencilAIBubbleMenu({ editor, onRun, onRunCustom }: Props
       updateDelay={100}
       appendTo={appendToBody}
       shouldShow={shouldShow}
-      className="z-50 flex items-center gap-0.5 rounded-lg border border-border bg-popover dark:bg-zinc-800 p-1 shadow-xl"
+      className="z-50 flex items-center gap-0.5 rounded-lg border border-zinc-500 bg-popover dark:bg-zinc-800 p-1 shadow-xl shadow-black/40"
     >
       {customOpen ? (
         <div className="flex items-center gap-1.5">
@@ -72,7 +72,7 @@ export default function PencilAIBubbleMenu({ editor, onRun, onRunCustom }: Props
             onClick={submitCustom}
             disabled={streaming || !customPrompt.trim()}
             title="Run"
-            className="w-6 h-6 flex items-center justify-center rounded bg-[var(--accent-color)] text-white hover:opacity-90 disabled:opacity-40"
+            className="w-6 h-6 flex items-center justify-center rounded bg-[var(--accent-color)] text-zinc-950 hover:opacity-90 disabled:bg-muted disabled:text-foreground/70 disabled:cursor-not-allowed"
           >
             {streaming ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRight className="w-3.5 h-3.5" />}
           </button>
@@ -96,7 +96,7 @@ export default function PencilAIBubbleMenu({ editor, onRun, onRunCustom }: Props
                 className={cn(
                   'w-7 h-7 flex items-center justify-center rounded transition-colors',
                   'text-foreground/70 dark:text-white/70 hover:bg-accent dark:hover:bg-white/10 hover:text-foreground dark:hover:text-white',
-                  streaming && 'opacity-40 pointer-events-none'
+                  streaming && 'text-muted-foreground pointer-events-none'
                 )}
               >
                 <Icon className="w-4 h-4" />

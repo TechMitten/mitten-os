@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useEditor, EditorContent, type JSONContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { TextStyle, FontSize } from '@tiptap/extension-text-style';
@@ -48,6 +49,7 @@ import {
   Palette,
   Highlighter,
   Sparkles,
+  SpellCheck,
 } from 'lucide-react';
 import { usePencilStore, type PencilDocument } from '@/stores/pencil-store';
 import { usePencilAIStore } from '@/stores/pencil-ai-store';
@@ -56,8 +58,9 @@ import { getActiveLLMConfig } from '@/lib/keys';
 import { getAction, type AIActionId } from '@/lib/ai/pencil-prompts';
 import { cn } from '@/lib/utils';
 import PencilAIBubbleMenu from './pencil/PencilAIBubbleMenu';
-import PencilAIResultCard from './pencil/PencilAIResultCard';
 import PencilAIPanel from './pencil/PencilAIPanel';
+import { PencilSpellcheck, pencilSpellcheckKey } from './pencil/PencilSpellcheck';
+import { addToDictionary, getSuggestions } from '@/lib/spellcheck';
 
 const TEXT_COLORS = [
   { label: 'Black', value: '#18181b' },
@@ -127,6 +130,15 @@ const MIN_FONT_SIZE_PT = 6;
 const MAX_FONT_SIZE_PT = 400;
 
 type ParagraphStyle = 'p' | 'h1' | 'h2' | 'h3';
+
+interface SpellMenuState {
+  word: string;
+  from: number;
+  to: number;
+  x: number;
+  y: number;
+  suggestions: string[];
+}
 
 function formatRelativeTime(timestamp: number): string {
   const diff = Date.now() - timestamp;
@@ -201,8 +213,9 @@ function ToolbarButton({
       className={cn(
         'w-7 h-7 flex items-center justify-center rounded transition-colors shrink-0',
         'text-foreground/70 dark:text-white/70 hover:bg-accent dark:hover:bg-white/10 hover:text-foreground dark:hover:text-white',
+        'disabled:text-muted-foreground',
         active && 'bg-[var(--accent-color)]/15 text-[var(--accent-color)]',
-        disabled && 'opacity-30 pointer-events-none'
+        disabled && 'pointer-events-none'
       )}
     >
       {children}
@@ -228,6 +241,8 @@ export default function Pencil() {
   const runAI = usePencilAIStore((s) => s.run);
   const runAICustom = usePencilAIStore((s) => s.runCustom);
   const clearAI = usePencilAIStore((s) => s.clear);
+  const aiStatus = usePencilAIStore((s) => s.status);
+  const aiMeta = usePencilAIStore((s) => s.meta);
   const panelOpen = usePencilAIStore((s) => s.panelOpen);
   const setPanelOpen = usePencilAIStore((s) => s.setPanelOpen);
   const [aiConfigured, setAiConfigured] = useState(true);
@@ -239,8 +254,10 @@ export default function Pencil() {
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved');
   const [openPopover, setOpenPopover] = useState<'color' | 'highlight' | 'link' | null>(null);
   const [linkUrl, setLinkUrl] = useState('');
+  const [spellMenu, setSpellMenu] = useState<SpellMenuState | null>(null);
 
   const toolbarRef = useRef<HTMLDivElement>(null);
+  const spellMenuRef = useRef<HTMLDivElement>(null);
   const loadedDocIdRef = useRef<string | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSelectionRef = useRef<{ from: number; to: number; text: string } | null>(null);
@@ -272,10 +289,12 @@ export default function Pencil() {
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Placeholder.configure({ placeholder: 'Start typing your document…' }),
       CharacterCount,
+      PencilSpellcheck,
     ],
     editorProps: {
       attributes: {
         class: 'pencil-page-content',
+        spellcheck: 'false',
       },
     },
     content: '',
@@ -339,6 +358,11 @@ export default function Pencil() {
   useEffect(() => {
     if (panelOpen) setAiConfigured(isAIConfigured());
   }, [panelOpen]);
+
+  // Reveal the AI panel whenever a run starts so its result is always in view.
+  useEffect(() => {
+    if (aiStatus !== 'idle') setPanelOpen(true);
+  }, [aiStatus, setPanelOpen]);
 
   // Abort any in-flight AI request when the Pencil window closes.
   useEffect(() => () => clearAI(), [clearAI]);
@@ -537,6 +561,11 @@ export default function Pencil() {
     [editor, runAI, getDocumentText]
   );
 
+  const handleSpellCheck = useCallback(() => {
+    setPanelOpen(true);
+    if (isAIConfigured()) runDocumentAction('spellcheck');
+  }, [setPanelOpen, runDocumentAction]);
+
   const runCustomDocument = useCallback(
     (prompt: string) => {
       if (!editor) return;
@@ -558,6 +587,11 @@ export default function Pencil() {
         return;
       }
       const html = marked.parse(streamingText, { async: false });
+      if (meta.actionId === 'spellcheck') {
+        editor.chain().focus().setContent(html).run();
+        clearAI();
+        return;
+      }
       const range = meta.range;
       const stale = meta.docVersion !== null && meta.docVersion !== editor.state.doc.content.size;
       if (meta.scope === 'selection' && range && !stale) {
@@ -577,6 +611,71 @@ export default function Pencil() {
   const handleConfigureAI = useCallback(() => {
     openWindow('keys');
   }, [openWindow]);
+
+  const handleEditorClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!editor) return;
+      const el = (e.target as HTMLElement).closest('.pencil-spell-error');
+      if (!el) return;
+      const word = el.textContent ?? '';
+      if (!word.trim()) return;
+      let from: number;
+      let to: number;
+      try {
+        from = editor.view.posAtDOM(el, 0);
+        to = editor.view.posAtDOM(el, el.childNodes.length);
+      } catch {
+        return;
+      }
+      const menuWidth = 224;
+      const menuHeight = 260;
+      setSpellMenu({
+        word,
+        from,
+        to,
+        x: Math.max(8, Math.min(e.clientX, window.innerWidth - menuWidth - 8)),
+        y: Math.max(8, Math.min(e.clientY + 10, window.innerHeight - menuHeight - 8)),
+        suggestions: getSuggestions(word),
+      });
+    },
+    [editor]
+  );
+
+  const applySpellSuggestion = useCallback(
+    (replacement: string) => {
+      if (!editor || !spellMenu) return;
+      editor.chain().focus().insertContentAt({ from: spellMenu.from, to: spellMenu.to }, replacement).run();
+      setSpellMenu(null);
+    },
+    [editor, spellMenu]
+  );
+
+  const handleAddToDictionary = useCallback(() => {
+    if (!editor || !spellMenu) return;
+    addToDictionary(spellMenu.word);
+    editor.view.dispatch(editor.state.tr.setMeta(pencilSpellcheckKey, true));
+    setSpellMenu(null);
+  }, [editor, spellMenu]);
+
+  useEffect(() => {
+    if (!spellMenu) return;
+    const handlePointerDown = (e: MouseEvent) => {
+      if (spellMenuRef.current?.contains(e.target as Node)) return;
+      setSpellMenu(null);
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSpellMenu(null);
+    };
+    const handleScroll = () => setSpellMenu(null);
+    window.addEventListener('mousedown', handlePointerDown);
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('scroll', handleScroll, true);
+    return () => {
+      window.removeEventListener('mousedown', handlePointerDown);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('scroll', handleScroll, true);
+    };
+  }, [spellMenu]);
 
   if (view === 'home') {
     return (
@@ -599,7 +698,7 @@ export default function Pencil() {
           </div>
           <button
             onClick={handleNewDocument}
-            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[var(--accent-color)] hover:opacity-90 text-white text-sm font-medium transition-opacity"
+            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[var(--accent-color)] hover:opacity-90 text-zinc-950 text-sm font-medium transition-opacity"
           >
             <Plus className="w-4 h-4" />
             New document
@@ -622,7 +721,7 @@ export default function Pencil() {
               {documents.length === 0 && (
                 <button
                   onClick={handleNewDocument}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[var(--accent-color)] hover:opacity-90 text-white text-sm font-medium transition-opacity"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[var(--accent-color)] hover:opacity-90 text-zinc-950 text-sm font-medium transition-opacity"
                 >
                   <Plus className="w-4 h-4" />
                   Create your first document
@@ -798,7 +897,7 @@ export default function Pencil() {
             <Palette className="w-4 h-4" />
           </ToolbarButton>
           {openPopover === 'color' && (
-            <div className="absolute top-full left-0 mt-1 bg-popover dark:bg-zinc-800 border border-border rounded-lg shadow-xl p-2 grid grid-cols-5 gap-2 z-50">
+            <div className="absolute top-full left-0 mt-1 bg-popover dark:bg-zinc-800 border border-zinc-500 rounded-lg shadow-xl shadow-black/40 p-2 grid grid-cols-5 gap-2 z-50">
               {TEXT_COLORS.map((c) => (
                 <button
                   key={c.value}
@@ -825,7 +924,7 @@ export default function Pencil() {
             <Highlighter className="w-4 h-4" />
           </ToolbarButton>
           {openPopover === 'highlight' && (
-            <div className="absolute top-full left-0 mt-1 bg-popover dark:bg-zinc-800 border border-border rounded-lg shadow-xl p-2 grid grid-cols-3 gap-2 z-50">
+            <div className="absolute top-full left-0 mt-1 bg-popover dark:bg-zinc-800 border border-zinc-500 rounded-lg shadow-xl shadow-black/40 p-2 grid grid-cols-3 gap-2 z-50">
               {HIGHLIGHT_COLORS.map((c) => (
                 <button
                   key={c.value}
@@ -882,7 +981,7 @@ export default function Pencil() {
             <Link2 className="w-4 h-4" />
           </ToolbarButton>
           {openPopover === 'link' && (
-            <div className="absolute top-full left-0 mt-1 bg-popover dark:bg-zinc-800 border border-border rounded-lg shadow-xl p-2 flex items-center gap-1.5 z-50 w-64">
+            <div className="absolute top-full left-0 mt-1 bg-popover dark:bg-zinc-800 border border-zinc-500 rounded-lg shadow-xl shadow-black/40 p-2 flex items-center gap-1.5 z-50 w-64">
               <input
                 autoFocus
                 value={linkUrl}
@@ -893,7 +992,7 @@ export default function Pencil() {
               />
               <button
                 onClick={applyLink}
-                className="text-xs px-2 py-1 rounded bg-[var(--accent-color)] hover:opacity-90 text-white font-medium transition-opacity"
+                className="text-xs px-2 py-1 rounded bg-[var(--accent-color)] hover:opacity-90 text-zinc-950 font-medium transition-opacity"
               >
                 Apply
               </button>
@@ -913,6 +1012,14 @@ export default function Pencil() {
         <ToolbarDivider />
 
         <ToolbarButton
+          title="Spell check"
+          active={aiStatus !== 'idle' && aiMeta?.actionId === 'spellcheck'}
+          onClick={handleSpellCheck}
+        >
+          <SpellCheck className="w-4 h-4" />
+        </ToolbarButton>
+
+        <ToolbarButton
           title="Pencil AI"
           active={panelOpen}
           onClick={() => setPanelOpen(!panelOpen)}
@@ -925,7 +1032,10 @@ export default function Pencil() {
       <div className="flex flex-1 min-h-0">
         <div className="relative flex-1 min-h-0">
           <div className="absolute inset-0 overflow-y-auto os-scrollbar py-8">
-            <div className="mx-auto bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-sm shadow-lg min-h-[1056px] w-full max-w-[816px] px-[76px] py-[96px]">
+            <div
+              className="mx-auto bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-sm shadow-lg min-h-[1056px] w-full max-w-[816px] px-[76px] py-[96px]"
+              onClick={handleEditorClick}
+            >
               <EditorContent editor={editor} />
             </div>
             <PencilAIBubbleMenu
@@ -934,11 +1044,6 @@ export default function Pencil() {
               onRunCustom={runSelectionCustom}
             />
           </div>
-          <PencilAIResultCard
-            onAccept={() => applyAIResult('replace')}
-            onInsertBelow={() => applyAIResult('below')}
-            onDiscard={clearAI}
-          />
         </div>
         {panelOpen && (
           <PencilAIPanel
@@ -947,9 +1052,57 @@ export default function Pencil() {
             onRunDoc={runDocumentAction}
             onRunCustom={runCustomDocument}
             onClose={() => setPanelOpen(false)}
+            onAcceptResult={() => applyAIResult('replace')}
+            onInsertBelowResult={() => applyAIResult('below')}
+            onDiscardResult={clearAI}
           />
         )}
       </div>
+
+      {/* Spell check suggestions */}
+      {spellMenu &&
+        createPortal(
+          <div
+            ref={spellMenuRef}
+            className="fixed z-[10000] w-56 rounded-lg border border-zinc-500 bg-zinc-800 shadow-xl shadow-black/40 p-1"
+            style={{ left: spellMenu.x, top: spellMenu.y }}
+          >
+            <div className="px-2 pt-1 pb-1.5 border-b border-zinc-700">
+              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                Replace with
+              </div>
+              <div className="text-sm font-medium truncate">{spellMenu.word}</div>
+            </div>
+            <div className="pt-1 max-h-56 overflow-y-auto os-scrollbar">
+              {spellMenu.suggestions.length === 0 ? (
+                <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                  No suggestions found
+                </div>
+              ) : (
+                spellMenu.suggestions.map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    onClick={() => applySpellSuggestion(suggestion)}
+                    className="w-full text-left px-2 py-1 rounded text-sm hover:bg-white/10"
+                  >
+                    {suggestion}
+                  </button>
+                ))
+              )}
+            </div>
+            <div className="mt-1 pt-1 border-t border-zinc-700">
+              <button
+                type="button"
+                onClick={handleAddToDictionary}
+                className="w-full text-left px-2 py-1 rounded text-xs text-muted-foreground hover:bg-white/10 hover:text-foreground"
+              >
+                Add to dictionary
+              </button>
+            </div>
+          </div>,
+          document.body
+        )}
 
       {/* Status bar */}
       <div className="h-6 border-t border-border text-[11px] text-muted-foreground flex items-center justify-end gap-3 px-3 bg-card dark:bg-zinc-900 shrink-0">

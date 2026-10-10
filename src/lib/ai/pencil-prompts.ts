@@ -12,6 +12,7 @@ export type AIActionId =
   | 'summarize-document'
   | 'outline'
   | 'continue'
+  | 'spellcheck'
   | 'custom';
 
 export type AIScope = 'selection' | 'document' | 'cursor';
@@ -62,6 +63,7 @@ export const AI_ACTIONS: AIAction[] = [
   action('summarize-document', 'Summarize document', 'document', 0.3, 'Write a concise summary of the following document, capturing its main points.'),
   action('outline', 'Generate outline', 'document', 0.4, 'Create a structured outline of the following document using headings and bullet points.'),
   action('continue', 'Continue writing', 'cursor', 0.7, 'Continue writing the user\'s text naturally, matching its style, tone, and language. Write only the continuation, not the original text.'),
+  action('spellcheck', 'Spell check', 'document', 0.1, 'Correct every spelling and typo error in the following document. Preserve the original wording, meaning, language, structure, and Markdown formatting; change only misspelled words and nothing else. Return only the corrected document.'),
   CUSTOM_ACTION,
 ];
 
@@ -79,7 +81,7 @@ export function getAction(id: AIActionId): AIAction {
 
 export const SELECTION_ACTIONS: AIAction[] = AI_ACTIONS.filter((a) => a.scope === 'selection' && a.id !== 'custom');
 export const DOCUMENT_ACTIONS: AIAction[] = AI_ACTIONS.filter(
-  (a) => a.id === 'summarize-document' || a.id === 'outline' || a.id === 'continue'
+  (a) => a.id === 'summarize-document' || a.id === 'outline' || a.id === 'continue' || a.id === 'spellcheck'
 );
 
 const quote = (text: string) => `"""\n${text}\n"""`;
