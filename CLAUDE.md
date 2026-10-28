@@ -5,15 +5,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Quick commands
 
 ```bash
-npm run dev        # Start dev server on port 3000, logs go to dev.log
-npm run build      # Production build (Next.js standalone output)
-npm run start      # Production server (uses Bun)
-npm run lint       # ESLint (soft check, nearly all rules disabled)
+npm run dev           # Start dev server on port 3131, logs go to dev.log
+npm run build         # Production build (Next.js standalone output, for Docker/self-host)
+npm run start         # Production server (uses Bun)
+npm run lint          # ESLint (soft check, nearly all rules disabled)
 
-npm run build:cf   # Build for Cloudflare via OpenNext
-npm run preview    # build:cf + wrangler dev (local Workers preview)
-npm run deploy     # build:cf + wrangler deploy (deploy to Cloudflare)
-npm run cf-typegen # Regenerate cloudflare-env.d.ts from wrangler.jsonc
+npm run build:pages   # Static export for Cloudflare Pages (outputs to out/)
+npm run preview:pages # build:pages + local Wrangler Pages preview
 ```
 
 **No tests or typecheck scripts.** `next.config.ts` sets `ignoreBuildErrors: true` and `reactStrictMode: false`; ESLint is permissive.
@@ -33,7 +31,7 @@ MittenOS is a Next.js App Router app that simulates a browser-based desktop envi
   - `auth-store` — currently a static mock user (login bypassed)
   - `app-registry-store` — built-in and user-created app registry
 - **`src/lib/os-bridge/`** — Sandbox integration: `SandboxedApp` creates an iframe, injects compiled code + the `OS_BRIDGE_SCRIPT`, and communicates via `postMessage`. CSP headers restrict sandboxed app capabilities. User apps access the host via `window.mittenOS` API (filesystem, notifications).
-- **`src/lib/ai/`** — LLM integrations: chat service, tool definitions, type definitions. API route: `src/app/api/ai/chat/route.ts`
+- **`src/lib/ai/`** — LLM integrations: chat service (WebLLM in-browser models and external endpoints), tool definitions, type definitions. Configuration comes from the user via the Keys app (`src/lib/keys`), stored client-side — there is no server-side AI route.
 - **`src/components/ui/`** — shadcn/ui component library (toast, switch, tooltip)
 - **`src/types/`** — Type definitions for apps, windows, filesystem, etc.
 - **`src/hooks/`** — Custom React hooks for common patterns
@@ -49,23 +47,16 @@ MittenOS is a Next.js App Router app that simulates a browser-based desktop envi
 
 ## Environment
 
-**Required in `.env.local` for LLM integration:**
-```
-DEEPSEEK_API_KEY=<DeepSeek API key>
-DEEPSEEK_MODEL=<optional, defaults to deepseek-v4-pro>
-ZAI_API_KEY=<Z.ai API key, mutually exclusive with DEEPSEEK_API_KEY>
-ZAI_MODEL=<optional, defaults to glm-5.1>
-```
+**No environment variables are required.** The app is fully client-side: AI endpoint keys live in the browser (Keys app / localStorage) and all models can run in-browser via WebGPU (WebLLM).
 
-For Cloudflare deployment, runtime secrets are set via `wrangler secret put <NAME>` or `.dev.vars` (for `npm run preview`).
+## Cloudflare Pages deployment
 
-## Cloudflare Workers deployment
+Deploys to Cloudflare Pages as a **static export** (`.github/workflows/deploy.yml` runs `npm run build:pages` and `wrangler pages deploy out` on pushes to `main`).
 
-Deploys via [OpenNext for Cloudflare](https://opennext.js.org/cloudflare) to custom domain `mittenai.dev`.
-
-- **`NEXT_PUBLIC_*` vars are build-time.** Inlined into the client bundle during `next build`, so must be set in the build environment (`.env.local` for local builds, Cloudflare dashboard for CI builds)
-- **Non-public vars are runtime.** `DEEPSEEK_API_KEY`, `DEEPSEEK_MODEL`, `ZAI_API_KEY`, `ZAI_MODEL` read from `process.env` in Route Handlers at request time
-- After editing `wrangler.jsonc` bindings, run `npm run cf-typegen` to regenerate environment type definitions
+- The app is 100% client-side (single route, `ssr: false`), so static export works with no SSR/API-route support needed
+- `next.config.ts` picks the output mode from `NEXT_OUTPUT`: `export` → `out/` for Pages, `standalone` (default) → Docker/self-host
+- `public/_redirects` (SPA fallback) and `public/_headers` (immutable caching for `/_next/static`) ship with the export
+- One-time setup (see README): create the `mittenos` Pages project and set `CLOUDFLARE_API_TOKEN` (Pages: Edit) + `CLOUDFLARE_ACCOUNT_ID` repo secrets
 
 ## Gotchas
 

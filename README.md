@@ -89,28 +89,29 @@ npm run start
 
 ---
 
-## Cloudflare Workers Deployment
+## Cloudflare Pages Deployment
 
-MittenOS is configured to deploy to Cloudflare Workers via OpenNext.
+MittenOS is a fully client-side app and deploys to Cloudflare Pages as a static export (`out/`). Pushes to `main` are deployed automatically by the [`deploy.yml`](.github/workflows/deploy.yml) GitHub Actions workflow.
 
-### Build and Test Locally
+### One-time setup
+
+1. Create the Pages project (CI deploys to it, but cannot create it):
+   ```bash
+   npx wrangler pages project create mittenos --production-branch=main
+   ```
+2. Add repository secrets under **Settings > Secrets and variables > Actions**:
+   - `CLOUDFLARE_API_TOKEN` — an API token with **Cloudflare Pages: Edit** permission
+   - `CLOUDFLARE_ACCOUNT_ID` — your Cloudflare account ID
+3. If you use a custom domain (e.g. `mittenai.dev`), attach it to the Pages project in the Cloudflare dashboard.
+
+### Local preview
+
 ```bash
-# Compile the application for Cloudflare (OpenNext)
-npm run build:cf
+# Static export into out/ and preview it in the Pages runtime
+npm run preview:pages
 
-# Preview locally in the Wrangler Workers runtime
-npm run preview
-```
-
-### Deployment
-To deploy directly to Cloudflare:
-```bash
-npm run deploy
-```
-
-If you modify bindings inside `wrangler.jsonc`, regenerate the environment interface:
-```bash
-npm run cf-typegen
+# Or just produce the static export
+npm run build:pages
 ```
 
 ---
@@ -120,12 +121,11 @@ npm run cf-typegen
 | Command | Description |
 |---|---|
 | `npm run dev` | Starts the Next.js development server. |
-| `npm run build` | Builds the Next.js application for production. |
+| `npm run build` | Builds the Next.js application for production (standalone output). |
 | `npm run start` | Runs the built standalone production server using Bun. |
 | `npm run lint` | Performs a soft ESLint check. |
-| `npm run build:cf` | Generates a Cloudflare-compatible build inside `.open-next/`. |
-| `npm run preview` | Runs a local Wrangler dev server to preview Cloudflare compilation. |
-| `npm run deploy` | Deploys the application directly to Cloudflare. |
+| `npm run build:pages` | Produces a static export in `out/` for Cloudflare Pages. |
+| `npm run preview:pages` | Builds the static export and previews it locally with Wrangler. |
 
 ## License
 

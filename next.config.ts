@@ -41,8 +41,12 @@ function getAllowedDevOrigins(): string[] {
   return Array.from(origins);
 }
 
+// Static export for Cloudflare Pages (`npm run build:pages`); standalone for
+// Docker/self-hosting (`npm run build`). Only one output mode is allowed per build.
+const isStaticExport = process.env.NEXT_OUTPUT === "export";
+
 const nextConfig: NextConfig = {
-  output: "standalone",
+  output: isStaticExport ? "export" : "standalone",
   /* config options here */
   experimental: {
     agentUpgrade: "security",
