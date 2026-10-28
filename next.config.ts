@@ -44,6 +44,9 @@ function getAllowedDevOrigins(): string[] {
 const nextConfig: NextConfig = {
   output: "standalone",
   /* config options here */
+  experimental: {
+    agentUpgrade: "security",
+  },
   turbopack: {
     root: import.meta.dirname,
   },
