@@ -11,18 +11,7 @@ import Highlight from '@tiptap/extension-highlight';
 import TextAlign from '@tiptap/extension-text-align';
 import Placeholder from '@tiptap/extension-placeholder';
 import CharacterCount from '@tiptap/extension-character-count';
-import {
-  Roboto,
-  Open_Sans,
-  Lato,
-  Montserrat,
-  Poppins,
-  Merriweather,
-  Playfair_Display,
-  Nunito,
-  Oswald,
-  Source_Code_Pro,
-} from 'next/font/google';
+import localFont from 'next/font/local';
 import { marked } from 'marked';
 import {
   Search,
@@ -84,16 +73,86 @@ const HIGHLIGHT_COLORS = [
   { label: 'Orange', value: '#fed7aa' },
 ];
 
-const roboto = Roboto({ subsets: ['latin'], weight: ['400', '700'], variable: '--font-roboto' });
-const openSans = Open_Sans({ subsets: ['latin'], weight: ['400', '700'], variable: '--font-open-sans' });
-const lato = Lato({ subsets: ['latin'], weight: ['400', '700'], variable: '--font-lato' });
-const montserrat = Montserrat({ subsets: ['latin'], weight: ['400', '700'], variable: '--font-montserrat' });
-const poppins = Poppins({ subsets: ['latin'], weight: ['400', '700'], variable: '--font-poppins' });
-const merriweather = Merriweather({ subsets: ['latin'], weight: ['400', '700'], variable: '--font-merriweather' });
-const playfairDisplay = Playfair_Display({ subsets: ['latin'], weight: ['400', '700'], variable: '--font-playfair-display' });
-const nunito = Nunito({ subsets: ['latin'], weight: ['400', '700'], variable: '--font-nunito' });
-const oswald = Oswald({ subsets: ['latin'], weight: ['400', '700'], variable: '--font-oswald' });
-const sourceCodePro = Source_Code_Pro({ subsets: ['latin'], weight: ['400', '700'], variable: '--font-source-code-pro' });
+const roboto = localFont({
+  src: [
+    { path: '../../fonts/roboto-400.woff2', weight: '400', style: 'normal' },
+    { path: '../../fonts/roboto-700.woff2', weight: '700', style: 'normal' },
+  ],
+  variable: '--font-roboto',
+  display: 'swap',
+});
+const openSans = localFont({
+  src: [
+    { path: '../../fonts/open-sans-400.woff2', weight: '400', style: 'normal' },
+    { path: '../../fonts/open-sans-700.woff2', weight: '700', style: 'normal' },
+  ],
+  variable: '--font-open-sans',
+  display: 'swap',
+});
+const lato = localFont({
+  src: [
+    { path: '../../fonts/lato-400.woff2', weight: '400', style: 'normal' },
+    { path: '../../fonts/lato-700.woff2', weight: '700', style: 'normal' },
+  ],
+  variable: '--font-lato',
+  display: 'swap',
+});
+const montserrat = localFont({
+  src: [
+    { path: '../../fonts/montserrat-400.woff2', weight: '400', style: 'normal' },
+    { path: '../../fonts/montserrat-700.woff2', weight: '700', style: 'normal' },
+  ],
+  variable: '--font-montserrat',
+  display: 'swap',
+});
+const poppins = localFont({
+  src: [
+    { path: '../../fonts/poppins-400.woff2', weight: '400', style: 'normal' },
+    { path: '../../fonts/poppins-700.woff2', weight: '700', style: 'normal' },
+  ],
+  variable: '--font-poppins',
+  display: 'swap',
+});
+const merriweather = localFont({
+  src: [
+    { path: '../../fonts/merriweather-400.woff2', weight: '400', style: 'normal' },
+    { path: '../../fonts/merriweather-700.woff2', weight: '700', style: 'normal' },
+  ],
+  variable: '--font-merriweather',
+  display: 'swap',
+});
+const playfairDisplay = localFont({
+  src: [
+    { path: '../../fonts/playfair-display-400.woff2', weight: '400', style: 'normal' },
+    { path: '../../fonts/playfair-display-700.woff2', weight: '700', style: 'normal' },
+  ],
+  variable: '--font-playfair-display',
+  display: 'swap',
+});
+const nunito = localFont({
+  src: [
+    { path: '../../fonts/nunito-400.woff2', weight: '400', style: 'normal' },
+    { path: '../../fonts/nunito-700.woff2', weight: '700', style: 'normal' },
+  ],
+  variable: '--font-nunito',
+  display: 'swap',
+});
+const oswald = localFont({
+  src: [
+    { path: '../../fonts/oswald-400.woff2', weight: '400', style: 'normal' },
+    { path: '../../fonts/oswald-700.woff2', weight: '700', style: 'normal' },
+  ],
+  variable: '--font-oswald',
+  display: 'swap',
+});
+const sourceCodePro = localFont({
+  src: [
+    { path: '../../fonts/source-code-pro-400.woff2', weight: '400', style: 'normal' },
+    { path: '../../fonts/source-code-pro-700.woff2', weight: '700', style: 'normal' },
+  ],
+  variable: '--font-source-code-pro',
+  display: 'swap',
+});
 
 const PENCIL_FONT_VARIABLES = [
   roboto.variable,
